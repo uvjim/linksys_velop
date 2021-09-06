@@ -1,9 +1,0 @@
-{
-  "domain": "ha-velop",
-  "name": "Linksys Velop",
-  "documentation": "",
-  "issue_tracker": "",
-  "codeowners": [],
-  "version": "2021.08.31b1",
-  "iot_class": "local_polling"
-}
