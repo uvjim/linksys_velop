@@ -1,0 +1,58 @@
+{
+    "config": {
+        "abort": {
+            "abort_login": "Unable to complete the login process."
+        },
+        "error": {
+            "login_error": "Unable to login.  Please check the username and password.",
+            "login_bad_response": "Bad response on login.  Check that the primary node is correct."
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "node": "Node address",
+                    "password": "Password"
+                },
+                "description": "Enter the details to connect to the Linksys Velop mesh",
+                "title": "Linksys Velop"
+            },
+            "timers": {
+                "data": {
+                    "scan_interval": "Scan interval (in seconds)",
+                    "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)",
+                    "consider_home": "Time to wait before switching to not_home (in seconds)"
+                },
+                "title": "Linksys Velop",
+                "description": "Set the various timers for the integration"
+            },
+            "device_trackers": {
+                "data": {
+                    "tracked": "Available devices"
+                },
+                "title": "Linksys Velop",
+                "description": "Select the devices you would like to use for presence tracking"
+            }
+        },
+        "title": "Linksys Velop"
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Scan interval (in seconds)",
+                    "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)",
+                    "consider_home": "Time to wait before switching to not_home (in seconds)"
+                },
+                "title": "Linksys Velop",
+                "description": "Set the various timers for the integration"
+            },
+            "device_trackers": {
+                "data": {
+                    "tracked": "Available devices"
+                },
+                "title": "Linksys Velop",
+                "description": "Select the devices you would like to use for presence tracking"
+            }
+        }
+    }
+}

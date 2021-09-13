@@ -1,0 +1,37 @@
+# Linksys Velop services
+
+check_updates:
+  name: Check for Updates
+  description: Instruct the mesh to check for firmware updates
+
+delete_device:
+    name: Delete Device
+    description: Delete a device from the mesh Device List (only a single device can be deleted at a time)
+    fields:
+      device_id:
+        name: Device ID
+        description: The device ID for the device to delete
+        required: false
+        selector:
+          text:
+      device_name:
+        name: Device Name
+        description: The name of the device to delete
+        required: false
+        selector:
+          text:
+
+parental_control_state:
+  name: Parental Control State
+  description: Set the state Parental Control on the mesh.
+  fields:
+    state:
+      name: State
+      description: Boolean state for Parental Control
+      required: true
+      selector:
+        boolean:
+
+start_speedtest:
+  name: Execute Speedtest
+  description: Instruct the mesh to carry out a Speedtest

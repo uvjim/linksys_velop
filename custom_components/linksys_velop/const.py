@@ -1,0 +1,32 @@
+"""Constants for Linksys Velop"""
+
+DOMAIN = "linksys_velop"
+ENTITY_SLUG = "Velop"
+
+CONF_NODE = "node"
+CONF_COORDINATOR = "coordinator"
+CONF_DEVICE_TRACKERS = "tracked"
+CONF_SCAN_INTERVAL_DEVICE_TRACKER = "scan_interval_device_tracker"
+CONF_SERVICES_HANDLER = "services_handler"
+CONF_UNSUB_UPDATE_LISTENER = "unsub_update_listener"
+CONF_MESH = "mesh"
+
+DEF_NAME = "Linksys Velop Mesh"
+DEF_SCAN_INTERVAL = 30
+DEF_SCAN_INTERVAL_DEVICE_TRACKER = 10
+DEF_CONSIDER_HOME = 180
+
+PLATFORMS = [
+    "binary_sensor",
+    "sensor",
+    "device_tracker",
+]
+
+SIGNAL_UPDATE_DEVICE_TRACKER = "update_device_tracker"
+SIGNAL_UPDATE_SPEEDTEST_RESULTS = "update_speedtest_results"
+SIGNAL_UPDATE_SPEEDTEST_STATUS = "update_speedtest_status"
+SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS = "update_check_for_updates_status"
+
+STEP_USER = "user"
+STEP_TIMERS = "timers"
+STEP_DEVICE_TRACKERS = "device_trackers"
