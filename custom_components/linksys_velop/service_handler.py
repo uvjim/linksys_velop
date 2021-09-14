@@ -1,3 +1,5 @@
+"""Manage the services for the pyvelop integration"""
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -37,15 +39,25 @@ class LinksysVelopServiceHandler:
     }
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        """Constructor"""
+
         self._hass = hass
         self._config_entry = config_entry
         self._mesh: Mesh = self._hass.data[DOMAIN][self._config_entry.entry_id][CONF_COORDINATOR].data
 
     async def service_call(self, call: ServiceCall):
+        """Call the required method based on the given argument
+
+        :param call: the service call that should be made
+        :return: None
+        """
+
         method = getattr(self, call.service)
         await method(**call.data)
 
     def register_services(self) -> None:
+        """Register the services"""
+
         for service_name, service_details in self.SERVICES.items():
             self._hass.services.async_register(
                 domain=DOMAIN,
@@ -55,19 +67,39 @@ class LinksysVelopServiceHandler:
             )
 
     def unregister_services(self) -> None:
+        """Unregister the services"""
+
         for service_name, service_details in self.SERVICES.items():
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
     async def delete_device(self, **kwargs) -> None:
+        """Remove a device from the device list on the mesh"""
         await self._mesh.async_delete_device(**kwargs)
 
     async def parental_control_state(self, **kwargs) -> None:
+        """Set the state of the Parental Control feature on the mesh"""
         await self._mesh.async_set_parental_control_state(state=bool(kwargs.get("state", False)))
 
     async def start_speedtest(self) -> None:
+        """Start a Speedtest on the mesh
+
+        The Speedtest is a long running task so a signal is also sent to listeners to update the status more
+        frequently.  This allows seeing the stages of the test in the UI.
+
+        :return:None
+        """
+
         await self._mesh.async_start_speedtest()
         async_dispatcher_send(self._hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
 
     async def check_updates(self) -> None:
+        """Instruct the mesh to check for updates
+
+        The update check could be a long running task so a signal is also sent to listeners to update the status more
+        frequently.  This allows a more reactive UI but also paves the way for status messages later.
+
+        :return: None
+        """
+
         await self._mesh.async_check_for_updates()
         async_dispatcher_send(self._hass, SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS)

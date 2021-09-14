@@ -1,4 +1,4 @@
-""""""
+"""Binary sensors for the mesh, nodes and devices"""
 
 import logging
 from datetime import timedelta, datetime
@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """"""
+    """Setup the binary sensors from a config entry"""
 
     binary_sensor_classes = [
         LinksysVelopMeshCheckForUpdateStatusBinarySensor,
@@ -48,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
 
 class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySensor):
-    """"""
+    """Representation of the check for updates binary sensor"""
 
     _attribute = "Check for Updates Status"
     _status_update_interval: int = 1
@@ -57,7 +57,11 @@ class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySen
 
     @callback
     async def async_update_callback(self, _: Union[datetime, None] = None):
-        """"""
+        """Update the state of the binary sensor
+
+        Triggers a time interval to ensure that data is checked for more regularly when the state
+        is on.
+        """
 
         self._status_value = await self._mesh.async_get_update_state()
 
@@ -75,7 +79,7 @@ class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySen
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """"""
+        """Register callbacks and set initial status"""
 
         self._status_value = self._mesh.check_for_update_status
         self.async_on_remove(
@@ -87,20 +91,20 @@ class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySen
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """"""
+        """Tidy up when removed"""
 
         if self._remove_time_interval:
             self._remove_time_interval()
 
     @property
     def is_on(self) -> bool:
-        """"""
+        """Return True if the mesh is currently checking for updates, False otherwise"""
 
         return self._status_value
 
 
 class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
-    """"""
+    """Representation of the Speedtest status binary sensor"""
 
     _attribute = "Speedtest Status"
     _status_text: str = ""
@@ -109,7 +113,11 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
 
     @callback
     async def async_update_callback(self, _: Union[datetime, None] = None):
-        """"""
+        """Update the state of the binary sensor
+
+        Triggers a time interval to ensure that data is checked for more regularly when the state
+        is on.
+        """
 
         self._status_text = await self._mesh.async_get_speedtest_state()
         if self._status_text:
@@ -127,7 +135,7 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """"""
+        """Register callbacks"""
 
         self.async_on_remove(
             async_dispatcher_connect(
@@ -138,43 +146,47 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """"""
+        """Tidy up when removed"""
 
         if self._remove_time_interval:
             self._remove_time_interval()
 
     @property
-    def is_on(self) -> bool:
-        """"""
-
-        return self._status_text != ""
-
-    @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """"""
+        """Set the current stage of the test as an attribute"""
 
         return {
             "status": self._status_text
         }
 
+    @property
+    def is_on(self) -> bool:
+        """Return True if the mesh is currently running a Speedtest, False otherwise"""
+
+        return self._status_text != ""
+
 
 class LinksysVelopMeshParentalControlBinarySensor(LinksysVelopMeshPolledBinarySensor):
-    """"""
+    """Representation of the Parental Control binary sensor"""
 
     _attribute = "Parental Control"
 
     @property
     def is_on(self) -> bool:
+        """Returns True if Parental Control is enabled, False otherwise"""
+
         return self._mesh.parental_control_enabled
 
 
 class LinksysVelopMeshGuestWiFiBinarySensor(LinksysVelopMeshPolledBinarySensor):
-    """"""
+    """Representation of the guest Wi-Fi binary sensor"""
 
     _attribute = "Guest Wi-Fi"
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set additional attributes detailing the available guest networks"""
+
         ret = {
             f"network {idx}": network
             for idx, network in enumerate(self._mesh.guest_wifi_details)
@@ -183,17 +195,20 @@ class LinksysVelopMeshGuestWiFiBinarySensor(LinksysVelopMeshPolledBinarySensor):
 
     @property
     def is_on(self) -> bool:
+        """Returns True if the guest network is enabled, False otherwise"""
         return self._mesh.guest_wifi_enabled
 
 
 class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshPolledBinarySensor):
-    """"""
+    """Representation of the WAN binary sensor"""
 
     _attribute = "WAN Status"
     _attr_device_class = DEVICE_CLASS_CONNECTIVITY
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set additional attributes detailing the WAN details"""
+
         return {
             "ip": self._mesh.wan_ip,
             "dns": self._mesh.wan_dns,
@@ -202,17 +217,21 @@ class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshPolledBinarySensor):
 
     @property
     def is_on(self) -> bool:
+        """Returns True if the WAN is connected, False otherwise"""
+
         return self._mesh.wan_status
 
 
 class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
-    """"""
+    """Representation of the Node status"""
 
     _attribute = "Status"
     _attr_device_class = DEVICE_CLASS_CONNECTIVITY
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set attributes detailing the network adapters that are connected"""
+
         ret = {}
         node: Node = self._get_node()
         if node.connected_adapters:
@@ -222,5 +241,7 @@ class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
 
     @property
     def is_on(self) -> bool:
+        """Returns True if the node is connected, False otherwise"""
+
         node: Node = self._get_node()
         return node.status
