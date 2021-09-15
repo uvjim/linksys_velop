@@ -1,10 +1,13 @@
 {
-  "domain": "linksys_velop",
-  "name": "Linksys Velop",
-  "documentation": "",
-  "issue_tracker": "",
   "codeowners": [],
-  "version": "2021.08.31b1",
+  "config_flow": true,
+  "domain": "linksys_velop",
+  "documentation": "https://github.com/uvjim/linksys_velop",
   "iot_class": "local_polling",
-  "config_flow": true
+  "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
+  "name": "Linksys Velop",
+  "requirements": [
+    "pyvelop>=2021.9.3"
+  ],
+  "version": "2021.9.1"
 }

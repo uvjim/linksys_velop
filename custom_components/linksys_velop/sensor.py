@@ -36,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopNodeConnectedDevicesSensor,
         LinksysVelopNodeCurrentFirmwareSensor,
         LinksysVelopNodeModelSensor,
-        LinksysVelopNodeParentNameSensor,
+        LinksysVelopNodeParentSensor,
         LinksysVelopNodeSerialSensor,
         LinksysVelopNodeTypeSensor,
     ]
@@ -196,7 +196,7 @@ class LinksysVelopNodeModelSensor(LinksysVelopNodePolledSensor):
         return node.model
 
 
-class LinksysVelopNodeParentNameSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeParentSensor(LinksysVelopNodePolledSensor):
     """Representation of the parent name sensor"""
 
     _attribute = "Parent"
