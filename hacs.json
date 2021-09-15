@@ -1,5 +1,6 @@
 {
   "domains": "linksys_velop",
   "homeassistant": "2021.9.0",
-  "name": "Linksys Velop"
+  "name": "Linksys Velop",
+  "render_readme": true
 }
