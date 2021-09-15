@@ -22,7 +22,7 @@ from .entity_helpers import (
     LinksysVelopNodePolledBinarySensor,
     LinksysVelopMeshBinarySensor,
 )
-from .pyvelop.node import Node
+from pyvelop.node import Node
 
 _LOGGER = logging.getLogger(__name__)
 

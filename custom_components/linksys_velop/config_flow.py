@@ -29,9 +29,9 @@ from .const import (
     STEP_TIMERS,
     STEP_USER,
 )
-from .pyvelop.device import Device
-from .pyvelop.exceptions import MeshInvalidCredentials, MeshBadResponse
-from .pyvelop.mesh import Mesh
+from pyvelop.device import Device
+from pyvelop.exceptions import MeshInvalidCredentials, MeshBadResponse
+from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 

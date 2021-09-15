@@ -13,18 +13,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     CONF_COORDINATOR,
+    CONF_DEVICE_TRACKERS,
     DOMAIN,
     SIGNAL_UPDATE_DEVICE_TRACKER,
-)
-from .const import (
-    CONF_DEVICE_TRACKERS
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
     LinksysVelopDeviceTracker,
 )
-from .pyvelop.device import Device
-from .pyvelop.mesh import Mesh
+from pyvelop.device import Device
+from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 

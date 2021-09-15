@@ -21,7 +21,7 @@ from .entity_helpers import (
     LinksysVelopMeshPolledSensor,
     LinksysVelopNodePolledSensor,
 )
-from .pyvelop.node import Node
+from pyvelop.node import Node
 
 _LOGGER = logging.getLogger(__name__)
 

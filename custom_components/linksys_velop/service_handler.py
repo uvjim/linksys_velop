@@ -12,7 +12,7 @@ from .const import (
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS
 )
-from .pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh
 
 
 class LinksysVelopServiceHandler:

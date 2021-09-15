@@ -19,8 +19,8 @@ from .const import (
     ENTITY_SLUG,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
-from .pyvelop.mesh import Mesh
-from .pyvelop.node import Node
+from pyvelop.mesh import Mesh
+from pyvelop.node import Node
 
 
 class LinksysVelopDeviceTracker(ScannerEntity):

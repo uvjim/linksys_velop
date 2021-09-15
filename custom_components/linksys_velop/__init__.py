@@ -24,9 +24,9 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
-from .pyvelop.device import Device
-from .pyvelop.mesh import Mesh
 from .service_handler import LinksysVelopServiceHandler
+from pyvelop.device import Device
+from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 
