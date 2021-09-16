@@ -25,13 +25,17 @@ available.
 - Mesh: Checking for Updates
 - Mesh: Guest Wi-Fi state
   - list of guest networks available
-- Mesh: Parental Control state
 - Mesh: Speedtest state
   - current stage of the Speedtest, e.g. Detecting server, Checking latency
 - Mesh: WAN Status
   - IP, DNS, MAC
 - Node: Status
   - IP, MAC
+
+#### Device  Trackers
+
+These are selectable and are presented as part of the configuration at both 
+install time and from reconfiguring the integration.
 
 #### Sensors
 
@@ -50,19 +54,17 @@ available.
 - Node: Serial Number
 - Node: Type of Node, e.g. Primary Secondary
 
-#### Device  Trackers
+#### Switches
 
-These are selectable and are presented as part of the configuration at both 
-install time and from reconfiguring the integration.
+- Mesh: Parental Control state
 
 ### Services
 
 Services are available for the following: -
 
-- Start a Speedtest
-- Initiate a check for firmware updates for the nodes
-- Change the state of the guest Wi-Fi &ast;
-- Change the state of the Parental Controls feature &ast;
+- Start a Speedtest &ast;
+- Initiate a check for firmware updates for the nodes &ast;
+- Delete a machine from the device list
 
 > &ast; these are considered long-running tasks. When the binary sensors spot 
   these tasks are running an additional timer is set up that polls every 
