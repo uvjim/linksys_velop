@@ -25,13 +25,17 @@ available.
 - Mesh: Checking for Updates
 - Mesh: Guest Wi-Fi state
   - list of guest networks available
-- Mesh: Parental Control state
 - Mesh: Speedtest state
   - current stage of the Speedtest, e.g. Detecting server, Checking latency
 - Mesh: WAN Status
   - IP, DNS, MAC
 - Node: Status
   - IP, MAC
+
+#### Device  Trackers
+
+These are selectable and are presented as part of the configuration at both 
+install time and from reconfiguring the integration.
 
 #### Sensors
 
@@ -50,19 +54,17 @@ available.
 - Node: Serial Number
 - Node: Type of Node, e.g. Primary Secondary
 
-#### Device  Trackers
+#### Switches
 
-These are selectable and are presented as part of the configuration at both 
-install time and from reconfiguring the integration.
+- Mesh: Parental Control state
 
 ### Services
 
 Services are available for the following: -
 
-- Start a Speedtest
-- Initiate a check for firmware updates for the nodes
-- Change the state of the guest Wi-Fi &ast;
-- Change the state of the Parental Controls feature &ast;
+- Start a Speedtest &ast;
+- Initiate a check for firmware updates for the nodes &ast;
+- Delete a machine from the device list
 
 > &ast; these are considered long-running tasks. When the binary sensors spot 
   these tasks are running an additional timer is set up that polls every 
@@ -524,5 +526,49 @@ To create this view a number of custom cards have been used.  These are: -
                                     thead tr th, tbody tr td { padding: 0px
                                     10px; }
                               content: ${CONNECTED_DEVICES_TEXT(CONNECTED_DEVICES)}
+  ```
+</details>
+
+# Example Automations
+
+Below are some example automations. I'm aware some of these could be more 
+generic or even done in a better way but these are for example purposes only.
+
+<details>
+  <summary>Notify when a node goes offline or comes online</summary>
+
+  ```yaml
+  alias: 'Notify: Velop node online/offline'
+  description: ''
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.velop_utility_status
+      id: Node Online
+      from: 'off'
+      to: 'on'
+    - platform: state
+      entity_id: binary_sensor.velop_utility_status
+      id: Node Offline
+      from: 'on'
+      to: 'off'
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: Node Online
+          sequence:
+            - service: persistent_notification.create
+              data:
+                message: Node is online
+        - conditions:
+            - condition: trigger
+              id: Node Offline
+          sequence:
+            - service: persistent_notification.create
+              data:
+                message: Node is offline
+      default: []
+  mode: single
   ```
 </details>
