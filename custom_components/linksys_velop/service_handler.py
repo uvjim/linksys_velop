@@ -3,8 +3,8 @@
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -12,7 +12,6 @@ from .const import (
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS
 )
-from pyvelop.mesh import Mesh
 
 
 class LinksysVelopServiceHandler:
