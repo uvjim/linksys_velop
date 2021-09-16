@@ -21,17 +21,6 @@ delete_device:
         selector:
           text:
 
-parental_control_state:
-  name: Parental Control State
-  description: Set the state Parental Control on the mesh.
-  fields:
-    state:
-      name: State
-      description: Boolean state for Parental Control
-      required: true
-      selector:
-        boolean:
-
 start_speedtest:
   name: Execute Speedtest
   description: Instruct the mesh to carry out a Speedtest

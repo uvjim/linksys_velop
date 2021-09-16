@@ -16,6 +16,7 @@ from .const import (
     CONF_NODE,
     DOMAIN,
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
+    SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from pyvelop.mesh import Mesh
@@ -39,11 +40,13 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Mesh:
         """Fetch the latest data from the source
 
-        Will signal relevant sensors that have a state that needs updating more frequently
+        Will signal relevant sensors that have a state that needs updating more frequently or uses a state that is a
+        combination of the real state and one assumed by an action
         """
 
         try:
             await self._mesh.async_gather_details()
+            async_dispatcher_send(self._hass, SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS)
             if self._mesh.async_get_speedtest_state():
                 async_dispatcher_send(self._hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
             if self._mesh.async_get_update_state():

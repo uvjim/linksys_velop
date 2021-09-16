@@ -3,8 +3,8 @@
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -12,7 +12,6 @@ from .const import (
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS
 )
-from pyvelop.mesh import Mesh
 
 
 class LinksysVelopServiceHandler:
@@ -28,12 +27,6 @@ class LinksysVelopServiceHandler:
                         vol.Optional("device_name"): str
                     }
                 )
-        },
-        "parental_control_state": {
-            "schema":
-                vol.Schema(
-                    {vol.Optional("state"): cv.boolean}
-                ),
         },
         "start_speedtest": {},
     }
@@ -75,10 +68,6 @@ class LinksysVelopServiceHandler:
     async def delete_device(self, **kwargs) -> None:
         """Remove a device from the device list on the mesh"""
         await self._mesh.async_delete_device(**kwargs)
-
-    async def parental_control_state(self, **kwargs) -> None:
-        """Set the state of the Parental Control feature on the mesh"""
-        await self._mesh.async_set_parental_control_state(state=bool(kwargs.get("state", False)))
 
     async def start_speedtest(self) -> None:
         """Start a Speedtest on the mesh

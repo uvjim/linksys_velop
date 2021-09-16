@@ -1,11 +1,12 @@
 """Base classes for managing entities in the integration"""
 
-from typing import List, Union
+from typing import List, Union, Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -105,6 +106,67 @@ class LinksysVelopBinarySensor(BinarySensorEntity):
         """Returns the unique ID for the binary sensor"""
 
         ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
+        return ret
+
+
+# noinspection PyAbstractClass
+class LinksysVelopSwitch(SwitchEntity):
+    """Representation of a polled Switch"""
+
+    _attribute: str
+    coordinator: LinksysVelopDataUpdateCoordinator
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        super().__init__()
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off the switch"""
+
+        return
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on the switch"""
+
+        return
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Set the device information to that of the mesh"""
+
+        ret = DeviceInfo(**{
+            "name": "Mesh",
+            "manufacturer": "Linksys",
+            "identifiers": {(DOMAIN, self._identity)},
+        })
+        return ret
+
+    @property
+    def is_on(self) -> bool:
+        """"""
+
+        return False
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the switch"""
+
+        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
+
+    @property
+    def should_poll(self) -> bool:
+        """True if this is a polling entity, False otherwise"""
+
+        return False
+
+    @property
+    def unique_id(self) -> str:
+        """Returns the unique ID of the switch"""
+
+        ret = f"{self._identity}::switch::{slugify(self._attribute).lower()}"
         return ret
 
 

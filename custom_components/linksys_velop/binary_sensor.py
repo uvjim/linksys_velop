@@ -33,7 +33,6 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     binary_sensor_classes = [
         LinksysVelopMeshCheckForUpdateStatusBinarySensor,
         LinksysVelopMeshGuestWiFiBinarySensor,
-        LinksysVelopMeshParentalControlBinarySensor,
         LinksysVelopMeshSpeedtestStatusBinarySensor,
         LinksysVelopMeshWANBinarySensor,
         LinksysVelopNodeStatusBinarySensor,
@@ -164,18 +163,6 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         """Return True if the mesh is currently running a Speedtest, False otherwise"""
 
         return self._status_text != ""
-
-
-class LinksysVelopMeshParentalControlBinarySensor(LinksysVelopMeshPolledBinarySensor):
-    """Representation of the Parental Control binary sensor"""
-
-    _attribute = "Parental Control"
-
-    @property
-    def is_on(self) -> bool:
-        """Returns True if Parental Control is enabled, False otherwise"""
-
-        return self._mesh.parental_control_enabled
 
 
 class LinksysVelopMeshGuestWiFiBinarySensor(LinksysVelopMeshPolledBinarySensor):
