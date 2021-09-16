@@ -526,3 +526,47 @@ To create this view a number of custom cards have been used.  These are: -
                               content: ${CONNECTED_DEVICES_TEXT(CONNECTED_DEVICES)}
   ```
 </details>
+
+# Example Automations
+
+Below are some example automations. I'm aware some of these could be more 
+generic or even done in a better way but these are for example purposes only.
+
+<details>
+  <summary>Notify when a node goes offline or comes online</summary>
+
+  ```yaml
+  alias: 'Notify: Velop node online/offline'
+  description: ''
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.velop_utility_status
+      id: Node Online
+      from: 'off'
+      to: 'on'
+    - platform: state
+      entity_id: binary_sensor.velop_utility_status
+      id: Node Offline
+      from: 'on'
+      to: 'off'
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: Node Online
+          sequence:
+            - service: persistent_notification.create
+              data:
+                message: Node is online
+        - conditions:
+            - condition: trigger
+              id: Node Offline
+          sequence:
+            - service: persistent_notification.create
+              data:
+                message: Node is offline
+      default: []
+  mode: single
+  ```
+</details>
