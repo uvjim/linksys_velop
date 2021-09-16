@@ -18,14 +18,16 @@ DEF_CONSIDER_HOME = 180
 
 PLATFORMS = [
     "binary_sensor",
-    "sensor",
     "device_tracker",
+    "sensor",
+    "switch",
 ]
 
+SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS = "update_check_for_updates_status"
 SIGNAL_UPDATE_DEVICE_TRACKER = "update_device_tracker"
+SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS = "update_parental_control"
 SIGNAL_UPDATE_SPEEDTEST_RESULTS = "update_speedtest_results"
 SIGNAL_UPDATE_SPEEDTEST_STATUS = "update_speedtest_status"
-SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS = "update_check_for_updates_status"
 
 STEP_USER = "user"
 STEP_TIMERS = "timers"
