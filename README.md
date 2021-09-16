@@ -72,7 +72,7 @@ Services are available for the following: -
 
 When setting up the integration you will be asked for the following information.
 
-![Initial Setup Screen](images/setup_user.png)
+![Initial Setup Screen](https://github.com/uvjim/linksys_velop/raw/main/images/setup_user.png)
 
 - `Node address`: can be any node in the mesh
 - `Password`: the password you would use to log in to either the app or the 
@@ -81,7 +81,7 @@ When setting up the integration you will be asked for the following information.
 On successful set up the following screen will be seen detailing the Mesh 
 device and the individual nodes found in the mesh.
 
-![Final Setup Screen](images/setup_final.png)
+![Final Setup Screen](https://github.com/uvjim/linksys_velop/raw/main/images/setup_final.png)
 
 ## Configurable Options
 
@@ -89,7 +89,7 @@ It is possible to configure the following options for the integration.
 
 #### Timers
 
-![Configure Timers](images/config_timers.png)
+![Configure Timers](https://github.com/uvjim/linksys_velop/raw/main/images/config_timers.png)
 
 - `Scan Interval`: the frequency of updates for the sensors, default `30s`
 - `Device Tracker Interval`: the frequency of updates for the device 
@@ -99,7 +99,7 @@ It is possible to configure the following options for the integration.
 
 #### Device Trackers
 
-![Configure Device Trackers](images/config_device_trackers.png)
+![Configure Device Trackers](https://github.com/uvjim/linksys_velop/raw/main/images/config_device_trackers.png)
 
 - `Available devices`: a multi-select list of the devices found on the mesh. 
   This list excludes any device which doesn't have a name - typically 
@@ -109,7 +109,7 @@ It is possible to configure the following options for the integration.
 
 | Dark Mode | Light Mode |
 |:---:|:---:|
-| ![Lovelace Dark UI](images/lovelace_dark.png) | ![Lovelace Dark UI](images/lovelace_light.png) |
+| ![Lovelace Dark UI](https://github.com/uvjim/linksys_velop/raw/main/images/lovelace_dark.png) | ![Lovelace Light UI](https://github.com/uvjim/linksys_velop/raw/main/images/lovelace_light.png) |
 
 *Some items of detail have been pixelated for privacy purposes.*
 
