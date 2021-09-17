@@ -32,7 +32,6 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
     binary_sensor_classes = [
         LinksysVelopMeshCheckForUpdateStatusBinarySensor,
-        LinksysVelopMeshGuestWiFiBinarySensor,
         LinksysVelopMeshSpeedtestStatusBinarySensor,
         LinksysVelopMeshWANBinarySensor,
         LinksysVelopNodeStatusBinarySensor,
@@ -163,27 +162,6 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         """Return True if the mesh is currently running a Speedtest, False otherwise"""
 
         return self._status_text != ""
-
-
-class LinksysVelopMeshGuestWiFiBinarySensor(LinksysVelopMeshPolledBinarySensor):
-    """Representation of the guest Wi-Fi binary sensor"""
-
-    _attribute = "Guest Wi-Fi"
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set additional attributes detailing the available guest networks"""
-
-        ret = {
-            f"network {idx}": network
-            for idx, network in enumerate(self._mesh.guest_wifi_details)
-        }
-        return ret
-
-    @property
-    def is_on(self) -> bool:
-        """Returns True if the guest network is enabled, False otherwise"""
-        return self._mesh.guest_wifi_enabled
 
 
 class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshPolledBinarySensor):
