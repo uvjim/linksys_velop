@@ -23,8 +23,6 @@ available.
 #### Binary Sensors
 
 - Mesh: Checking for Updates
-- Mesh: Guest Wi-Fi state
-  - list of guest networks available
 - Mesh: Speedtest state
   - current stage of the Speedtest, e.g. Detecting server, Checking latency
 - Mesh: WAN Status
@@ -56,6 +54,8 @@ install time and from reconfiguring the integration.
 
 #### Switches
 
+- Mesh: Guest Wi-Fi state
+  - list of guest networks available
 - Mesh: Parental Control state
 
 ### Services
