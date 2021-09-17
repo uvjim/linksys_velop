@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Union, Mapping
 
 from homeassistant.components.switch import DEVICE_CLASS_SWITCH
 from homeassistant.config_entries import ConfigEntry
@@ -135,6 +135,16 @@ class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopSwitch):
         await self._mesh.async_set_guest_wifi_state(state=to_state)
         self._state_value = to_state
         self.async_schedule_update_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set additional attributes detailing the available guest networks"""
+
+        ret = {
+            f"network {idx}": network
+            for idx, network in enumerate(self._mesh.guest_wifi_details)
+        }
+        return ret
 
     @property
     def icon(self) -> str:
