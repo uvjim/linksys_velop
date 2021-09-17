@@ -130,7 +130,7 @@ To create this view a number of custom cards have been used.  These are: -
   <summary>YAML for the view</summary>
 
   ```yaml
-- title: Mesh
+  - title: Mesh
     path: mesh
     icon: ''
     badges: []
@@ -183,9 +183,9 @@ To create this view a number of custom cards have been used.  These are: -
                 ]]]
             state:
               - value: 'on'
-                color: cyan
+                color: darkcyan
               - value: 'off'
-                color: red
+                color: darkred
             styles:
               card:
                 - padding: 16px
@@ -195,7 +195,7 @@ To create this view a number of custom cards have been used.  These are: -
                     "attr_speedtest_details attr_speedtest_details
                     attr_speedtest_details" "attr_speedtest_latest
                     attr_speedtest_latest attr_speedtest_latest"
-                - grid-template-rows: 5% 1fr 5% 5%
+                - grid-template-rows: 5% 1fr 15% 5%
                 - grid-template-columns: 1fr min-content 1fr
               custom_fields:
                 attr_dns_servers:
@@ -217,32 +217,151 @@ To create this view a number of custom cards have been used.  These are: -
               #attr_dns_servers::before { content: 'DNS: ' }
           - type: entities
             entities:
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.velop_mesh_speedtest_status
+                    state: 'on'
+                row:
+                  type: divider
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.velop_mesh_speedtest_status
+                    state: 'on'
+                row:
+                  type: custom:button-card
+                  entity: binary_sensor.velop_mesh_speedtest_status
+                  show_icon: false
+                  show_name: false
+                  show_label: true
+                  label: '[[[ return entity.attributes.status ]]]'
+                  tap_action:
+                    action: none
+                  styles:
+                    card:
+                      - box-shadow: none
+                      - padding: 4px
+                card_mod:
+                  style:
+                    hui-attribute-row$:
+                      hui-generic-entity-row$: >
+                        state-badge, .info.pointer.text-content { display: none;
+                        }
+                      hui-generic-entity-row: >
+                        div { text-align: center !important; width: 100%;
+                        margin: 0; padding: 4px; }
+              - type: divider
+              - type: custom:stack-in-card
+                mode: horizontal
+                keep:
+                  margin: true
+                card_mod:
+                  style: |
+                    ha-card { box-shadow: none }
+                cards:
+                  - type: custom:button-card
+                    entity: binary_sensor.velop_mesh_check_for_updates_status
+                    tap_action:
+                      action: call-service
+                      service: linksys_velop.check_updates
+                    name: Check for Update
+                    icon: hass:update
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                        icon: hass:refresh
+                        spin: true
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - white-space: normal
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+                  - type: custom:button-card
+                    entity: switch.velop_mesh_guest_wi_fi
+                    tap_action:
+                      action: none
+                    name: Guest<br />Wi-Fi
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+                  - type: custom:button-card
+                    entity: switch.velop_mesh_parental_control
+                    tap_action:
+                      action: toggle
+                    name: Parental<br />Control
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+                  - type: custom:button-card
+                    entity: binary_sensor.velop_mesh_speedtest_status
+                    tap_action:
+                      action: call-service
+                      service: linksys_velop.start_speedtest
+                    name: Speedtest
+                    icon: hass:refresh
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                        spin: true
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
               - type: divider
               - type: custom:fold-entity-row
                 padding: 0
-                head:
-                  type: custom:template-entity-row
-                  name: Feature States
-                  card_mod:
-                    style: |
-                      state-badge { display: none; }
-                      state-badge + div { margin-left: 8px !important; }
-                      .info.pointer { font-weight: 500; }
-                entities:
-                  - entity: switch.velop_mesh_parental_control
-                    name: Parental Control
-                  - entity: switch.velop_mesh_guest_wi_fi
-                    name: Guest Wi-Fi
-              - type: custom:fold-entity-row
-                padding: 0
                 clickable: true
-                group_config:
-                  card_mod:
-                    style:
-                      hui-generic-entity-row:
-                        $: |
-                          state-badge { display: none; }
-                          state-badge + div { margin-left: 8px !important; }
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_online_devices
@@ -285,13 +404,6 @@ To create this view a number of custom cards have been used.  These are: -
               - type: custom:fold-entity-row
                 padding: 0
                 clickable: true
-                group_config:
-                  card_mod:
-                    style:
-                      hui-generic-entity-row:
-                        $: |
-                          state-badge { display: none; }
-                          state-badge + div { margin-left: 8px !important; }
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_offline_devices
@@ -385,6 +497,7 @@ To create this view a number of custom cards have been used.  These are: -
                       size: 100%
                       show_entity_picture: true
                       show_last_changed: true
+                      show_state: true
                       entity_picture: >-
                         ${'/local/velop_nodes/' + states[ID_MODEL].state +
                         '.png'}
@@ -395,6 +508,13 @@ To create this view a number of custom cards have been used.  These are: -
                             ret = ret.replace("Velop", "").split(":")[0].trim()
                           }
                           return ret || "N/A"
+                        ]]]
+                      state_display: |
+                        [[[
+                          return `<ha-icon 
+                            icon="hass:checkbox-blank-circle"
+                            style="width: 24px; height: 24px;">
+                            </ha-icon>`
                         ]]]
                       custom_fields:
                         attr_label_model: Model
@@ -407,13 +527,6 @@ To create this view a number of custom cards have been used.  These are: -
                           states[ID_PARENT].state : 'N/A'}
                         attr_label_ip: IP Address
                         attr_ip: '[[[ return entity.attributes.ip || ''N/A'' ]]]'
-                        attr_status: |
-                          [[[
-                            return `<ha-icon 
-                              icon="hass:checkbox-blank-circle"
-                              style="width: 24px; height: 24px;">
-                              </ha-icon>`
-                          ]]]
                       extra_styles: >
                         div[id^="attr_"] { justify-self: end; }
                         div[id^="attr_label_"] { justify-self: start;
@@ -438,14 +551,14 @@ To create this view a number of custom cards have been used.  These are: -
                         custom_fields:
                           attr_parent:
                             - justify-self: end
-                          attr_status:
-                            - position: absolute
-                            - top: 8px
-                            - right: 16px
-                            - color: |-
-                                [[[
-                                  return (entity.state == 'on' ? 'cyan' : 'red')
-                                ]]]
+                        state:
+                          - position: absolute
+                          - top: 8px
+                          - right: 16px
+                          - color: |-
+                              [[[
+                                return (entity.state == 'on' ? 'darkcyan' : 'darkred')
+                              ]]]
                     - type: entities
                       card_mod:
                         style: |
