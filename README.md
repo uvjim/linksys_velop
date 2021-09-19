@@ -76,7 +76,7 @@ When setting up the integration you will be asked for the following information.
 
 ![Initial Setup Screen](https://github.com/uvjim/linksys_velop/raw/main/images/setup_user.png)
 
-- `Node address`: can be any node in the mesh
+- `Primary node address`: must be the node classed as the primary node
 - `Password`: the password you would use to log in to either the app or the 
   web UI
 

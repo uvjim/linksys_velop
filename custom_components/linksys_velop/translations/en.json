@@ -5,12 +5,13 @@
         },
         "error": {
             "login_error": "Unable to login.  Please check the username and password.",
-            "login_bad_response": "Bad response on login.  Check that the primary node is correct."
+            "login_bad_response": "Bad response on login.  Check that the primary node is correct.",
+            "node_not_primary": "The primary node in the Velop mesh should be specified."
         },
         "step": {
             "user": {
                 "data": {
-                    "node": "Node address",
+                    "node": "Primary node address",
                     "password": "Password"
                 },
                 "description": "Enter the details to connect to the Linksys Velop mesh",
