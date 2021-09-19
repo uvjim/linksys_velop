@@ -30,7 +30,11 @@ from .const import (
     STEP_USER,
 )
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshInvalidCredentials, MeshBadResponse
+from pyvelop.exceptions import (
+    MeshInvalidCredentials,
+    MeshNodeNotPrimary,
+    MeshBadResponse
+)
 from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
@@ -136,18 +140,17 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :return: None
         """
 
-        mesh = Mesh(**user_input)
-        try:
-            await mesh.async_test_credentials()
-        except MeshInvalidCredentials:
-            self._errors["base"] = "login_error"
-        except MeshBadResponse:
-            self._errors["base"] = "login_bad_response"
-        else:
-            self._mesh = mesh
-
-        if self._errors and self._mesh:
-            await self._mesh.close()
+        async with Mesh(**user_input) as mesh:
+            try:
+                await mesh.async_gather_details()
+            except MeshInvalidCredentials:
+                self._errors["base"] = "login_error"
+            except MeshBadResponse:
+                self._errors["base"] = "login_bad_response"
+            except MeshNodeNotPrimary:
+                self._errors["base"] = "node_not_primary"
+            else:
+                self._mesh = mesh
 
         self.hass.async_create_task(self.hass.config_entries.flow.async_configure(flow_id=self.flow_id))
 
