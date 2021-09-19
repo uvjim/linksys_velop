@@ -365,9 +365,14 @@ To create this view a number of custom cards have been used.  These are: -
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_online_devices
+                  tap_action:
+                    action: fire-dom-event
+                    fold_row: true
                   name: >-
-                    {{ state_attr(config.entity,
-                    'friendly_name').split(':')[1].strip() }}
+                    {% set friendly_name = state_attr(config.entity,
+                    'friendly_name') %} {% if friendly_name %}
+                      {{ friendly_name.split(':')[1].strip() }}
+                    {% endif %}
                   card_mod:
                     style: |
                       state-badge { display: none; }
@@ -407,9 +412,14 @@ To create this view a number of custom cards have been used.  These are: -
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_offline_devices
+                  tap_action:
+                    action: fire-dom-event
+                    fold_row: true
                   name: >-
-                    {{ state_attr(config.entity,
-                    'friendly_name').split(':')[1].strip() }}
+                    {% set friendly_name = state_attr(config.entity,
+                    'friendly_name') %} {% if friendly_name %}
+                      {{ friendly_name.split(':')[1].strip() }}
+                    {% endif %}
                   card_mod:
                     style: |
                       state-badge { display: none; }
