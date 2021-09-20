@@ -7,7 +7,7 @@
   "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
   "name": "Linksys Velop",
   "requirements": [
-    "pyvelop>=2021.9.5"
+    "pyvelop>=2021.9.7"
   ],
   "version": "2021.9.1"
 }

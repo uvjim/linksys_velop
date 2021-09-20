@@ -47,9 +47,9 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             await self._mesh.async_gather_details()
             async_dispatcher_send(self._hass, SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS)
-            if await self._mesh.async_get_speedtest_state():
+            if self._mesh.speedtest_status:
                 async_dispatcher_send(self._hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
-            if await self._mesh.async_get_update_state():
+            if self._mesh.check_for_update_status:
                 async_dispatcher_send(self._hass, SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS)
         except Exception as err:
             _LOGGER.error(err)
