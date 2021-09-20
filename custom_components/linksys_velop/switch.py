@@ -15,7 +15,7 @@ from .const import (
 )
 from .entity_helpers import (
     entity_setup,
-    LinksysVelopSwitch,
+    LinksysVelopMeshSwitch,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
 
 # noinspection PyAbstractClass
-class LinksysVelopMeshParentalControlSwitch(LinksysVelopSwitch):
+class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch):
     """Representation of the switch entity for the Parental Control state"""
 
     _attribute = "Parental Control"
@@ -94,7 +94,7 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopSwitch):
 
 
 # noinspection PyAbstractClass
-class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopSwitch):
+class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
     """Representation of the switch entity for the guest Wi-Fi state"""
 
     _attribute = "Guest Wi-Fi"
