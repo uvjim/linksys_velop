@@ -9,7 +9,7 @@ from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
@@ -22,6 +22,12 @@ from .const import (
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 
 
 class LinksysVelopDeviceTracker(ScannerEntity):
@@ -34,17 +40,6 @@ class LinksysVelopDeviceTracker(ScannerEntity):
         """Constructor"""
         super().__init__()
         self._identity = identity
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Set the device information for the mesh"""
-
-        ret = DeviceInfo(**{
-            "name": "Mesh",
-            "manufacturer": "Linksys",
-            "identifiers": {(DOMAIN, self._config.entry_id)},
-        })
-        return ret
 
     @property
     def is_connected(self) -> bool:
@@ -109,8 +104,68 @@ class LinksysVelopBinarySensor(BinarySensorEntity):
         return ret
 
 
+class LinksysVelopMeshEntity(Entity):
+    """Represents an entity belonging to the mesh"""
+
+    _attribute: str
+    _identity: str
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Set the device information to that of the mesh"""
+
+        ret = DeviceInfo(**{
+            "identifiers": {(DOMAIN, self._identity)},
+            "manufacturer": PYVELOP_AUTHOR,
+            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            "name": "Mesh",
+            "sw_version": "",
+        })
+        return ret
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the binary sensor"""
+
+        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
+
+
+class LinksysVelopNodeEntity(Entity):
+    """"""
+
+    _attribute: str
+    _identity: str
+    _mesh: Mesh
+
+    def _get_node(self) -> Union[Node, None]:
+        """Return the node from the list of nodes in the mesh"""
+
+        return [n for n in self._mesh.nodes if n.unique_id == self._identity][0]
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Set the device information to that of the node"""
+
+        node = self._get_node()
+        ret = DeviceInfo(**{
+            "name": node.name,
+            "manufacturer": node.manufacturer,
+            "sw_version": node.firmware.get("version", ""),
+            "model": node.model,
+            "identifiers": {(DOMAIN, node.serial)}
+        })
+        return ret
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the sensor"""
+
+        node = self._get_node()
+        return f"{ENTITY_SLUG} {node.name}: {self._attribute}"
+
+
 # noinspection PyAbstractClass
-class LinksysVelopSwitch(SwitchEntity):
+class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity):
     """Representation of a polled Switch"""
 
     _attribute: str
@@ -132,17 +187,6 @@ class LinksysVelopSwitch(SwitchEntity):
         """Turn on the switch"""
 
         return
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Set the device information to that of the mesh"""
-
-        ret = DeviceInfo(**{
-            "name": "Mesh",
-            "manufacturer": "Linksys",
-            "identifiers": {(DOMAIN, self._identity)},
-        })
-        return ret
 
     @property
     def is_on(self) -> bool:
@@ -170,7 +214,7 @@ class LinksysVelopSwitch(SwitchEntity):
         return ret
 
 
-class LinksysVelopPolledBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class LinksysVelopPolledBinarySensor(CoordinatorEntity, LinksysVelopNodeEntity, BinarySensorEntity):
     """Representation of a polled Binary Sensor"""
 
     _attribute: str
@@ -191,7 +235,7 @@ class LinksysVelopPolledBinarySensor(CoordinatorEntity, BinarySensorEntity):
         return ret
 
 
-class LinksysVelopPolledSensor(CoordinatorEntity, SensorEntity):
+class LinksysVelopPolledSensor(CoordinatorEntity, LinksysVelopNodeEntity, SensorEntity):
     """Representation of a polled Sensor"""
 
     _attribute: str
@@ -212,116 +256,23 @@ class LinksysVelopPolledSensor(CoordinatorEntity, SensorEntity):
         return ret
 
 
-# noinspection Duplicates
 class LinksysVelopNodePolledSensor(LinksysVelopPolledSensor):
     """Representation of a polled Sensor"""
 
-    def _get_node(self) -> Union[Node, None]:
-        """Return the node from the list of nodes in the mesh"""
 
-        return [n for n in self._mesh.nodes if n.unique_id == self._identity][0]
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Set the device information to that of the node"""
-
-        node = self._get_node()
-        ret = DeviceInfo(**{
-            "name": node.name,
-            "manufacturer": node.manufacturer,
-            "sw_version": node.firmware.get("version", ""),
-            "model": node.model,
-            "identifiers": {(DOMAIN, node.serial)}
-        })
-        return ret
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the sensor"""
-
-        node = self._get_node()
-        return f"{ENTITY_SLUG} {node.name}: {self._attribute}"
-
-
-# noinspection Duplicates
 class LinksysVelopNodePolledBinarySensor(LinksysVelopPolledBinarySensor):
     """Representation of a polled binary sensor"""
 
-    def _get_node(self) -> Union[Node, None]:
-        """Return the node from the list of nodes in the mesh"""
 
-        return [n for n in self._mesh.nodes if n.unique_id == self._identity][0]
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Set the device information to that of the node"""
-
-        node = self._get_node()
-        ret = DeviceInfo(**{
-            "name": node.name,
-            "manufacturer": node.manufacturer,
-            "sw_version": node.firmware.get("version", ""),
-            "model": node.model,
-            "identifiers": {(DOMAIN, node.serial)}
-        })
-        return ret
-
-    @property
-    def name(self) -> str:
-        """Set the name of the binary sensor"""
-
-        node = self._get_node()
-        return f"{ENTITY_SLUG} {node.name}: {self._attribute}"
-
-
-class LinksysVelopMeshBinarySensor(LinksysVelopBinarySensor):
+class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, LinksysVelopBinarySensor):
     """Representation of an unpolled binary sensor"""
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Set the device information to that of the mesh"""
 
-        ret = DeviceInfo(**{
-            "name": "Mesh",
-            "manufacturer": "Linksys",
-            "identifiers": {(DOMAIN, self._identity)},
-        })
-        return ret
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the binary sensor"""
-
-        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
-
-
-# noinspection Duplicates
-class LinksysVelopMeshPolledBinarySensor(LinksysVelopPolledBinarySensor):
+class LinksysVelopMeshPolledBinarySensor(LinksysVelopMeshEntity, LinksysVelopPolledBinarySensor):
     """Representation of a polled binary sensor"""
 
-    # def _get_devices(self, status: bool) -> List:
-    #     return [device for device in self._mesh.devices if device.status == status]
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Sets the device info to that of the mesh"""
-
-        ret = DeviceInfo(**{
-            "name": "Mesh",
-            "manufacturer": "Linksys",
-            "identifiers": {(DOMAIN, self._identity)},
-        })
-        return ret
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the binary sensor"""
-
-        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
-
-
-# noinspection Duplicates
-class LinksysVelopMeshPolledSensor(LinksysVelopPolledSensor):
+class LinksysVelopMeshPolledSensor(LinksysVelopMeshEntity, LinksysVelopPolledSensor):
     """Representation of a polled sensor"""
 
     def _get_devices(self, status: bool) -> List:
@@ -332,23 +283,6 @@ class LinksysVelopMeshPolledSensor(LinksysVelopPolledSensor):
         """
 
         return [device for device in self._mesh.devices if device.status == status]
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Sets the device info to that of the mesh"""
-
-        ret = DeviceInfo(**{
-            "name": "Mesh",
-            "manufacturer": "Linksys",
-            "identifiers": {(DOMAIN, self._identity)},
-        })
-        return ret
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the sensor"""
-
-        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
 
 
 def entity_setup(
