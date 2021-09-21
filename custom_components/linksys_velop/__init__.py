@@ -5,10 +5,12 @@ import logging
 from datetime import timedelta
 from typing import List
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
+from pyvelop.device import Device
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -25,8 +27,6 @@ from .const import (
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .service_handler import LinksysVelopServiceHandler
-from pyvelop.device import Device
-from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +44,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass=hass,
         config_entry=config_entry,
     )
+
     await coordinator.async_refresh()
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady(coordinator.last_exception)
+
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = coordinator
     # endregion
 
