@@ -13,7 +13,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import (
+    CONF_API_REQUEST_TIMEOUT,
     CONF_NODE,
+    DEF_API_REQUEST_TIMEOUT,
     DOMAIN,
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
@@ -33,7 +35,11 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
         """Constructor"""
 
         self._hass = hass
-        self._mesh = Mesh(node=config_entry.options[CONF_NODE], password=config_entry.options[CONF_PASSWORD])
+        self._mesh = Mesh(
+            node=config_entry.options[CONF_NODE],
+            password=config_entry.options[CONF_PASSWORD],
+            request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+        )
         update_interval = timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL])
         super().__init__(
             hass,

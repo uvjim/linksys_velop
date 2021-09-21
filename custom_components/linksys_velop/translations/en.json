@@ -9,7 +9,7 @@
             "node_not_primary": "The primary node in the Velop mesh should be specified."
         },
         "step": {
-            "user": {
+            "mesh_info": {
                 "data": {
                     "node": "Primary node address",
                     "password": "Password"
@@ -38,7 +38,7 @@
     },
     "options": {
         "step": {
-            "init": {
+            "timers": {
                 "data": {
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)",

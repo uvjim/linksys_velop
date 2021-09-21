@@ -3,18 +3,20 @@
 DOMAIN = "linksys_velop"
 ENTITY_SLUG = "Velop"
 
-CONF_NODE = "node"
+CONF_API_REQUEST_TIMEOUT = "api_request_timeout"
 CONF_COORDINATOR = "coordinator"
 CONF_DEVICE_TRACKERS = "tracked"
+CONF_MESH = "mesh"
+CONF_NODE = "node"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER = "scan_interval_device_tracker"
 CONF_SERVICES_HANDLER = "services_handler"
 CONF_UNSUB_UPDATE_LISTENER = "unsub_update_listener"
-CONF_MESH = "mesh"
 
+DEF_API_REQUEST_TIMEOUT = 10
+DEF_CONSIDER_HOME = 180
 DEF_NAME = "Linksys Velop Mesh"
 DEF_SCAN_INTERVAL = 30
 DEF_SCAN_INTERVAL_DEVICE_TRACKER = 10
-DEF_CONSIDER_HOME = 180
 
 PLATFORMS = [
     "binary_sensor",
