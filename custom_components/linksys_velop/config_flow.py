@@ -17,9 +17,11 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry
 
 from .const import (
+    CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+    DEF_API_REQUEST_TIMEOUT,
     DEF_NAME,
     DEF_CONSIDER_HOME,
     DEF_SCAN_INTERVAL,
@@ -180,7 +182,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
 
         if not self.task_login:
-            self.task_login = self.hass.async_create_task(self._async_task_login(user_input=user_input))
+            self.task_login = self.hass.async_create_task(
+                self._async_task_login(user_input=dict(**user_input, **{"request_timeout": DEF_API_REQUEST_TIMEOUT}))
+            )
             return self.async_show_progress(step_id="login", progress_action="task_login")
 
         # noinspection PyBroadException
@@ -199,7 +203,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             self._errors = {}
-            self._options.update(user_input)
+            self._options.update(user_input, CONF_API_REQUEST_TIMEOUT=DEF_API_REQUEST_TIMEOUT)
             return await self.async_step_device_trackers()
 
         return self.async_show_form(
@@ -241,17 +245,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._options: dict = dict(config_entry.options)
 
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Manage the timer options available for the integration"""
+        """"""
 
-        if user_input is not None:
-            self._options.update(user_input)
-            return await self.async_step_device_trackers()
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=await _async_build_schema_with_user_input(STEP_TIMERS, self._options),
-            errors=self._errors,
-        )
+        return await self.async_step_timers()
 
     async def async_step_device_trackers(self, user_input=None) -> data_entry_flow.FlowResult:
         """Manage the device trackers"""
@@ -293,5 +289,20 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 self._options,
                 multi_select_contents=devices
             ),
+            errors=self._errors,
+        )
+
+    async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Manage the timer options available for the integration"""
+
+        if user_input is not None:
+            if CONF_API_REQUEST_TIMEOUT not in self._options:
+                self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
+            self._options.update(user_input)
+            return await self.async_step_device_trackers()
+
+        return self.async_show_form(
+            step_id=STEP_TIMERS,
+            data_schema=await _async_build_schema_with_user_input(STEP_TIMERS, self._options),
             errors=self._errors,
         )
