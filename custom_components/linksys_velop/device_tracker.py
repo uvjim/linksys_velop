@@ -10,6 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.device import Device
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -21,8 +23,6 @@ from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
     LinksysVelopDeviceTracker,
 )
-from pyvelop.device import Device
-from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR]
         self._device: Device = device
 
-        super().__init__(identity=self._device.unique_id)
+        super().__init__(identity=self._config.entry_id)
 
         self._attribute: str = self._device.name
         self._mesh: Mesh = coordinator.data
@@ -114,4 +114,11 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         if mac_address:
             ret = mac_address[0].get("mac", "")
 
+        return ret
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID for the tracker"""
+
+        ret = f"{self._identity}::device_tracker::{self._device.unique_id}"
         return ret

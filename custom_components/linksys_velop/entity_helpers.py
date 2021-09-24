@@ -30,80 +30,6 @@ from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 
 
-class LinksysVelopDeviceTracker(ScannerEntity):
-    """Representation of a device tracker"""
-
-    _attribute: str
-    _config: ConfigEntry
-
-    def __init__(self, identity: str) -> None:
-        """Constructor"""
-        super().__init__()
-        self._identity = identity
-
-    @property
-    def is_connected(self) -> bool:
-        """Returns True if connected, False otherwise"""
-
-        return False
-
-    @property
-    def mac_address(self) -> Union[str, None]:
-        """Returns the MAC address for the tracker"""
-
-        return
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the tracker"""
-
-        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
-
-    @property
-    def should_poll(self) -> bool:
-        """Do not poll for status"""
-
-        return False
-
-    @property
-    def source_type(self) -> str:
-        """Return the type as a router"""
-
-        return SOURCE_TYPE_ROUTER
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID for the tracker"""
-
-        ret = f"{self._identity}::device_tracker::{slugify(self._attribute).lower()}"
-        return ret
-
-
-class LinksysVelopBinarySensor(BinarySensorEntity):
-    """Representation of an unpolled binary sensor"""
-
-    _attribute: str
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = coordinator.data
-        self._identity: str = identity
-
-    @property
-    def should_poll(self) -> bool:
-        """Do not poll for status"""
-
-        return False
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID for the binary sensor"""
-
-        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
-        return ret
-
-
 class LinksysVelopMeshEntity(Entity):
     """Represents an entity belonging to the mesh"""
 
@@ -125,7 +51,7 @@ class LinksysVelopMeshEntity(Entity):
 
     @property
     def name(self) -> str:
-        """Returns the name of the binary sensor"""
+        """Returns the name of the entity"""
 
         return f"{ENTITY_SLUG} Mesh: {self._attribute}"
 
@@ -164,6 +90,67 @@ class LinksysVelopNodeEntity(Entity):
         return f"{ENTITY_SLUG} {node.name}: {self._attribute}"
 
 
+class LinksysVelopDeviceTracker(ScannerEntity, LinksysVelopMeshEntity):
+    """Representation of a device tracker"""
+
+    _attribute: str
+    _config: ConfigEntry
+
+    def __init__(self, identity: str) -> None:
+        """Constructor"""
+        super().__init__()
+        self._identity = identity
+
+    @property
+    def is_connected(self) -> bool:
+        """Returns True if connected, False otherwise"""
+
+        return False
+
+    @property
+    def mac_address(self) -> Union[str, None]:
+        """Returns the MAC address for the tracker"""
+
+        return
+
+    @property
+    def should_poll(self) -> bool:
+        """Do not poll for status"""
+
+        return False
+
+    @property
+    def source_type(self) -> str:
+        """Return the type as a router"""
+
+        return SOURCE_TYPE_ROUTER
+
+
+class LinksysVelopBinarySensor(BinarySensorEntity):
+    """Representation of an unpolled binary sensor"""
+
+    _attribute: str
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity: str = identity
+
+    @property
+    def should_poll(self) -> bool:
+        """Do not poll for status"""
+
+        return False
+
+    @property
+    def unique_id(self) -> str:
+        """Returns the unique ID for the binary sensor"""
+
+        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
+        return ret
+
+
 # noinspection PyAbstractClass
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity):
     """Representation of a polled Switch"""
@@ -193,12 +180,6 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity):
         """"""
 
         return False
-
-    @property
-    def name(self) -> str:
-        """Returns the name of the switch"""
-
-        return f"{ENTITY_SLUG} Mesh: {self._attribute}"
 
     @property
     def should_poll(self) -> bool:
