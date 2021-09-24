@@ -1,5 +1,7 @@
 {
-  "codeowners": [],
+  "codeowners": [
+    "@uvjim"
+  ],
   "config_flow": true,
   "domain": "linksys_velop",
   "documentation": "https://github.com/uvjim/linksys_velop",
