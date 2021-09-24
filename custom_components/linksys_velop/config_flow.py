@@ -265,7 +265,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                     rdte = [
                         e
                         for e in entities
-                        if e.unique_id.startswith(f"{tracker}::device_tracker")
+                        if e.unique_id == f"{self._config_entry.entry_id}::device_tracker::{tracker}"
                     ]
                     if rdte:
                         remove_device_tracker_entities.append(rdte[0])
