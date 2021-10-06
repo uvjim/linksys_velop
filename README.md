@@ -164,8 +164,8 @@ To create this view a number of custom cards have been used.  These are: -
                   var icon_size = 22
                   var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']
                   var latency = entity_speedtest.attributes.latency
-                  var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1024)
-                  var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1024)        
+                  var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
+                  var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
 
                   return `<span style="margin-right: ${spacing_external}px;">
                             <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
