@@ -29,6 +29,7 @@ available.
   - IP, DNS, MAC
 - Node: Status
   - IP, MAC
+- Node: Update Available
 
 #### Device  Trackers
 
@@ -40,13 +41,14 @@ install time and from reconfiguring the integration.
 - Mesh: Number of Offline Devices
   - list of device names that are offline
 - Mesh: Number of Online Devices
-  - list of device names and IP addresses that are online
+  - list of device names, IP addresses and adapter types that are online
 - Mesh: Date of Latest Speedtest
   - Exit code, Latency, Download/Upload bandwidth, Result ID
 - Node: Number of Connected Devices
   - list of device names and IP addresses that are connected
 - Node: Current Firmware Version
 - Node: Model Number
+- Node: Newest Firmware Version
 - Node: Parent Name
   - IP address of the parent
 - Node: Serial Number
@@ -388,22 +390,35 @@ To create this view a number of custom cards have been used.  These are: -
                           ha-card { border-radius: 0px; box-shadow: none; }
                           ha-markdown { padding: 16px 0px 0px !important; }
                         ha-markdown$: >
-                          table { width: 100%; }
+                          table { width: 100%; border-collapse: separate;
+                          border-spacing: 0px; }
 
                           tbody tr:nth-child(2n+1) { background-color:
                           var(--table-row-background-color); }
 
-                          thead tr th, tbody tr td { padding: 0px 10px; }
+                          thead tr th, tbody tr td { padding: 4px 10px; }
                     content: >
                       {% set devices =
                       state_attr('sensor.velop_mesh_online_devices', 'devices')
-                      %} | # | Name | IP |
+                      %} | # | Name | IP | Type |
 
-                      |:---:|---|---:| {%- for device in devices -%}
+                      |:---:|---|---|:---:| {%- for device in devices -%}
                         {% set idx = loop.index %}
-                        {%- for device_name, device_ip in device.items() %}
-                      {{ "| {} | {} | {} |".format(idx, device_name,
-                      ",".join(device_ip)) }}
+                        {%- for device_name, device_details in device.items() -%}
+                          {%- set device_ip = device_details.keys() | list | first -%}
+                          {%- set connection_type = device_details.values() | list | first | lower -%}
+                          {%- if connection_type == "wired" -%}
+                            {%- set connection_icon = "ethernet" -%}
+                          {% elif connection_type == "wireless" -%}
+                            {%- set connection_icon = "wifi" -%}
+                          {% elif connection_type == "unknown" -%}
+                            {%- set connection_icon = "help" -%}
+                          {% else -%}
+                            {%- set connection_icon = "" -%}
+                          {%- endif %}
+                      {{ "| {} | {} | {} | {} |".format(idx, device_name,
+                      device_ip, '<ha-icon icon="hass:' ~ connection_icon ~
+                      '"></ha-icon>') }}
                         {%- endfor %}
                       {%- endfor %}
               - type: custom:fold-entity-row
@@ -435,12 +450,13 @@ To create this view a number of custom cards have been used.  These are: -
                           ha-card { border-radius: 0px; box-shadow: none; }
                           ha-markdown { padding: 16px 0px 0px !important; }
                         ha-markdown$: >
-                          table { width: 100%; }
+                          table { width: 100%; border-collapse: separate;
+                          border-spacing: 0px; }
 
                           tbody tr:nth-child(2n+1) { background-color:
                           var(--table-row-background-color); }
 
-                          thead tr th, tbody tr td { padding: 0px 10px; }
+                          thead tr th, tbody tr td { padding: 4px 10px; }
                     content: >
                       {% set devices =
                       state_attr('sensor.velop_mesh_offline_devices', 'devices')
@@ -480,24 +496,42 @@ To create this view a number of custom cards have been used.  These are: -
                     "sensor." +
                     "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
                     + "_serial"
+                  ID_UPDATE_AVAILABLE: >
+                    "binary_sensor." +
+                    "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
+                    + "_update_available"
                   CONNECTED_DEVICES_TEXT: |
                     (entity_id) => {
                       var ret = `
-                    | # | Name | IP |
-                    |:---:|---|---:|
+                    | # | Name | IP | Type |
+                    |:---:|---|---|:---:|
                     `
                       if (states[entity_id].attributes.devices) {
                         states[entity_id].attributes.devices.forEach((device, idx) => {
-                          ret += "| " + (idx + 1) + " | " + device.name + " | " + device.ip + " |\n"
+                          var connection_icon
+                          switch (device.type.toLowerCase()) {
+                            case "wireless":
+                              connection_icon = "wifi"
+                              break
+                            case "wired":
+                              connection_icon = "ethernet"
+                              break
+                            case "unknown":
+                              connection_icon = "question"
+                              break
+                          }
+                          ret += "| " + (idx + 1) + " | " + device.name + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
                         })
                       }
                       return ret
                     }
                 entities:
+                  - this.entity_id
                   - ${ID_CONNECTED_DEVICES}
                   - ${ID_MODEL}
                   - ${ID_PARENT}
                   - ${ID_SERIAL}
+                  - ${ID_UPDATE_AVAILABLE}
                 card:
                   type: custom:stack-in-card
                   cards:
@@ -537,6 +571,20 @@ To create this view a number of custom cards have been used.  These are: -
                           states[ID_PARENT].state : 'N/A'}
                         attr_label_ip: IP Address
                         attr_ip: '[[[ return entity.attributes.ip || ''N/A'' ]]]'
+                        attr_update: |
+                          [[[
+                            var ret
+                            var entity_update = 'binary_sensor.' + entity.entity_id.split('.')[1].split('_').slice(0, -1).join('_') + '_update_available'
+                            var update_available = states[entity_update].state
+                            if (update_available == 'on') {
+                              ret = `<ha-icon
+                                  icon="hass:package-up"
+                                  style="width: 24px; height: 24px;"
+                                >
+                                </ha-icon>`
+                            }
+                            return ret
+                          ]]]
                       extra_styles: >
                         div[id^="attr_"] { justify-self: end; }
                         div[id^="attr_label_"] { justify-self: start;
@@ -547,8 +595,8 @@ To create this view a number of custom cards have been used.  These are: -
                           - padding: 16px
                         grid:
                           - grid-template-areas: >-
-                              "n n attr_status" "i attr_label_model attr_model"
-                              "i attr_label_serial attr_serial" "i attr_label_ip
+                              "n n n" "i attr_label_model attr_model" "i
+                              attr_label_serial attr_serial" "i attr_label_ip
                               attr_ip" "l l attr_parent"
                           - grid-template-rows: 1fr 1fr 1fr 1fr 1fr
                           - grid-template-columns: 15% 1fr max-content
@@ -561,6 +609,11 @@ To create this view a number of custom cards have been used.  These are: -
                         custom_fields:
                           attr_parent:
                             - justify-self: end
+                          attr_update:
+                            - position: absolute
+                            - top: 8px
+                            - right: 48px
+                            - color: darkred
                         state:
                           - position: absolute
                           - top: 8px
@@ -590,6 +643,9 @@ To create this view a number of custom cards have been used.  These are: -
                           head:
                             type: custom:template-entity-row
                             entity: ${ID_CONNECTED_DEVICES}
+                            tap_action:
+                              action: fire-dom-event
+                              fold_row: true
                             name: >-
                               {% set name = state_attr(config.entity,
                               'friendly_name') %} {% if name %}
@@ -617,12 +673,13 @@ To create this view a number of custom cards have been used.  These are: -
                                     ha-markdown { padding: 16px 0px 0px
                                     !important; }
                                   ha-markdown$: >
-                                    table { width: 100%; }
+                                    table { width: 100%; border-collapse:
+                                    collapse; }
 
                                     tbody tr:nth-child(2n+1) { background-color:
                                     var(--table-row-background-color); }
 
-                                    thead tr th, tbody tr td { padding: 0px
+                                    thead tr th, tbody tr td { padding: 4px
                                     10px; }
                               content: ${CONNECTED_DEVICES_TEXT(ID_CONNECTED_DEVICES)}
   ```
