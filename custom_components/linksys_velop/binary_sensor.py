@@ -4,7 +4,10 @@ import logging
 from datetime import timedelta, datetime
 from typing import Mapping, Any, Union
 
-from homeassistant.components.binary_sensor import DEVICE_CLASS_CONNECTIVITY
+from homeassistant.components.binary_sensor import (
+    DEVICE_CLASS_CONNECTIVITY,
+    DEVICE_CLASS_UPDATE
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, CALLBACK_TYPE
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
@@ -35,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopMeshSpeedtestStatusBinarySensor,
         LinksysVelopMeshWANBinarySensor,
         LinksysVelopNodeStatusBinarySensor,
+        LinksysVelopNodeUpdateAvailableBinarySensor,
     ]
 
     entity_setup(
@@ -210,3 +214,22 @@ class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
 
         node: Node = self._get_node()
         return node.status
+
+
+class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodePolledBinarySensor):
+    """Representation of the Update Available sensor"""
+
+    _attribute = "Update Available"
+    _attr_device_class = DEVICE_CLASS_UPDATE
+
+    @property
+    def is_on(self) -> bool:
+        """Returns True if there is an update available, False otherwise"""
+
+        ret: bool = False
+
+        node: Node = self._get_node()
+        if node.firmware.get("version") and node.firmware.get("latest_version"):
+            ret = node.firmware.get("version") != node.firmware.get("latest_version")
+
+        return ret
