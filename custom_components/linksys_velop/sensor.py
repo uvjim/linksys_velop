@@ -35,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopMeshSpeedtestLatestSensor,
         LinksysVelopNodeConnectedDevicesSensor,
         LinksysVelopNodeCurrentFirmwareSensor,
+        LinksysVelopNodeLatestFirmwareSensor,
         LinksysVelopNodeModelSensor,
         LinksysVelopNodeParentSensor,
         LinksysVelopNodeSerialSensor,
@@ -181,6 +182,19 @@ class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodePolledSensor):
 
         node: Node = self._get_node()
         return node.firmware.get("version", None)
+
+
+class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodePolledSensor):
+    """Representation of the current firmware sensor"""
+
+    _attribute = "Newest Version"
+
+    @property
+    def native_value(self) -> StateType:
+        """Sets the value to the version number of the latest firmware"""
+
+        node: Node = self._get_node()
+        return node.firmware.get("latest_version", None)
 
 
 class LinksysVelopNodeModelSensor(LinksysVelopNodePolledSensor):
