@@ -9,7 +9,7 @@
             "node_not_primary": "The primary node in the Velop mesh should be specified."
         },
         "step": {
-            "mesh_info": {
+            "user": {
                 "data": {
                     "node": "Primary node address",
                     "password": "Password"
