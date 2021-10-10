@@ -517,7 +517,7 @@ To create this view a number of custom cards have been used.  These are: -
                               connection_icon = "ethernet"
                               break
                             case "unknown":
-                              connection_icon = "question"
+                              connection_icon = "help"
                               break
                           }
                           ret += "| " + (idx + 1) + " | " + device.name + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
