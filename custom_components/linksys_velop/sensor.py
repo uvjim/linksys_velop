@@ -146,7 +146,10 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshPolledSensor):
     def native_value(self) -> StateType:
         """Set the value of the sensor to the time the results were generated"""
 
-        ret = self._value[0].get("timestamp")
+        ret = None
+
+        if self._value:
+            ret = self._value[0].get("timestamp")
         return ret
 
 
