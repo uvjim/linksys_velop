@@ -65,8 +65,12 @@ class LinksysVelopNodeEntity(Entity):
 
     def _get_node(self) -> Union[Node, None]:
         """Return the node from the list of nodes in the mesh"""
+        ret = None
+        node = [n for n in self._mesh.nodes if n.unique_id == self._identity]
+        if node:
+            ret = node[0]
 
-        return [n for n in self._mesh.nodes if n.unique_id == self._identity][0]
+        return ret
 
     @property
     def device_info(self) -> DeviceInfo:
