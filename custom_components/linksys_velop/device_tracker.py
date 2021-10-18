@@ -65,11 +65,14 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
     def _update_callback(self, devices: List[Device]):
         """Get the latest device information from the list passed in"""
 
-        self._latest_dt_status = [
+        latest_dt_status = [
             device
             for device in devices
             if device.unique_id == self._device.unique_id
-        ][0]
+        ]
+        if latest_dt_status:
+            self._latest_dt_status = latest_dt_status[0]
+
         self.async_schedule_update_ha_state(force_refresh=True)
 
     async def async_added_to_hass(self) -> None:
