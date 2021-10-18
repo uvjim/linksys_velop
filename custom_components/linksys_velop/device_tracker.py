@@ -12,6 +12,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
+from pyvelop.exceptions import MeshDeviceNotFoundResponse
 
 from .const import (
     CONF_COORDINATOR,
@@ -36,11 +37,16 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     mesh: Mesh = coordinator.data
 
     for device_tracker in device_trackers:
-        async_add_entities([LinksysVelopMeshDeviceTracker(
-            hass=hass,
-            config=config,
-            device=await mesh.async_get_device_from_id(device_id=device_tracker)
-        )])
+        try:
+            device = await mesh.async_get_device_from_id(device_id=device_tracker)
+        except MeshDeviceNotFoundResponse:
+            _LOGGER.warning("Device tracker with id %s was not found", device_tracker)
+        else:
+            async_add_entities([LinksysVelopMeshDeviceTracker(
+                hass=hass,
+                config=config,
+                device=device,
+            )])
 
 
 class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
@@ -72,6 +78,8 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         ]
         if latest_dt_status:
             self._latest_dt_status = latest_dt_status[0]
+        else:
+            _LOGGER.warning("Device tracker with id %s was not found", self._device.unique_id)
 
         self.async_schedule_update_ha_state(force_refresh=True)
 
