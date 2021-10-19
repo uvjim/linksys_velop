@@ -85,6 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- setup the timer for checking device trackers --#
     if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
+        await device_tracker_update(datetime.datetime.now())  # update before setting the timer
         scan_interval = config_entry.options.get(CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER)
         config_entry.async_on_unload(
             async_track_time_interval(hass, device_tracker_update, timedelta(seconds=scan_interval))
