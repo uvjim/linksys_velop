@@ -1,7 +1,7 @@
 """Device trackers for the mesh"""
 
 import logging
-from typing import List
+from typing import List, Union
 
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
     """Representation of the device tracker"""
 
-    _latest_dt_status: Device  # track the latest device details
+    _latest_dt_status: Union[Device, None]  # track the latest device details
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry, device: Device) -> None:
         """Constructor"""
@@ -66,6 +66,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         self._attribute: str = self._device.name
         self._mesh: Mesh = coordinator.data
         self._offline_at: int = 0
+        self._latest_dt_status = None
 
     @callback
     def _update_callback(self, devices: List[Device]):
@@ -80,6 +81,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
             self._latest_dt_status = latest_dt_status[0]
         else:
             _LOGGER.warning("Device tracker with id %s was not found", self._device.unique_id)
+            self._latest_dt_status = None
 
         self.async_schedule_update_ha_state(force_refresh=True)
 
@@ -97,24 +99,35 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
     async def async_update(self) -> None:
         """Update the tracker status taking into account the consider home setting"""
 
-        if self._latest_dt_status.status:
-            if not self.is_connected:
-                self._offline_at = 0
-        else:
-            if self.is_connected:
-                if not self._offline_at:
-                    self._offline_at = self._latest_dt_status.results_time
+        if self._latest_dt_status:
+            if self._latest_dt_status.status:
+                if not self.is_connected:
+                    self._offline_at = 0
+            else:
+                if self.is_connected:
+                    if not self._offline_at:
+                        self._offline_at = self._latest_dt_status.results_time
 
-                if self._offline_at + self._config.options[CONF_CONSIDER_HOME] > self._latest_dt_status.results_time:
-                    return
+                    if self._offline_at + self._config.options[CONF_CONSIDER_HOME] >\
+                            self._latest_dt_status.results_time:
+                        return
 
-        self._device = self._latest_dt_status
+            self._device = self._latest_dt_status
+
+    @property
+    def available(self) -> bool:
+        """Return True if the tracker is still available on the Mesh, False otherwise"""
+
+        return self._latest_dt_status is not None
 
     @property
     def is_connected(self) -> bool:
         """Return True if the tracker is connected, False otherwise"""
 
-        return self._device.status
+        if not self._latest_dt_status:
+            return False
+        else:
+            return self._device.status
 
     @property
     def mac_address(self) -> str:

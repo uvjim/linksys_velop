@@ -82,10 +82,15 @@ async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwa
             ): cv.positive_int,
         }
     elif step == STEP_DEVICE_TRACKERS:
+        valid_trackers = [
+            tracker
+            for tracker in user_input.get(CONF_DEVICE_TRACKERS, [])
+            if tracker in kwargs["multi_select_contents"].keys()
+        ]
         schema = {
             vol.Optional(
                 CONF_DEVICE_TRACKERS,
-                default=user_input.get(CONF_DEVICE_TRACKERS, [])
+                default=valid_trackers
             ): cv.multi_select(kwargs["multi_select_contents"])
         }
 
@@ -244,6 +249,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._errors: dict = {}
         self._options: dict = dict(config_entry.options)
 
+    # noinspection PyUnusedLocal
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
         """"""
 
