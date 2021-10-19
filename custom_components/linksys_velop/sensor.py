@@ -137,8 +137,10 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshPolledSensor):
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Set the additional attributes for the sensor"""
 
-        ret = self._value[0].copy()
-        ret.pop("timestamp")
+        ret = None
+        if self._value:
+            ret = self._value[0].copy()
+            ret.pop("timestamp")
 
         return ret
 
