@@ -35,12 +35,15 @@ class LinksysVelopMeshEntity(Entity):
 
     _attribute: str
     _identity: str
+    _mesh: Mesh
 
     @property
     def device_info(self) -> DeviceInfo:
         """Set the device information to that of the mesh"""
 
+        # noinspection HttpUrlsUsage
         ret = DeviceInfo(**{
+            "configuration_url": f"http://{self._mesh.connected_node}",
             "identifiers": {(DOMAIN, self._identity)},
             "manufacturer": PYVELOP_AUTHOR,
             "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
