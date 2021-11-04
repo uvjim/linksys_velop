@@ -10,6 +10,16 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
+try:
+    from homeassistant.const import (
+        ENTITY_CATEGORY_CONFIG,
+        ENTITY_CATEGORY_DIAGNOSTIC,
+    )
+except ImportError:
+    ENTITY_CATEGORY_CONFIG: str = ""
+    ENTITY_CATEGORY_DIAGNOSTIC: str = ""
+
 from .const import (
     SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
 )
@@ -81,6 +91,10 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch):
         self.async_schedule_update_ha_state()
 
     @property
+    def entity_category(self) -> Union[str, None]:
+        return ENTITY_CATEGORY_CONFIG
+
+    @property
     def icon(self) -> str:
         """Returns the icon for the switch"""
 
@@ -135,6 +149,10 @@ class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
         await self._mesh.async_set_guest_wifi_state(state=to_state)
         self._state_value = to_state
         self.async_schedule_update_ha_state()
+
+    @property
+    def entity_category(self) -> Union[str, None]:
+        return ENTITY_CATEGORY_CONFIG
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
