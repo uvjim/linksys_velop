@@ -3,6 +3,9 @@
     "@uvjim"
   ],
   "config_flow": true,
+  "dependencies": [
+    "ssdp"
+  ],
   "domain": "linksys_velop",
   "documentation": "https://github.com/uvjim/linksys_velop",
   "iot_class": "local_polling",
@@ -10,6 +13,12 @@
   "name": "Linksys Velop",
   "requirements": [
     "pyvelop==2021.10.5"
+  ],
+  "ssdp": [
+    {
+      "st": "urn:schemas-upnp-org:device:InternetGatewayDevice:2",
+      "manufacturer": "Linksys"
+    }
   ],
   "version": "2021.10.5"
 }
