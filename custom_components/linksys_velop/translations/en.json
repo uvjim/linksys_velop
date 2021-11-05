@@ -1,13 +1,17 @@
 {
     "config": {
         "abort": {
-            "abort_login": "Unable to complete the login process."
+            "abort_login": "Unable to complete the login process.",
+            "already_configured": "Device already configured.",
+            "not_found": "Device not found.",
+            "not_velop": "Not a Velop device."
         },
         "error": {
             "login_error": "Unable to login.  Please check the username and password.",
             "login_bad_response": "Bad response on login.  Check that the primary node is correct.",
             "node_not_primary": "The primary node in the Velop mesh should be specified."
         },
+        "flow_title": "{name}",
         "step": {
             "user": {
                 "data": {
