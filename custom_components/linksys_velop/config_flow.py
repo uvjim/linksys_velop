@@ -193,7 +193,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_finish(self) -> data_entry_flow.FlowResult:
-        """"""
+        """Finalise the configuration entry"""
 
         _title = self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME) or DEF_FLOW_NAME
         return self.async_create_entry(title=_title, data={}, options=self._options)
@@ -226,7 +226,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_progress_done(next_step_id=STEP_TIMERS)
 
     async def async_step_ssdp(self, discovery_info: DiscoveryInfoType) -> data_entry_flow.FlowResult:
-        """"""
+        """Allow the Mesh primary node to be discovered via SSDP"""
 
         # region #-- get the important info --#
         _host = discovery_info.get("_host", "")
@@ -264,7 +264,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_unignore(self, user_input=None) -> data_entry_flow.FlowResult:
-        """"""
+        """Rediscover the devices if the config entry is being unignored"""
 
         # region #-- get the original unique_id --#
         unique_id = user_input.get("unique_id")
