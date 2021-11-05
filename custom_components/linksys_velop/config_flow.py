@@ -271,7 +271,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             self._errors = {}
-            self._options.update(user_input, CONF_API_REQUEST_TIMEOUT=DEF_API_REQUEST_TIMEOUT)
+            self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
+            self._options.update(user_input)
             return await self.async_step_device_trackers()
 
         return self.async_show_form(
@@ -388,6 +389,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the timer options available for the integration"""
 
         if user_input is not None:
+            # TODO: This can be removed after a length of time but it does no harm
+            # region #-- tidy up the config after a misconfig on setting up the integration
+            self._options.pop("CONF_API_REQUEST_TIMEOUT")
+            # endregion
+
             if CONF_API_REQUEST_TIMEOUT not in self._options:
                 self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
             self._options.update(user_input)
