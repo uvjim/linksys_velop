@@ -239,6 +239,23 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_velop")
         # endregion
 
+        # TODO: should be able to remove this region in the future because it works around the lack of unique_id
+        # region #-- try and update the config entry if it exists and doesn't have a unique_id --#
+        # This region assumes that the host is unique for the Mesh (it should be but isn't guaranteed)
+        # It will match on host and then update the config entry with the serial number then abort
+        # It is possible that SSDP isn't enabled in HASS so this part won't fix up the config entry in that case
+        current_entries = self.hass.config_entries.async_entries(DOMAIN)
+        matching_entry = [
+            config_entry
+            for config_entry in current_entries
+            if config_entry.options.get(CONF_NODE) == _host
+        ]
+        if matching_entry:
+            if not matching_entry[0].unique_id:
+                if self.hass.config_entries.async_update_entry(entry=matching_entry[0], unique_id=_serial):
+                    return self.async_abort(reason="already_configured")
+        # endregion
+
         # region #-- set a unique_id, update details if device has changed IP --#
         await self.async_set_unique_id(_serial)
         self._abort_if_unique_id_configured(updates={CONF_NODE: _host})
