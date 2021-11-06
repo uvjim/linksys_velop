@@ -391,7 +391,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # TODO: This can be removed after a length of time but it does no harm
             # region #-- tidy up the config after a misconfig on setting up the integration
-            self._options.pop("CONF_API_REQUEST_TIMEOUT")
+            self._options.pop("CONF_API_REQUEST_TIMEOUT", None)
             # endregion
 
             if CONF_API_REQUEST_TIMEOUT not in self._options:
