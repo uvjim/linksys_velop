@@ -1,11 +1,15 @@
 """Provide UI for configuring the integration"""
 
 import logging
-from typing import List
+from typing import (
+    List,
+    Union,
+)
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
+from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
 )
@@ -13,8 +17,7 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
 )
-from homeassistant.components import ssdp
-from homeassistant.core import callback
+from homeassistant.core import callback, HomeAssistant
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.typing import DiscoveryInfoType
 
@@ -24,7 +27,10 @@ from pyvelop.exceptions import (
     MeshNodeNotPrimary,
     MeshBadResponse
 )
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import (
+    Mesh,
+    Node,
+)
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
@@ -47,6 +53,19 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _is_mesh_by_host(hass: HomeAssistant, host: str) -> Union[config_entries.ConfigEntry, None]:
+    """"""
+
+    current_entries = hass.config_entries.async_entries(DOMAIN)
+    matching_entry = [
+        config_entry
+        for config_entry in current_entries
+        if config_entry.options.get(CONF_NODE) == host
+    ]
+    if matching_entry:
+        return matching_entry[0]
+
+
 async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwargs) -> vol.Schema:
     """Build the input and validation schema for the config UI
 
@@ -58,7 +77,6 @@ async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwa
 
     schema = {}
     if step == STEP_USER:
-        _LOGGER.error("CONF_NODE", user_input.get(CONF_NODE, "--"))
         schema = {
             vol.Required(
                 CONF_NODE,
@@ -244,15 +262,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # This region assumes that the host is unique for the Mesh (it should be but isn't guaranteed)
         # It will match on host and then update the config entry with the serial number then abort
         # It is possible that SSDP isn't enabled in HASS so this part won't fix up the config entry in that case
-        current_entries = self.hass.config_entries.async_entries(DOMAIN)
-        matching_entry = [
-            config_entry
-            for config_entry in current_entries
-            if config_entry.options.get(CONF_NODE) == _host
-        ]
+        matching_entry = _is_mesh_by_host(hass=self.hass, host=_host)
         if matching_entry:
-            if not matching_entry[0].unique_id:
-                if self.hass.config_entries.async_update_entry(entry=matching_entry[0], unique_id=_serial):
+            if not matching_entry.unique_id:
+                if self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=_serial):
                     return self.async_abort(reason="already_configured")
         # endregion
 
@@ -274,6 +287,30 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
             self._options.update(user_input)
             return await self.async_step_device_trackers()
+
+        # region #-- handle the unique_id now --#
+        if not self.unique_id:
+            # region #-- get the unique_id --#
+            unique_id: Union[str, None] = None
+            if self._mesh:
+                nodes: List[Node] = self._mesh.nodes
+                for node in nodes:
+                    if node.type == "primary":
+                        unique_id = node.serial
+            # end region
+
+            # region #-- do we have matching host? --#
+            # didn't always have unique_id so let's look for it by host and set it if we can then abort
+            matching_entry = _is_mesh_by_host(hass=self.hass, host=self._options.get(CONF_NODE))
+            if matching_entry:
+                if not matching_entry.unique_id:
+                    self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=unique_id)
+                return self.async_abort(reason="already_configured")
+            else:
+                await self.async_set_unique_id(unique_id, raise_on_progress=False)
+                self._abort_if_unique_id_configured()
+            # endregion
+        # endregion
 
         return self.async_show_form(
             step_id=STEP_TIMERS,
