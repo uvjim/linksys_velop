@@ -23,9 +23,11 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 
 from pyvelop.device import Device
 from pyvelop.exceptions import (
+    MeshConnectionError,
     MeshInvalidCredentials,
     MeshNodeNotPrimary,
-    MeshBadResponse
+    MeshBadResponse,
+    MeshTimeoutError,
 )
 from pyvelop.mesh import (
     Mesh,
@@ -176,23 +178,38 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :return: None
         """
 
+        _LOGGER.debug("_async_task_login --> entered --> user_input: %s", user_input)
         async with Mesh(**user_input) as mesh:
             try:
+                _LOGGER.debug("_async_task_login --> gathering details")
                 await mesh.async_gather_details()
+                _LOGGER.debug("_async_task_login --> details gathered")
+            except MeshConnectionError:
+                _LOGGER.debug("_async_task_login --> connection error")
+                self._errors["base"] = "connection_error"
             except MeshInvalidCredentials:
+                _LOGGER.debug("_async_task_login --> login error")
                 self._errors["base"] = "login_error"
             except MeshBadResponse:
+                _LOGGER.debug("_async_task_login --> bad response")
                 self._errors["base"] = "login_bad_response"
             except MeshNodeNotPrimary:
+                _LOGGER.debug("_async_task_login --> not primary")
                 self._errors["base"] = "node_not_primary"
+            except MeshTimeoutError:
+                _LOGGER.debug("_async_task_login --> timeout")
+                self._errors["base"] = "node_timeout"
             else:
+                _LOGGER.debug("_async_task_login --> no exceptions")
                 self._mesh = mesh
 
         self.hass.async_create_task(self.hass.config_entries.flow.async_configure(flow_id=self.flow_id))
+        _LOGGER.debug("_async_task_login --> exited")
 
     async def async_step_device_trackers(self, user_input=None) -> data_entry_flow.FlowResult:
         """Allow the user to select the device trackers for presence detection"""
 
+        _LOGGER.debug("async_step_device_trackers --> user_input: %s", user_input)
         if user_input is not None:
             self._errors = {}
             self._options.update(user_input)
@@ -213,6 +230,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_finish(self) -> data_entry_flow.FlowResult:
         """Finalise the configuration entry"""
 
+        _LOGGER.debug("async_step_finish")
         _title = self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME) or DEF_FLOW_NAME
         return self.async_create_entry(title=_title, data={}, options=self._options)
 
@@ -226,18 +244,30 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :return: the necessary FlowResult
         """
 
+        _LOGGER.debug("async_step_login --> user_input: %s", user_input)
         if not self.task_login:
+            _LOGGER.debug("async_step_login --> creating login task")
+            details: dict = {
+                "node": self._options.get(CONF_NODE),
+                "password": self._options.get(CONF_PASSWORD),
+                "request_timeout": DEF_API_REQUEST_TIMEOUT,
+            }
+            # self.task_login = self._async_task_login(user_input=details)
             self.task_login = self.hass.async_create_task(
-                self._async_task_login(user_input=dict(**user_input, **{"request_timeout": DEF_API_REQUEST_TIMEOUT}))
+                self._async_task_login(user_input=details)
             )
             return self.async_show_progress(step_id="login", progress_action="task_login")
 
         # noinspection PyBroadException
         try:
+            _LOGGER.debug("async_step_login --> running login task")
             await self.task_login
-        except Exception:
+            _LOGGER.debug("async_step_login --> returned from login task")
+        except Exception as err:
+            _LOGGER.debug("async_step_login --> exception: %s", err)
             return self.async_abort(reason="abort_login")
 
+        _LOGGER.debug("async_step_login --> _errors: %s", self._errors)
         if self._errors:
             return self.async_show_progress_done(next_step_id=STEP_USER)
 
@@ -245,6 +275,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_ssdp(self, discovery_info: DiscoveryInfoType) -> data_entry_flow.FlowResult:
         """Allow the Mesh primary node to be discovered via SSDP"""
+
+        _LOGGER.debug("async_step_ssdp --> discovery_info: %s", discovery_info)
 
         # region #-- get the important info --#
         _host = discovery_info.get("_host", "")
@@ -254,6 +286,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- check for a valid Velop device --#
         if "velop" not in _model:
+            _LOGGER.debug("async_step_ssdp --> not a Velop model")
             return self.async_abort(reason="not_velop")
         # endregion
 
@@ -265,11 +298,13 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         matching_entry = _is_mesh_by_host(hass=self.hass, host=_host)
         if matching_entry:
             if not matching_entry.unique_id:
+                _LOGGER.debug("async_step_ssdp --> updating unique_id")
                 if self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=_serial):
                     return self.async_abort(reason="already_configured")
         # endregion
 
         # region #-- set a unique_id, update details if device has changed IP --#
+        _LOGGER.debug("async_step_ssdp --> setting unique_id")
         await self.async_set_unique_id(_serial)
         self._abort_if_unique_id_configured(updates={CONF_NODE: _host})
         # endregion
@@ -282,6 +317,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
         """Allow the user to set the relevant timers for the integration"""
 
+        _LOGGER.debug("async_step_timers --> user_input: %s", user_input)
         if user_input is not None:
             self._errors = {}
             self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
@@ -290,6 +326,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- handle the unique_id now --#
         if not self.unique_id:
+            _LOGGER.debug("async_step_timers --> no unique_id")
             # region #-- get the unique_id --#
             unique_id: Union[str, None] = None
             if self._mesh:
@@ -304,9 +341,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             matching_entry = _is_mesh_by_host(hass=self.hass, host=self._options.get(CONF_NODE))
             if matching_entry:
                 if not matching_entry.unique_id:
+                    _LOGGER.debug("async_step_timers --> updating config entry unique_id")
                     self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=unique_id)
                 return self.async_abort(reason="already_configured")
             else:
+                _LOGGER.debug("async_step_timers --> setting unique_id")
                 await self.async_set_unique_id(unique_id, raise_on_progress=False)
                 self._abort_if_unique_id_configured()
             # endregion
@@ -320,6 +359,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_unignore(self, user_input=None) -> data_entry_flow.FlowResult:
         """Rediscover the devices if the config entry is being unignored"""
+
+        _LOGGER.debug("async_step_unignore --> user_input: %s", user_input)
 
         # region #-- get the original unique_id --#
         unique_id = user_input.get("unique_id")
@@ -341,6 +382,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ]
 
         if not device_info:
+            _LOGGER.debug("async_step_unignore --> device not found")
             return self.async_abort(reason="not_found")
         # endregion
 
@@ -349,11 +391,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None) -> data_entry_flow.FlowResult:
         """Handle a flow initiated by the user"""
 
+        _LOGGER.debug("async_step_user --> user_input: %s", user_input)
         if user_input is not None:
             self.task_login = None
             self._errors = {}
             self._options.update(user_input)
-            return await self.async_step_login(user_input=user_input)
+            return await self.async_step_login()
 
         return self.async_show_form(
             step_id=STEP_USER,
