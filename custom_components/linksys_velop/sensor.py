@@ -30,6 +30,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
+from homeassistant.util import dt as dt_util
 
 from .const import (
     SIGNAL_UPDATE_SPEEDTEST_RESULTS
@@ -175,13 +176,13 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshPolledSensor):
         return ret
 
     @property
-    def native_value(self) -> StateType:
+    def native_value(self) -> dt_util.dt.datetime:
         """Set the value of the sensor to the time the results were generated"""
 
         ret = None
 
         if self._value:
-            ret = self._value[0].get("timestamp")
+            ret = dt_util.parse_datetime(self._value[0].get("timestamp"))
         return ret
 
 
