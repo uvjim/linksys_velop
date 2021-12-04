@@ -4,7 +4,15 @@ import logging
 from datetime import datetime
 from typing import Any, Union, Mapping
 
-from homeassistant.components.switch import DEVICE_CLASS_SWITCH
+# TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
+# HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
+try:
+    from homeassistant.components.switch import SwitchDeviceClass
+    DEVICE_CLASS_SWITCH = SwitchDeviceClass.SWITCH
+except ImportError:
+    SwitchDeviceClass = None
+    from homeassistant.components.switch import DEVICE_CLASS_SWITCH
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
