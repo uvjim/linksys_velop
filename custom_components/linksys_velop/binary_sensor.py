@@ -4,10 +4,19 @@ import logging
 from datetime import timedelta, datetime
 from typing import Mapping, Any, Union
 
-from homeassistant.components.binary_sensor import (
-    DEVICE_CLASS_CONNECTIVITY,
-    DEVICE_CLASS_UPDATE
-)
+# TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
+# HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
+try:
+    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+    DEVICE_CLASS_CONNECTIVITY = BinarySensorDeviceClass.CONNECTIVITY
+    DEVICE_CLASS_UPDATE = BinarySensorDeviceClass.UPDATE
+except ImportError:
+    BinarySensorDeviceClass = None
+    from homeassistant.components.binary_sensor import (
+        DEVICE_CLASS_CONNECTIVITY,
+        DEVICE_CLASS_UPDATE
+    )
+
 from homeassistant.config_entries import ConfigEntry
 
 # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
@@ -20,8 +29,15 @@ except ImportError:
     ENTITY_CATEGORY_CONFIG: str = ""
     ENTITY_CATEGORY_DIAGNOSTIC: str = ""
 
-from homeassistant.core import HomeAssistant, callback, CALLBACK_TYPE
-from homeassistant.helpers.dispatcher import async_dispatcher_connect, async_dispatcher_send
+from homeassistant.core import (
+    HomeAssistant,
+    callback,
+    CALLBACK_TYPE,
+)
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 
@@ -42,7 +58,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Setup the binary sensors from a config entry"""
+    """Set up the binary sensors from a config entry"""
 
     binary_sensor_classes = [
         LinksysVelopMeshCheckForUpdateStatusBinarySensor,
