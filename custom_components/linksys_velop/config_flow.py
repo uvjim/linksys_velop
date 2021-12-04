@@ -13,6 +13,12 @@ from homeassistant import (
     data_entry_flow,
 )
 from homeassistant.components import ssdp
+
+try:
+    from homeassistant.components.ssdp import SsdpServiceInfo
+except ImportError:
+    SsdpServiceInfo = None
+
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -279,7 +285,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_ssdp(
         self,
-        discovery_info: Union[DiscoveryInfoType, ssdp.SsdpServiceInfo]
+        discovery_info: Union[DiscoveryInfoType, SsdpServiceInfo]
     ) -> data_entry_flow.FlowResult:
         """Allow the Mesh primary node to be discovered via SSDP"""
 
