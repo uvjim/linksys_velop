@@ -14,6 +14,8 @@ from homeassistant import (
 )
 from homeassistant.components import ssdp
 
+# TODO: fix up this try/except block when setting the minimum HASS version to 2021.12
+# HASS 2021.12 uses dataclasses for discovery information
 try:
     from homeassistant.components.ssdp import SsdpServiceInfo
 except ImportError:
