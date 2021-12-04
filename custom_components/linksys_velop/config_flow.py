@@ -8,16 +8,20 @@ from typing import (
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant import config_entries, data_entry_flow
-from homeassistant.components import ssdp
-from homeassistant.components.device_tracker import (
-    CONF_CONSIDER_HOME,
+from homeassistant import (
+    config_entries,
+    data_entry_flow,
 )
+from homeassistant.components import ssdp
+from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
 )
-from homeassistant.core import callback, HomeAssistant
+from homeassistant.core import (
+    callback,
+    HomeAssistant,
+)
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.typing import DiscoveryInfoType
 
@@ -273,15 +277,23 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_progress_done(next_step_id=STEP_TIMERS)
 
-    async def async_step_ssdp(self, discovery_info: DiscoveryInfoType) -> data_entry_flow.FlowResult:
+    async def async_step_ssdp(
+        self,
+        discovery_info: Union[DiscoveryInfoType, ssdp.SsdpServiceInfo]
+    ) -> data_entry_flow.FlowResult:
         """Allow the Mesh primary node to be discovered via SSDP"""
 
         _LOGGER.debug("async_step_ssdp --> discovery_info: %s", discovery_info)
 
         # region #-- get the important info --#
-        _host = discovery_info.get("_host", "")
-        _model = discovery_info.get("modelDescription", "").lower()
-        _serial = discovery_info.get("serialNumber", "")
+        if isinstance(discovery_info, dict):
+            _host = discovery_info.get("_host", "")
+            _model = discovery_info.get("modelDescription", "").lower()
+            _serial = discovery_info.get("serialNumber", "")
+        else:
+            _host = discovery_info.ssdp_headers.get("_host", "")
+            _model = discovery_info.upnp.get("modelDescription", "").lower()
+            _serial = discovery_info.upnp.get("serialNumber", "")
         # endregion
 
         # region #-- check for a valid Velop device --#
