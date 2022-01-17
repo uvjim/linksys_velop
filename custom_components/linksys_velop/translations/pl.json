@@ -1,0 +1,65 @@
+{
+    "config": {
+        "abort": {
+            "abort_login": "Nie udało się ukończyć procesu logowania.",
+            "already_configured": "Urządzenie już skonfigurowane.",
+            "not_found": "Urządzenie nie zostało znalezione.",
+            "not_velop": "Nie jest to urządzenie Velop."
+        },
+        "error": {
+            "connection_error": "Błąd połączenia.",
+            "login_error": "Nie udało się zalogować. Sprawdź nazwę użytkownika i hasło.",
+            "login_bad_response": "Niewłąściwa odpowiedź podczas logowania. Sprawdź, czy główny węzeł sieci kratowej jest poprawny.",
+            "node_not_primary": "Należy określić główny węzeł sieci kratowej Velop.",
+            "node_timeout": "Przekroczono limit czasu podczas kontaktowania się z węzłem."
+        },
+        "flow_title": "{name}",
+        "step": {
+            "user": {
+                "data": {
+                    "node": "Adres głównego węzła",
+                    "password": "Hasło"
+                },
+                "description": "Wprowadź dane, potrzebne do połączenia się z siecią Linksys Velop",
+                "title": "Linksys Velop"
+            },
+            "timers": {
+                "data": {
+                    "scan_interval": "Interwał skanowania (w sekundach)",
+                    "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)",
+                    "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)"
+                },
+                "title": "Linksys Velop",
+                "description": "Ustaw różne timery dla integracji"
+            },
+            "device_trackers": {
+                "data": {
+                    "tracked": "Dostępne urządzenia"
+                },
+                "title": "Linksys Velop",
+                "description": "Wybierz urządzenia, których chcesz używać do śledzenia obecności"
+            }
+        },
+        "title": "Linksys Velop"
+    },
+    "options": {
+        "step": {
+            "timers": {
+                "data": {
+                    "scan_interval": "Interwał skanowania (w sekundach)",
+                    "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)",
+                    "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)"
+                },
+                "title": "Linksys Velop",
+                "description": "Ustaw różne timery dla integracji"
+            },
+            "device_trackers": {
+                "data": {
+                    "tracked": "Dostępne urządzenia"
+                },
+                "title": "Linksys Velop",
+                "description": "Wybierz urządzenia, których chcesz używać do śledzenia obecności"
+            }
+        }
+    }
+}
