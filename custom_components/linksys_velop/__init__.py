@@ -11,6 +11,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
+from pyvelop.exceptions import MeshInvalidInput
 
 from .const import (
     CONF_COORDINATOR,
@@ -80,10 +81,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         """
 
         mesh: Mesh = coordinator.data
-        devices: List[Device] = await mesh.async_get_devices()
-        async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER, devices)
+        try:
+            devices: List[Device] = await mesh.async_get_devices()
+        except MeshInvalidInput as err:
+            _LOGGER.error(err)
+        else:
+            async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER, devices)
 
-    # region #-- setup the timer for checking device trackers --#
+    # region #-- set up the timer for checking device trackers --#
     if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
         await device_tracker_update(datetime.datetime.now())  # update before setting the timer
         scan_interval = config_entry.options.get(CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER)
