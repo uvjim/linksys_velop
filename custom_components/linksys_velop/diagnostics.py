@@ -73,6 +73,11 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: 
         ret["mesh_details"]["wan_info"]["wanConnection"]["ipAddress"] = REDACTED
     if ret.get("mesh_details", {}).get("wan_info", {}).get("wanConnection", {}).get("gateway"):
         ret["mesh_details"]["wan_info"]["wanConnection"]["gateway"] = REDACTED
+    if ret.get("mesh_details", {}).get("guest_network", {}).get("radios", []):
+        keys = ("guestWPAPassphrase", "guestSSID")
+        for idx, radio in enumerate(ret.get("mesh_details", {}).get("guest_network", {}).get("radios", [])):
+            for k in keys:
+                ret["mesh_details"]["guest_network"]["radios"][idx][k] = REDACTED
     # endregion
 
     return async_redact_data(ret, CONF_PASSWORD)
