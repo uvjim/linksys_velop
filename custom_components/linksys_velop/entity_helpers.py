@@ -81,11 +81,12 @@ class LinksysVelopNodeEntity(Entity):
 
         node = self._get_node()
         ret = DeviceInfo(**{
+            "hw_version": node.hardware_version,
+            "identifiers": {(DOMAIN, node.serial)},
+            "model": node.model,
             "name": node.name,
             "manufacturer": node.manufacturer,
             "sw_version": node.firmware.get("version", ""),
-            "model": node.model,
-            "identifiers": {(DOMAIN, node.serial)}
         })
         return ret
 
