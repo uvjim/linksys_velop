@@ -1,5 +1,6 @@
 """The Linksys Velop integration"""
 
+# region #-- imports --#
 import datetime
 import logging
 from datetime import timedelta
@@ -10,8 +11,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from pyvelop.device import Device
-from pyvelop.mesh import Mesh
 from pyvelop.exceptions import MeshInvalidInput
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -28,6 +29,7 @@ from .const import (
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .service_handler import LinksysVelopServiceHandler
+# endregion
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- setup the platforms --#
-    hass.config_entries.async_setup_platforms(config_entry, PLATFORMS)
+    setup_platforms: List[str] = list(filter(None, PLATFORMS))
+    hass.config_entries.async_setup_platforms(config_entry, setup_platforms)
     # endregion
 
     # region #-- Service Definition --#

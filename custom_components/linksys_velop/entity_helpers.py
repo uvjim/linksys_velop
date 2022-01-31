@@ -1,8 +1,9 @@
 """Base classes for managing entities in the integration"""
-
+from abc import ABC
 from typing import List, Union, Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.button import ButtonEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
@@ -159,8 +160,11 @@ class LinksysVelopBinarySensor(BinarySensorEntity):
         return ret
 
 
-# noinspection PyAbstractClass
-class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity):
+class LinksysVelopButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
+    """"""
+
+
+class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     """Representation of a polled Switch"""
 
     _attribute: str
@@ -245,6 +249,24 @@ class LinksysVelopPolledSensor(CoordinatorEntity, LinksysVelopNodeEntity, Sensor
         return ret
 
 
+class LinksysVelopNodeButton(LinksysVelopButton, ABC):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        super().__init__()
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+
+    @property
+    def unique_id(self) -> str:
+        """Returns the unique ID of the sensor"""
+
+        ret = f"{self._identity}::button::{slugify(self._attribute).lower()}"
+        return ret
+
+
 class LinksysVelopNodePolledSensor(LinksysVelopPolledSensor):
     """Representation of a polled Sensor"""
 
@@ -303,7 +325,13 @@ def entity_setup(
                 )
             )
         else:
+            node: Node
             for node in mesh.nodes:
+
+                # do not create a reboot button for the primary node
+                if cls.__name__ == "LinksysVelopNodeRebootButton" and node.type.lower() == "primary":
+                    continue
+
                 entities.append(
                     cls(
                         coordinator=coordinator,

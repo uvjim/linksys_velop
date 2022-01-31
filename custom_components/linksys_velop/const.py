@@ -1,5 +1,14 @@
 """Constants for Linksys Velop"""
 
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
+try:
+    from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
+except ImportError:
+    BUTTON_DOMAIN = None
+from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+
 DOMAIN = "linksys_velop"
 ENTITY_SLUG = "Velop"
 
@@ -21,10 +30,11 @@ DEF_SCAN_INTERVAL = 30
 DEF_SCAN_INTERVAL_DEVICE_TRACKER = 10
 
 PLATFORMS = [
-    "binary_sensor",
-    "device_tracker",
-    "sensor",
-    "switch",
+    BINARY_SENSOR_DOMAIN,
+    BUTTON_DOMAIN,
+    DEVICE_TRACKER_DOMAIN,
+    SENSOR_DOMAIN,
+    SWITCH_DOMAIN,
 ]
 
 SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS = "update_check_for_updates_status"
