@@ -9,8 +9,9 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -18,10 +19,8 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DOMAIN,
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
-    SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from pyvelop.mesh import Mesh
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +57,6 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
 
         try:
             await self._mesh.async_gather_details()
-            async_dispatcher_send(self._hass, SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS)
             if self._mesh.speedtest_status:
                 async_dispatcher_send(self._hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
             if self._mesh.check_for_update_status:
