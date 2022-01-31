@@ -9,13 +9,11 @@ from homeassistant.components.button import ButtonDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.node import Node
 
 from .entity_helpers import (
     entity_setup,
     LinksysVelopNodeButton,
 )
-
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,8 +42,7 @@ class LinksysVelopNodeRebootButton(LinksysVelopNodeButton, ABC):
     async def async_press(self) -> None:
         """"""
 
-        node: Node = self._get_node()
-        await self._mesh.async_reboot_node(node_name=node.name)
+        await self._mesh.async_reboot_node(node_name=self._node.name)
 
     # region #-- properties --#
     @property

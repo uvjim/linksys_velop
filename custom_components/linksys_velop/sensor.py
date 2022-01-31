@@ -37,10 +37,9 @@ from .const import (
 )
 from .entity_helpers import (
     entity_setup,
-    LinksysVelopMeshPolledSensor,
-    LinksysVelopNodePolledSensor,
+    LinksysVelopMeshSensorPolled,
+    LinksysVelopNodeSensorPolled,
 )
-from pyvelop.node import Node
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,8 +68,8 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     )
 
 
-class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshPolledSensor):
-    """Representation of the offline devices sensor for the mesh"""
+class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshSensorPolled):
+    """Representation of the offline devices' sensor for the mesh"""
 
     _attribute = "Offline Devices"
     _attr_state_class = STATE_CLASS_MEASUREMENT
@@ -98,8 +97,8 @@ class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshPolledSensor):
         return len(self._get_devices(status=self._device_state))
 
 
-class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshPolledSensor):
-    """Representation of the online devices sensor for the mesh"""
+class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshSensorPolled):
+    """Representation of the online devices' sensor for the mesh"""
 
     _attribute = "Online Devices"
     _attr_state_class = STATE_CLASS_MEASUREMENT
@@ -133,7 +132,7 @@ class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshPolledSensor):
         return len(self._get_devices(status=self._device_state))
 
 
-class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshPolledSensor):
+class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled):
     """Representation of the latest Speedtest details for the mesh"""
 
     _attribute = "Speedtest Latest"
@@ -186,7 +185,7 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshPolledSensor):
         return ret
 
 
-class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodeSensorPolled):
     """Representation of the devices connected to a node"""
 
     _attribute = "Connected devices"
@@ -200,9 +199,8 @@ class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodePolledSensor):
         """Set the additional attributes to be the list of connected devices"""
 
         ret = {}
-        node: Node = self._get_node()
-        if node.connected_devices:
-            ret["devices"] = node.connected_devices
+        if self._node.connected_devices:
+            ret["devices"] = self._node.connected_devices
 
         return ret
 
@@ -210,12 +208,11 @@ class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Set the value of the sensor to the number of connected devices"""
 
-        node: Node = self._get_node()
-        ret = len(node.connected_devices)
+        ret = len(self._node.connected_devices)
         return ret
 
 
-class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodeSensorPolled):
     """Representation of the current firmware sensor"""
 
     _attribute = "Version"
@@ -228,11 +225,10 @@ class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value to the version number of the current firmware"""
 
-        node: Node = self._get_node()
-        return node.firmware.get("version", None)
+        return self._node.firmware.get("version", None)
 
 
-class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodeSensorPolled):
     """Representation of the current firmware sensor"""
 
     _attribute = "Newest Version"
@@ -245,11 +241,10 @@ class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value to the version number of the latest firmware"""
 
-        node: Node = self._get_node()
-        return node.firmware.get("latest_version", None)
+        return self._node.firmware.get("latest_version", None)
 
 
-class LinksysVelopNodeModelSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeModelSensor(LinksysVelopNodeSensorPolled):
     """Representation of the model sensor"""
 
     _attribute = "Model"
@@ -262,11 +257,10 @@ class LinksysVelopNodeModelSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value of the sensor to the model number of the node"""
 
-        node: Node = self._get_node()
-        return node.model
+        return self._node.model
 
 
-class LinksysVelopNodeParentSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeParentSensor(LinksysVelopNodeSensorPolled):
     """Representation of the parent name sensor"""
 
     _attribute = "Parent"
@@ -280,9 +274,8 @@ class LinksysVelopNodeParentSensor(LinksysVelopNodePolledSensor):
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Set the additional attributes to be the details of the parent node"""
 
-        node: Node = self._get_node()
         ret = {
-            "parent_ip": node.parent_ip
+            "parent_ip": self._node.parent_ip
         }
         return ret
 
@@ -290,11 +283,10 @@ class LinksysVelopNodeParentSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value of the sensor to be the name of the parent node"""
 
-        node: Node = self._get_node()
-        return node.parent_name
+        return self._node.parent_name
 
 
-class LinksysVelopNodeSerialSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeSerialSensor(LinksysVelopNodeSensorPolled):
     """Representation of the serial number sensor"""
 
     _attribute = "Serial"
@@ -308,11 +300,10 @@ class LinksysVelopNodeSerialSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value to be the serial number of the node"""
 
-        node: Node = self._get_node()
-        return node.serial
+        return self._node.serial
 
 
-class LinksysVelopNodeTypeSensor(LinksysVelopNodePolledSensor):
+class LinksysVelopNodeTypeSensor(LinksysVelopNodeSensorPolled):
     """Representation of the node type sensor"""
 
     _attribute = "Type"
@@ -325,5 +316,4 @@ class LinksysVelopNodeTypeSensor(LinksysVelopNodePolledSensor):
     def native_value(self) -> StateType:
         """Sets the value of the sensor to be the node type"""
 
-        node: Node = self._get_node()
-        return node.type
+        return self._node.type

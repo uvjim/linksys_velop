@@ -1,6 +1,6 @@
 """Device trackers for the mesh"""
-
 import logging
+from abc import ABC
 from typing import List, Union
 
 from homeassistant.components.device_tracker import (
@@ -11,8 +11,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.device import Device
-from pyvelop.mesh import Mesh
 from pyvelop.exceptions import MeshDeviceNotFoundResponse
+from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
@@ -23,18 +23,20 @@ from .const import (
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
     LinksysVelopDeviceTracker,
+    LinksysVelopMeshEntity
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Setup the device trackers based on a config entry"""
+    """Set up the device trackers based on a config entry"""
 
     device_trackers: List[str] = config.options.get(CONF_DEVICE_TRACKERS, [])
 
     coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
+    entities: list = []
 
     for device_tracker in device_trackers:
         try:
@@ -42,31 +44,30 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         except MeshDeviceNotFoundResponse:
             _LOGGER.warning("Device tracker with id %s was not found", device_tracker)
         else:
-            async_add_entities([LinksysVelopMeshDeviceTracker(
-                hass=hass,
-                config=config,
-                device=device,
-            )])
+            entities.append(
+                LinksysVelopMeshDeviceTracker(
+                    coordinator=coordinator,
+                    device=device,
+                    config=config,
+                )
+            )
+
+    async_add_entities(entities)
 
 
-class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
-    """Representation of the device tracker"""
+class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshEntity, ABC):
+    """Representation of a device tracker"""
 
-    _latest_dt_status: Union[Device, None]  # track the latest device details
-
-    def __init__(self, hass: HomeAssistant, config: ConfigEntry, device: Device) -> None:
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, config: ConfigEntry, device: Device) -> None:
         """Constructor"""
 
-        self._config = config
-        coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR]
+        self._attribute: str = device.name
+        self._config: ConfigEntry = config
         self._device: Device = device
-
-        super().__init__(identity=self._config.entry_id)
-
-        self._attribute: str = self._device.name
+        self._identity: str = self._config.entry_id
+        self._latest_dt_status: Union[Device, None] = None
         self._mesh: Mesh = coordinator.data
         self._offline_at: int = 0
-        self._latest_dt_status = None
 
     @callback
     def _update_callback(self, devices: List[Device]):
@@ -97,7 +98,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         )
 
     async def async_update(self) -> None:
-        """Update the tracker status taking into account the consider home setting"""
+        """Update the tracker status taking into account the 'consider home' setting"""
 
         if self._latest_dt_status:
             if self._latest_dt_status.status:
@@ -138,11 +139,4 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker):
         if mac_address:
             ret = mac_address[0].get("mac", "")
 
-        return ret
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID for the tracker"""
-
-        ret = f"{self._identity}::device_tracker::{self._device.unique_id}"
         return ret

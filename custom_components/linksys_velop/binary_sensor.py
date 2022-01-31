@@ -48,11 +48,10 @@ from .const import (
 )
 from .entity_helpers import (
     entity_setup,
-    LinksysVelopMeshPolledBinarySensor,
-    LinksysVelopNodePolledBinarySensor,
+    LinksysVelopMeshBinarySensorPolled,
+    LinksysVelopNodeBinarySensorPolled,
     LinksysVelopMeshBinarySensor,
 )
-from pyvelop.node import Node
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -203,7 +202,7 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         return self._status_text != ""
 
 
-class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshPolledBinarySensor):
+class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshBinarySensorPolled):
     """Representation of the WAN binary sensor"""
 
     _attribute = "WAN Status"
@@ -230,7 +229,7 @@ class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshPolledBinarySensor):
         return self._mesh.wan_status
 
 
-class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
+class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodeBinarySensorPolled):
     """Representation of the Node status"""
 
     _attribute = "Status"
@@ -245,9 +244,8 @@ class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
         """Set attributes detailing the network adapters that are connected"""
 
         ret = {}
-        node: Node = self._get_node()
-        if node.connected_adapters:
-            ret = node.connected_adapters[0]
+        if self._node.connected_adapters:
+            ret = self._node.connected_adapters[0]
 
         return ret
 
@@ -255,11 +253,10 @@ class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodePolledBinarySensor):
     def is_on(self) -> bool:
         """Returns True if the node is connected, False otherwise"""
 
-        node: Node = self._get_node()
-        return node.status
+        return self._node.status
 
 
-class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodePolledBinarySensor):
+class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodeBinarySensorPolled):
     """Representation of the Update Available sensor"""
 
     _attribute = "Update Available"
@@ -275,8 +272,7 @@ class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodePolledBinarySe
 
         ret: bool = False
 
-        node: Node = self._get_node()
-        if node.firmware.get("version") and node.firmware.get("latest_version"):
-            ret = node.firmware.get("version") != node.firmware.get("latest_version")
+        if self._node.firmware.get("version") and self._node.firmware.get("latest_version"):
+            ret = self._node.firmware.get("version") != self._node.firmware.get("latest_version")
 
         return ret
