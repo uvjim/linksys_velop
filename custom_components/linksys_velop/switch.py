@@ -1,7 +1,6 @@
 """Switches for the mesh"""
 
 import logging
-from datetime import datetime
 from typing import Any, Union, Mapping
 
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
@@ -14,8 +13,7 @@ except ImportError:
     from homeassistant.components.switch import DEVICE_CLASS_SWITCH
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
@@ -28,9 +26,6 @@ except ImportError:
     ENTITY_CATEGORY_CONFIG: str = ""
     ENTITY_CATEGORY_DIAGNOSTIC: str = ""
 
-from .const import (
-    SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
-)
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
     entity_setup,
@@ -126,9 +121,15 @@ class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
     _attr_device_class = DEVICE_CLASS_SWITCH
     _state_value: bool = False
 
-    @callback
-    async def async_update_callback(self, _: Union[datetime, None] = None):
-        """Update the state of the switch"""
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str):
+        """"""
+
+        self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
+
+        LinksysVelopMeshSwitch.__init__(self, coordinator, identity)
+
+    def update_state_value(self):
+        """"""
 
         self._state_value = self._mesh.guest_wifi_enabled
         self.async_schedule_update_ha_state()
@@ -136,13 +137,9 @@ class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
     async def async_added_to_hass(self) -> None:
         """Register callbacks and set initial status"""
 
-        self._state_value = self._mesh.guest_wifi_enabled
+        self.update_state_value()
         self.async_on_remove(
-            async_dispatcher_connect(
-                hass=self.hass,
-                signal=SIGNAL_UPDATE_PARENTAL_CONTROL_STATUS,
-                target=self.async_update_callback,
-            )
+            self._coordinator.async_add_listener(update_callback=self.update_state_value)
         )
 
     async def async_turn_off(self, **kwargs: Any) -> None:
