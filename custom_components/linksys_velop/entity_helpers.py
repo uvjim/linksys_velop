@@ -1,12 +1,12 @@
 """Base classes for managing entities in the integration"""
 from abc import ABC
-from typing import List, Union, Any
+from typing import List
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.button import ButtonEntity
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
+from homeassistant.components.device_tracker.config_entry import ScannerEntity
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -14,6 +14,15 @@ from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
+from pyvelop.device import Device
+from pyvelop.mesh import Mesh
+from pyvelop.node import Node
 
 from .const import (
     CONF_COORDINATOR,
@@ -21,14 +30,6 @@ from .const import (
     ENTITY_SLUG,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
-from pyvelop.mesh import Mesh
-from pyvelop.node import Node
-# noinspection PyProtectedMember
-from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
-# noinspection PyProtectedMember
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-# noinspection PyProtectedMember
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 
 
 class LinksysVelopMeshEntity(Entity):
@@ -66,28 +67,24 @@ class LinksysVelopNodeEntity(Entity):
     _attribute: str
     _identity: str
     _mesh: Mesh
+    _node: Node
 
-    def _get_node(self) -> Union[Node, None]:
-        """Return the node from the list of nodes in the mesh"""
-        ret = None
+    def _get_node(self):
         node = [n for n in self._mesh.nodes if n.unique_id == self._identity]
         if node:
-            ret = node[0]
-
-        return ret
+            self._node = node[0]
 
     @property
     def device_info(self) -> DeviceInfo:
         """Set the device information to that of the node"""
 
-        node = self._get_node()
         ret = DeviceInfo(**{
-            "hw_version": node.hardware_version,
-            "identifiers": {(DOMAIN, node.serial)},
-            "model": node.model,
-            "name": node.name,
-            "manufacturer": node.manufacturer,
-            "sw_version": node.firmware.get("version", ""),
+            "hw_version": self._node.hardware_version,
+            "identifiers": {(DOMAIN, self._node.serial)},
+            "model": self._node.model,
+            "name": self._node.name,
+            "manufacturer": self._node.manufacturer,
+            "sw_version": self._node.firmware.get("version", ""),
         })
         return ret
 
@@ -95,38 +92,51 @@ class LinksysVelopNodeEntity(Entity):
     def name(self) -> str:
         """Returns the name of the sensor"""
 
-        node = self._get_node()
-        return f"{ENTITY_SLUG} {node.name}: {self._attribute}"
+        return f"{ENTITY_SLUG} {self._node.name}: {self._attribute}"
 
 
-class LinksysVelopDeviceTracker(ScannerEntity, LinksysVelopMeshEntity):
-    """Representation of a device tracker"""
+class LinksysVelopBinarySensor(BinarySensorEntity):
+    """Representation of an unpolled binary sensor"""
 
     _attribute: str
-    _config: ConfigEntry
-
-    def __init__(self, identity: str) -> None:
-        """Constructor"""
-        super().__init__()
-        self._identity = identity
+    _identity: str
 
     @property
-    def is_connected(self) -> bool:
-        """Returns True if connected, False otherwise"""
+    def unique_id(self) -> str:
+        """Returns the unique ID for the binary sensor"""
 
-        return False
+        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
+        return ret
+
+
+class LinksysVelopBinarySensorPolled(CoordinatorEntity, LinksysVelopBinarySensor):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator):
+        """"""
+
+        CoordinatorEntity.__init__(self, coordinator)
+
+
+class LinksysVelopButton(ButtonEntity, ABC):
+    """Representation of a button"""
+
+    _attribute: str
+    _identity: str
 
     @property
-    def mac_address(self) -> Union[str, None]:
-        """Returns the MAC address for the tracker"""
+    def unique_id(self) -> str:
+        """Returns the unique ID for the button"""
 
-        return
+        ret = f"{self._identity}::button::{slugify(self._attribute).lower()}"
+        return ret
 
-    @property
-    def should_poll(self) -> bool:
-        """Do not poll for status"""
 
-        return False
+class LinksysVelopDeviceTracker(ScannerEntity, ABC):
+    """Representation of a device tracker"""
+
+    _device: Device
+    _identity: str
 
     @property
     def source_type(self) -> str:
@@ -134,112 +144,19 @@ class LinksysVelopDeviceTracker(ScannerEntity, LinksysVelopMeshEntity):
 
         return SOURCE_TYPE_ROUTER
 
-
-class LinksysVelopBinarySensor(BinarySensorEntity):
-    """Representation of an unpolled binary sensor"""
-
-    _attribute: str
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = coordinator.data
-        self._identity: str = identity
-
-    @property
-    def should_poll(self) -> bool:
-        """Do not poll for status"""
-
-        return False
-
     @property
     def unique_id(self) -> str:
-        """Returns the unique ID for the binary sensor"""
+        """Returns the unique ID of the device tracker"""
 
-        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
+        ret = f"{self._identity}::device_tracker::{self._device.unique_id}"
         return ret
 
 
-class LinksysVelopButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
-    """"""
-
-
-class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
-    """Representation of a polled Switch"""
+class LinksysVelopSensor(SensorEntity):
+    """Representation of a sensor"""
 
     _attribute: str
-    coordinator: LinksysVelopDataUpdateCoordinator
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        super().__init__()
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off the switch"""
-
-        return
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on the switch"""
-
-        return
-
-    @property
-    def is_on(self) -> bool:
-        """"""
-
-        return False
-
-    @property
-    def should_poll(self) -> bool:
-        """True if this is a polling entity, False otherwise"""
-
-        return False
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID of the switch"""
-
-        ret = f"{self._identity}::switch::{slugify(self._attribute).lower()}"
-        return ret
-
-
-class LinksysVelopPolledBinarySensor(CoordinatorEntity, LinksysVelopNodeEntity, BinarySensorEntity):
-    """Representation of a polled Binary Sensor"""
-
-    _attribute: str
-    coordinator: LinksysVelopDataUpdateCoordinator
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        super().__init__(coordinator)
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID for the binary sensor"""
-
-        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
-        return ret
-
-
-class LinksysVelopPolledSensor(CoordinatorEntity, LinksysVelopNodeEntity, SensorEntity):
-    """Representation of a polled Sensor"""
-
-    _attribute: str
-    coordinator: LinksysVelopDataUpdateCoordinator
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        super().__init__(coordinator)
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
+    _identity: str
 
     @property
     def unique_id(self) -> str:
@@ -249,42 +166,61 @@ class LinksysVelopPolledSensor(CoordinatorEntity, LinksysVelopNodeEntity, Sensor
         return ret
 
 
-class LinksysVelopNodeButton(LinksysVelopButton, ABC):
+class LinksysVelopSensorPolled(CoordinatorEntity, LinksysVelopSensor):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator):
+        """"""
+
+        CoordinatorEntity.__init__(self, coordinator)
+
+
+class LinksysVelopSwitch(SwitchEntity, ABC):
+    """Representation of a Switch"""
+
+    _attribute: str
+    _identity: str
+
+    @property
+    def unique_id(self) -> str:
+        """Returns the unique ID of the switch"""
+
+        ret = f"{self._identity}::switch::{slugify(self._attribute).lower()}"
+        return ret
+
+
+class LinksysVelopMeshBinarySensor(LinksysVelopBinarySensor, LinksysVelopMeshEntity):
     """"""
 
     def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
         """Constructor"""
 
-        super().__init__()
         self._mesh: Mesh = coordinator.data
         self._identity = identity
 
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID of the sensor"""
 
-        ret = f"{self._identity}::button::{slugify(self._attribute).lower()}"
-        return ret
+class LinksysVelopMeshBinarySensorPolled(LinksysVelopBinarySensorPolled, LinksysVelopMeshEntity):
+    """"""
 
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
 
-class LinksysVelopNodePolledSensor(LinksysVelopPolledSensor):
-    """Representation of a polled Sensor"""
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
 
-
-class LinksysVelopNodePolledBinarySensor(LinksysVelopPolledBinarySensor):
-    """Representation of a polled binary sensor"""
+        LinksysVelopBinarySensorPolled.__init__(self, coordinator)
 
 
-class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, LinksysVelopBinarySensor):
-    """Representation of an unpolled binary sensor"""
+class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEntity):
+    """"""
 
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
 
-class LinksysVelopMeshPolledBinarySensor(LinksysVelopMeshEntity, LinksysVelopPolledBinarySensor):
-    """Representation of a polled binary sensor"""
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
 
-
-class LinksysVelopMeshPolledSensor(LinksysVelopMeshEntity, LinksysVelopPolledSensor):
-    """Representation of a polled sensor"""
+        LinksysVelopSensorPolled.__init__(self, coordinator)
 
     def _get_devices(self, status: bool) -> List:
         """Get the devices that match the specified state
@@ -294,6 +230,57 @@ class LinksysVelopMeshPolledSensor(LinksysVelopMeshEntity, LinksysVelopPolledSen
         """
 
         return [device for device in self._mesh.devices if device.status == status]
+
+
+class LinksysVelopMeshSwitch(LinksysVelopSwitch, LinksysVelopMeshEntity, ABC):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+
+
+class LinksysVelopNodeBinarySensorPolled(LinksysVelopBinarySensorPolled, LinksysVelopNodeEntity):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+        self._get_node()
+
+        LinksysVelopBinarySensorPolled.__init__(self, coordinator)
+        coordinator.async_add_listener(update_callback=self._get_node)
+
+
+class LinksysVelopNodeButton(LinksysVelopButton, LinksysVelopNodeEntity, ABC):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+        self._get_node()
+
+        coordinator.async_add_listener(update_callback=self._get_node)
+
+
+class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEntity):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+        self._get_node()
+
+        LinksysVelopSensorPolled.__init__(self, coordinator)
+        coordinator.async_add_listener(update_callback=self._get_node)
 
 
 def entity_setup(

@@ -40,7 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Setup the switches from a config entry"""
+    """Set up the switches from a config entry"""
 
     switch_classes = [
         LinksysVelopMeshGuestWiFiSwitch,
