@@ -28,6 +28,15 @@ class LinksysVelopServiceHandler:
                     }
                 )
         },
+        "reboot_node": {
+            "schema":
+                vol.Schema(
+                    {
+                        vol.Required("node_name"): str,
+                        vol.Optional("is_primary"): bool,
+                    }
+                )
+        },
         "start_speedtest": {},
     }
 
@@ -69,10 +78,20 @@ class LinksysVelopServiceHandler:
         """Remove a device from the device list on the mesh"""
         await self._mesh.async_delete_device(**kwargs)
 
+    async def reboot_node(self, **kwargs) -> None:
+        """Instruct the mesg to restart a node
+
+        N.B. Rebooting the primary node will cause all ndoes to reboot. To reboot the primary node you should also
+        turn the is_primary toggle on.
+
+        :return:None
+        """
+        await self._mesh.async_reboot_node(node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False))
+
     async def start_speedtest(self) -> None:
         """Start a Speedtest on the mesh
 
-        The Speedtest is a long running task so a signal is also sent to listeners to update the status more
+        The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
         frequently.  This allows seeing the stages of the test in the UI.
 
         :return:None
@@ -84,7 +103,7 @@ class LinksysVelopServiceHandler:
     async def check_updates(self) -> None:
         """Instruct the mesh to check for updates
 
-        The update check could be a long running task so a signal is also sent to listeners to update the status more
+        The update check could be a long-running task so a signal is also sent to listeners to update the status more
         frequently.  This allows a more reactive UI but also paves the way for status messages later.
 
         :return: None

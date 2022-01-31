@@ -21,6 +21,23 @@ delete_device:
         selector:
           text:
 
+reboot_node:
+  name: "Reboot Node"
+  description: Instruct the mesh to reboot a node
+  fields:
+    node_name:
+      name: "Name"
+      description: The name of the node to reboot
+      required: true
+      selector:
+        text:
+    is_primary:
+      name: "Is Primary"
+      description: Rebooting the primary need will force a reboot on all secondary nodes. If you're sure you want to do this then turn this on
+      required: false
+      selector:
+        boolean:
+
 start_speedtest:
   name: Execute Speedtest
   description: Instruct the mesh to carry out a Speedtest
