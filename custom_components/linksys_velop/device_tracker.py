@@ -3,6 +3,7 @@ import logging
 from abc import ABC
 from typing import List, Union
 
+import homeassistant.helpers.device_registry as dr
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
 )
@@ -38,12 +39,44 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     mesh: Mesh = coordinator.data
     entities: list = []
 
+    # region #-- get the mesh device from the registry --#
+    device_registry = dr.async_get(hass=hass)
+    config_devices: List[dr.DeviceEntry] = dr.async_entries_for_config_entry(
+        registry=device_registry,
+        config_entry_id=config.entry_id
+    )
+    mesh_device = [
+        d
+        for d in config_devices
+        if d.name.lower() == "mesh"
+    ]
+    # endregion
+
     for device_tracker in device_trackers:
         try:
             device = await mesh.async_get_device_from_id(device_id=device_tracker)
         except MeshDeviceNotFoundResponse:
             _LOGGER.warning("Device tracker with id %s was not found", device_tracker)
         else:
+            # region #-- add the connection info to the mesh device --#
+            if mesh_device:
+                mac_address = [
+                    adapter
+                    for adapter in device.network
+                ]
+                # TODO: Fix up the try/except block when setting the minimum HASS version to 2022.2
+                # HASS 2022.2 introduces some new ways of working with device_trackers, this makes
+                # sure that the device_tracker MAC is listed as a connection against the mesh allowing
+                # the device tracker to automatically enable and link to the mesh device.
+                try:
+                    device_registry.async_update_device(
+                        device_id=mesh_device[0].id,
+                        merge_connections={(dr.CONNECTION_NETWORK_MAC, dr.format_mac(mac_address[0].get("mac")))},
+                    )
+                except TypeError:  # this will be thrown if merge_connections isn't available (device_id should be)
+                    pass
+            # endregion
+
             entities.append(
                 LinksysVelopMeshDeviceTracker(
                     coordinator=coordinator,
