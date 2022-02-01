@@ -211,6 +211,16 @@ class LinksysVelopMeshBinarySensorPolled(LinksysVelopBinarySensorPolled, Linksys
         LinksysVelopBinarySensorPolled.__init__(self, coordinator)
 
 
+class LinksysVelopMeshButton(LinksysVelopButton, LinksysVelopMeshEntity, ABC):
+    """"""
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
+        """Constructor"""
+
+        self._mesh: Mesh = coordinator.data
+        self._identity = identity
+
+
 class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEntity):
     """"""
 

@@ -8,12 +8,16 @@ from typing import Optional
 from homeassistant.components.button import ButtonDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import SIGNAL_UPDATE_SPEEDTEST_STATUS
 from .entity_helpers import (
     entity_setup,
+    LinksysVelopMeshButton,
     LinksysVelopNodeButton,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     """"""
 
     button_classes = [
+        LinksysVelopMeshStartSpeedtest,
         LinksysVelopNodeRebootButton,
     ]
 
@@ -32,6 +37,26 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         entity_classes=button_classes,
         hass=hass,
     )
+
+
+class LinksysVelopMeshStartSpeedtest(LinksysVelopMeshButton, ABC):
+    """"""
+
+    _attribute: str = "Start Speedtest"
+
+    async def async_press(self) -> None:
+        """"""
+
+        await self._mesh.async_start_speedtest()
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
+
+    # region #-- properties --#
+    @property
+    def device_class(self) -> Optional[ButtonDeviceClass]:
+        """"""
+
+        return None
+    # endregion
 
 
 class LinksysVelopNodeRebootButton(LinksysVelopNodeButton, ABC):
