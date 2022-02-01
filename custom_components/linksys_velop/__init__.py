@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshInvalidInput
 from pyvelop.mesh import Mesh
 
 from .const import (
@@ -29,6 +28,7 @@ from .const import (
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .service_handler import LinksysVelopServiceHandler
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         mesh: Mesh = coordinator.data
         try:
             devices: List[Device] = await mesh.async_get_devices()
-        except MeshInvalidInput as err:
+        except Exception as err:
             _LOGGER.error(err)
         else:
             async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER, devices)
