@@ -22,7 +22,6 @@ available.
 
 #### Binary Sensors
 
-- Mesh: Checking for Updates
 - Mesh: Speedtest state
   - current stage of the Speedtest, e.g. Detecting server, Checking latency
 - Mesh: WAN Status
@@ -30,6 +29,11 @@ available.
 - Node: Status
   - IP, MAC
 - Node: Update Available
+
+#### Buttons
+
+- Mesh: Check for Updates
+- Node: Reboot
 
 #### Device  Trackers
 
@@ -47,6 +51,7 @@ install time and from reconfiguring the integration.
 - Node: Number of Connected Devices
   - list of device names and IP addresses that are connected
 - Node: Current Firmware Version
+- Node: Last Update Check *(disabled by default)*
 - Node: Model Number
 - Node: Newest Firmware Version
 - Node: Parent Name
