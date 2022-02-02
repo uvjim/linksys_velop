@@ -47,6 +47,7 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .entity_helpers import (
+    entity_remove,
     entity_setup,
     LinksysVelopMeshBinarySensorPolled,
     LinksysVelopNodeBinarySensorPolled,
@@ -59,20 +60,21 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the binary sensors from a config entry"""
 
-    binary_sensor_classes = [
+    remove_binary_sensor_classes = [
         LinksysVelopMeshCheckForUpdateStatusBinarySensor,
+    ]
+
+    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
+
+    binary_sensor_classes = [
+        # LinksysVelopMeshCheckForUpdateStatusBinarySensor,
         LinksysVelopMeshSpeedtestStatusBinarySensor,
         LinksysVelopMeshWANBinarySensor,
         LinksysVelopNodeStatusBinarySensor,
         LinksysVelopNodeUpdateAvailableBinarySensor,
     ]
 
-    entity_setup(
-        async_add_entities=async_add_entities,
-        config=config,
-        entity_classes=binary_sensor_classes,
-        hass=hass,
-    )
+    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=binary_sensor_classes, hass=hass)
 
 
 class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySensor):
@@ -86,7 +88,6 @@ class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySen
     @callback
     async def async_update_callback(self, _: Union[datetime, None] = None):
         """Update the state of the binary sensor
-
         Triggers a time interval to ensure that data is checked for more regularly when the state
         is on.
         """
