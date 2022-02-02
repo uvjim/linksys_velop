@@ -1,7 +1,9 @@
 """Base classes for managing entities in the integration"""
+import logging
 from abc import ABC
 from typing import List
 
+import homeassistant.helpers.entity_registry as er
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
@@ -30,6 +32,8 @@ from .const import (
     ENTITY_SLUG,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class LinksysVelopMeshEntity(Entity):
@@ -337,3 +341,48 @@ def entity_setup(
                 )
 
     async_add_entities(entities)
+
+
+def entity_remove(
+    hass: HomeAssistant,
+    entity_classes: List,
+    config: ConfigEntry
+) -> None:
+    """"""
+
+    _LOGGER.debug("Starting to remove entities...")
+
+    coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
+    mesh: Mesh = coordinator.data
+    entities: list = []
+
+    for cls in entity_classes:
+        if cls.__name__.startswith("LinksysVelopMesh"):
+            entities.append(
+                cls(
+                    coordinator=coordinator,
+                    identity=config.entry_id,
+                )
+            )
+        else:
+            node: Node
+            for node in mesh.nodes:
+                entities.append(
+                    cls(
+                        coordinator=coordinator,
+                        identity=node.unique_id,
+                    )
+                )
+
+    entity_registry = er.async_get(hass)
+    entity: Entity
+    for entity in entities:
+        entity_entry: er.RegistryEntry = entity_registry.async_get_or_create(
+            domain=entity.unique_id.split("::")[1],
+            platform=DOMAIN,
+            unique_id=entity.unique_id,
+        )
+        _LOGGER.debug("Removing entity_id: %s", entity_entry.entity_id)
+        entity_registry.async_remove(entity_id=entity_entry.entity_id)
+
+    _LOGGER.debug("Finished removing entities...")
