@@ -28,6 +28,7 @@ except ImportError:
 
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
+    entity_remove,
     entity_setup,
     LinksysVelopMeshSwitch,
 )
@@ -38,17 +39,16 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up the switches from a config entry"""
 
+    remove_binary_sensor_classes = []
+
+    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
+
     switch_classes = [
         LinksysVelopMeshGuestWiFiSwitch,
         LinksysVelopMeshParentalControlSwitch,
     ]
 
-    entity_setup(
-        async_add_entities=async_add_entities,
-        config=config,
-        entity_classes=switch_classes,
-        hass=hass,
-    )
+    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=switch_classes, hass=hass)
 
 
 # noinspection PyAbstractClass

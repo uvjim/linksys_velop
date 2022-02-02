@@ -350,11 +350,9 @@ def entity_remove(
 ) -> None:
     """"""
 
-    _LOGGER.debug("Starting to remove entities...")
-
     coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-    entities: list = []
+    entities: list[Entity] = []
 
     for cls in entity_classes:
         if cls.__name__.startswith("LinksysVelopMesh"):
@@ -375,14 +373,12 @@ def entity_remove(
                 )
 
     entity_registry = er.async_get(hass)
-    entity: Entity
     for entity in entities:
-        entity_entry: er.RegistryEntry = entity_registry.async_get_or_create(
+        entity_id = entity_registry.async_get_entity_id(
             domain=entity.unique_id.split("::")[1],
             platform=DOMAIN,
             unique_id=entity.unique_id,
         )
-        _LOGGER.debug("Removing entity_id: %s", entity_entry.entity_id)
-        entity_registry.async_remove(entity_id=entity_entry.entity_id)
-
-    _LOGGER.debug("Finished removing entities...")
+        if entity_id:
+            _LOGGER.debug("Removing entity_id: %s", entity_id)
+            entity_registry.async_remove(entity_id=entity_id)

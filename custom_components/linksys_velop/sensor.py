@@ -36,6 +36,7 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_RESULTS
 )
 from .entity_helpers import (
+    entity_remove,
     entity_setup,
     LinksysVelopMeshSensorPolled,
     LinksysVelopNodeSensorPolled,
@@ -46,6 +47,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """"""
+
+    remove_binary_sensor_classes = []
+
+    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
 
     sensor_classes = [
         LinksysVelopMeshOfflineDevicesSensor,
@@ -61,12 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopNodeTypeSensor,
     ]
 
-    entity_setup(
-        async_add_entities=async_add_entities,
-        config=config,
-        entity_classes=sensor_classes,
-        hass=hass,
-    )
+    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=sensor_classes, hass=hass)
 
 
 class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshSensorPolled):

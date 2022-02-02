@@ -16,6 +16,7 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .entity_helpers import (
+    entity_remove,
     entity_setup,
     LinksysVelopMeshButton,
     LinksysVelopNodeButton,
@@ -29,18 +30,17 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """"""
 
+    remove_binary_sensor_classes = []
+
+    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
+
     button_classes = [
         LinksysVelopMeshCheckForUpdates,
         LinksysVelopMeshStartSpeedtest,
         LinksysVelopNodeRebootButton,
     ]
 
-    entity_setup(
-        async_add_entities=async_add_entities,
-        config=config,
-        entity_classes=button_classes,
-        hass=hass,
-    )
+    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=button_classes, hass=hass)
 
 
 class LinksysVelopMeshCheckForUpdates(LinksysVelopMeshButton, ABC):
