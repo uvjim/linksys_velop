@@ -1,7 +1,7 @@
 """Sensors for the mesh, nodes and devices"""
 
 import logging
-from typing import Mapping, Any, List, Union
+from typing import Mapping, Any, List, Optional, Union
 
 from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
 
@@ -53,6 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopMeshSpeedtestLatestSensor,
         LinksysVelopNodeConnectedDevicesSensor,
         LinksysVelopNodeCurrentFirmwareSensor,
+        LinksysVelopNodeLastFirmwareUpdateCheckSensor,
         LinksysVelopNodeLatestFirmwareSensor,
         LinksysVelopNodeModelSensor,
         LinksysVelopNodeParentSensor,
@@ -226,6 +227,35 @@ class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodeSensorPolled):
         """Sets the value to the version number of the current firmware"""
 
         return self._node.firmware.get("version", None)
+
+
+class LinksysVelopNodeLastFirmwareUpdateCheckSensor(LinksysVelopNodeSensorPolled):
+    """Representation of the last firmware update check sensor"""
+
+    _attribute = "Last Update Check"
+    _attr_device_class = DEVICE_CLASS_TIMESTAMP
+
+    @property
+    def entity_category(self) -> Optional[str]:
+        """"""
+
+        return ENTITY_CATEGORY_DIAGNOSTIC
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Disable the entity by default"""
+
+        return False
+
+    @property
+    def native_value(self) -> Optional[dt_util.dt.datetime]:
+        """"""
+
+        ret = None
+        if self._node.last_update_check:
+            ret = dt_util.parse_datetime(self._node.last_update_check)
+
+        return ret
 
 
 class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodeSensorPolled):
