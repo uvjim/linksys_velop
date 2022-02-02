@@ -3373,7 +3373,6 @@ cards:
             ha-card { box-shadow: none }
         cards:
           - type: custom:button-card
-            entity: binary_sensor.velop_mesh_check_for_updates_status
             tap_action:
               action: call-service
               service: linksys_velop.check_updates
@@ -3392,14 +3391,6 @@ cards:
               name:
                 - white-space: normal
                 - font-size: smaller
-                - color: |
-                    [[[
-                      var ret = 'var(--primary-text-color)'
-                      if (entity.state == 'on') {
-                        ret = 'darkcyan'
-                      }
-                      return ret
-                    ]]]
           - type: custom:button-card
             entity: switch.velop_mesh_guest_wi_fi
             tap_action:
