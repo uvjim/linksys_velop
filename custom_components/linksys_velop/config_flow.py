@@ -1,4 +1,10 @@
 """Provide UI for configuring the integration"""
+# TODO: fix up this try/except block when setting the minimum HASS version to 2021.12
+# HASS 2021.12 uses dataclasses for discovery information
+try:
+    from homeassistant.components.ssdp import SsdpServiceInfo
+except ImportError:
+    SsdpServiceInfo = None
 
 import logging
 from typing import (
@@ -13,14 +19,6 @@ from homeassistant import (
     data_entry_flow,
 )
 from homeassistant.components import ssdp
-
-# TODO: fix up this try/except block when setting the minimum HASS version to 2021.12
-# HASS 2021.12 uses dataclasses for discovery information
-try:
-    from homeassistant.components.ssdp import SsdpServiceInfo
-except ImportError:
-    SsdpServiceInfo = None
-
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -32,7 +30,6 @@ from homeassistant.core import (
 )
 from homeassistant.helpers import entity_registry
 from homeassistant.helpers.typing import DiscoveryInfoType
-
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
@@ -45,6 +42,7 @@ from pyvelop.mesh import (
     Mesh,
     Node,
 )
+
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,

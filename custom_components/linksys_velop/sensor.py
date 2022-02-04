@@ -1,10 +1,4 @@
 """Sensors for the mesh, nodes and devices"""
-
-import logging
-from typing import Mapping, Any, List, Optional
-
-from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
-
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
 try:
@@ -14,8 +8,11 @@ except ImportError:
     SensorDeviceClass = None
     from homeassistant.components.sensor import DEVICE_CLASS_TIMESTAMP
 
-from homeassistant.config_entries import ConfigEntry
+import logging
+from typing import Mapping, Any, List, Optional
 
+from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback

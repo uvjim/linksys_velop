@@ -1,9 +1,4 @@
 """Binary sensors for the mesh, nodes and devices"""
-
-import logging
-from datetime import timedelta, datetime
-from typing import Mapping, Any, Union
-
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
 try:
@@ -17,8 +12,11 @@ except ImportError:
         DEVICE_CLASS_UPDATE
     )
 
-from homeassistant.config_entries import ConfigEntry
+import logging
+from datetime import timedelta, datetime
+from typing import Mapping, Any, Union
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import (
     HomeAssistant,
     callback,
