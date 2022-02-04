@@ -13,13 +13,18 @@ except ImportError:
         ENTITY_CATEGORY_CONFIG: str = ""
         ENTITY_CATEGORY_DIAGNOSTIC: str = ""
 
+try:
+    from homeassistant.components.button import ButtonEntity
+except ImportError:
+    class ButtonEntity:
+        """Dummy Button Entity"""
+
 import logging
 from abc import ABC
 from typing import List, Union
 
 import homeassistant.helpers.entity_registry as er
 from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.components.button import ButtonEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.sensor import SensorEntity
