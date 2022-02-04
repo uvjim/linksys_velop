@@ -19,16 +19,6 @@ except ImportError:
 
 from homeassistant.config_entries import ConfigEntry
 
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-try:
-    from homeassistant.const import (
-        ENTITY_CATEGORY_CONFIG,
-        ENTITY_CATEGORY_DIAGNOSTIC,
-    )
-except ImportError:
-    ENTITY_CATEGORY_CONFIG: str = ""
-    ENTITY_CATEGORY_DIAGNOSTIC: str = ""
-
 from homeassistant.core import (
     HomeAssistant,
     callback,
@@ -49,6 +39,7 @@ from .const import (
 from .entity_helpers import (
     entity_remove,
     entity_setup,
+    LinksysVelopDiagnosticEntity,
     LinksysVelopMeshBinarySensorPolled,
     LinksysVelopNodeBinarySensorPolled,
     LinksysVelopMeshBinarySensor,
@@ -77,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=binary_sensor_classes, hass=hass)
 
 
-class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySensor):
+class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySensor, LinksysVelopDiagnosticEntity):
     """Representation of the check for updates binary sensor"""
 
     _attribute = "Check for Updates Status"
@@ -126,17 +117,13 @@ class LinksysVelopMeshCheckForUpdateStatusBinarySensor(LinksysVelopMeshBinarySen
             self._remove_time_interval()
 
     @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
-
-    @property
     def is_on(self) -> bool:
         """Return True if the mesh is currently checking for updates, False otherwise"""
 
         return self._status_value
 
 
-class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
+class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor, LinksysVelopDiagnosticEntity):
     """Representation of the Speedtest status binary sensor"""
 
     _attribute = "Speedtest Status"
@@ -185,10 +172,6 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
             self._remove_time_interval()
 
     @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
-
-    @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Set the current stage of the test as an attribute"""
 
@@ -203,15 +186,11 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         return self._status_text != ""
 
 
-class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshBinarySensorPolled):
+class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshBinarySensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the WAN binary sensor"""
 
     _attribute = "WAN Status"
     _attr_device_class = DEVICE_CLASS_CONNECTIVITY
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -230,15 +209,11 @@ class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshBinarySensorPolled):
         return self._mesh.wan_status
 
 
-class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodeBinarySensorPolled):
+class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodeBinarySensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the Node status"""
 
     _attribute = "Status"
     _attr_device_class = DEVICE_CLASS_CONNECTIVITY
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -257,15 +232,11 @@ class LinksysVelopNodeStatusBinarySensor(LinksysVelopNodeBinarySensorPolled):
         return self._node.status
 
 
-class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodeBinarySensorPolled):
+class LinksysVelopNodeUpdateAvailableBinarySensor(LinksysVelopNodeBinarySensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the Update Available sensor"""
 
     _attribute = "Update Available"
     _attr_device_class = DEVICE_CLASS_UPDATE
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def is_on(self) -> bool:
