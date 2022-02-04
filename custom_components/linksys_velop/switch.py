@@ -1,7 +1,7 @@
 """Switches for the mesh"""
 
 import logging
-from typing import Any, Union, Mapping
+from typing import Any, Mapping
 
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
@@ -16,20 +16,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-try:
-    from homeassistant.const import (
-        ENTITY_CATEGORY_CONFIG,
-        ENTITY_CATEGORY_DIAGNOSTIC,
-    )
-except ImportError:
-    ENTITY_CATEGORY_CONFIG: str = ""
-    ENTITY_CATEGORY_DIAGNOSTIC: str = ""
-
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
     entity_remove,
     entity_setup,
+    LinksysVelopConfigurationEntity,
     LinksysVelopMeshSwitch,
 )
 
@@ -52,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
 
 # noinspection PyAbstractClass
-class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch):
+class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity):
     """Representation of the switch entity for the Parental Control state"""
 
     _attribute = "Parental Control"
@@ -97,10 +88,6 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch):
         self.async_schedule_update_ha_state()
 
     @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_CONFIG
-
-    @property
     def icon(self) -> str:
         """Returns the icon for the switch"""
 
@@ -114,7 +101,7 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch):
 
 
 # noinspection PyAbstractClass
-class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
+class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity):
     """Representation of the switch entity for the guest Wi-Fi state"""
 
     _attribute = "Guest Wi-Fi"
@@ -157,10 +144,6 @@ class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch):
         await self._mesh.async_set_guest_wifi_state(state=to_state)
         self._state_value = to_state
         self.async_schedule_update_ha_state()
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_CONFIG
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:

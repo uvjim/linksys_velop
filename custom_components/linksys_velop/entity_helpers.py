@@ -1,7 +1,21 @@
 """Base classes for managing entities in the integration"""
+# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
+try:
+    from homeassistant.helpers.entity import EntityCategory
+except ImportError:
+    EntityCategory = None
+    try:
+        from homeassistant.const import (
+            ENTITY_CATEGORY_CONFIG,
+            ENTITY_CATEGORY_DIAGNOSTIC,
+        )
+    except ImportError:
+        ENTITY_CATEGORY_CONFIG: str = ""
+        ENTITY_CATEGORY_DIAGNOSTIC: str = ""
+
 import logging
 from abc import ABC
-from typing import List
+from typing import List, Union
 
 import homeassistant.helpers.entity_registry as er
 from homeassistant.components.binary_sensor import BinarySensorEntity
@@ -34,6 +48,26 @@ from .const import (
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class LinksysVelopConfigurationEntity(Entity):
+
+    @property
+    def entity_category(self) -> Union[EntityCategory, str, None]:
+        if EntityCategory is not None:
+            return EntityCategory.CONFIG
+        else:
+            return ENTITY_CATEGORY_CONFIG
+
+
+class LinksysVelopDiagnosticEntity(Entity):
+
+    @property
+    def entity_category(self) -> Union[EntityCategory, str, None]:
+        if EntityCategory is not None:
+            return EntityCategory.DIAGNOSTIC
+        else:
+            return ENTITY_CATEGORY_DIAGNOSTIC
 
 
 class LinksysVelopMeshEntity(Entity):

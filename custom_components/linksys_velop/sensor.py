@@ -1,7 +1,7 @@
 """Sensors for the mesh, nodes and devices"""
 
 import logging
-from typing import Mapping, Any, List, Optional, Union
+from typing import Mapping, Any, List, Optional
 
 from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
 
@@ -16,16 +16,6 @@ except ImportError:
 
 from homeassistant.config_entries import ConfigEntry
 
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-try:
-    from homeassistant.const import (
-        ENTITY_CATEGORY_CONFIG,
-        ENTITY_CATEGORY_DIAGNOSTIC,
-    )
-except ImportError:
-    ENTITY_CATEGORY_CONFIG: str = ""
-    ENTITY_CATEGORY_DIAGNOSTIC: str = ""
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -38,6 +28,7 @@ from .const import (
 from .entity_helpers import (
     entity_remove,
     entity_setup,
+    LinksysVelopDiagnosticEntity,
     LinksysVelopMeshSensorPolled,
     LinksysVelopNodeSensorPolled,
 )
@@ -69,16 +60,12 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=sensor_classes, hass=hass)
 
 
-class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshSensorPolled):
+class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the offline devices' sensor for the mesh"""
 
     _attribute = "Offline Devices"
     _attr_state_class = STATE_CLASS_MEASUREMENT
     _device_state = False
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -98,16 +85,12 @@ class LinksysVelopMeshOfflineDevicesSensor(LinksysVelopMeshSensorPolled):
         return len(self._get_devices(status=self._device_state))
 
 
-class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshSensorPolled):
+class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the online devices' sensor for the mesh"""
 
     _attribute = "Online Devices"
     _attr_state_class = STATE_CLASS_MEASUREMENT
     _device_state = True
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -133,7 +116,7 @@ class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshSensorPolled):
         return len(self._get_devices(status=self._device_state))
 
 
-class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled):
+class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the latest Speedtest details for the mesh"""
 
     _attribute = "Speedtest Latest"
@@ -161,10 +144,6 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled):
         )
 
     @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
-
-    @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Set the additional attributes for the sensor"""
 
@@ -186,14 +165,10 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled):
         return ret
 
 
-class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the devices connected to a node"""
 
     _attribute = "Connected devices"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -213,14 +188,10 @@ class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodeSensorPolled):
         return ret
 
 
-class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the current firmware sensor"""
 
     _attribute = "Version"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def native_value(self) -> StateType:
@@ -229,17 +200,11 @@ class LinksysVelopNodeCurrentFirmwareSensor(LinksysVelopNodeSensorPolled):
         return self._node.firmware.get("version", None)
 
 
-class LinksysVelopNodeLastFirmwareUpdateCheckSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeLastFirmwareUpdateCheckSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the last firmware update check sensor"""
 
     _attribute = "Last Update Check"
     _attr_device_class = DEVICE_CLASS_TIMESTAMP
-
-    @property
-    def entity_category(self) -> Optional[str]:
-        """"""
-
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def entity_registry_enabled_default(self) -> bool:
@@ -258,14 +223,10 @@ class LinksysVelopNodeLastFirmwareUpdateCheckSensor(LinksysVelopNodeSensorPolled
         return ret
 
 
-class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the current firmware sensor"""
 
     _attribute = "Newest Version"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def native_value(self) -> StateType:
@@ -274,14 +235,10 @@ class LinksysVelopNodeLatestFirmwareSensor(LinksysVelopNodeSensorPolled):
         return self._node.firmware.get("latest_version", None)
 
 
-class LinksysVelopNodeModelSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeModelSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the model sensor"""
 
     _attribute = "Model"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def native_value(self) -> StateType:
@@ -290,15 +247,11 @@ class LinksysVelopNodeModelSensor(LinksysVelopNodeSensorPolled):
         return self._node.model
 
 
-class LinksysVelopNodeParentSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeParentSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the parent name sensor"""
 
     _attribute = "Parent"
     _attr_icon = "hass:family-tree"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
@@ -316,15 +269,11 @@ class LinksysVelopNodeParentSensor(LinksysVelopNodeSensorPolled):
         return self._node.parent_name
 
 
-class LinksysVelopNodeSerialSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeSerialSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the serial number sensor"""
 
     _attribute = "Serial"
     _attr_icon = "hass:barcode"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def native_value(self) -> StateType:
@@ -333,14 +282,10 @@ class LinksysVelopNodeSerialSensor(LinksysVelopNodeSensorPolled):
         return self._node.serial
 
 
-class LinksysVelopNodeTypeSensor(LinksysVelopNodeSensorPolled):
+class LinksysVelopNodeTypeSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
     """Representation of the node type sensor"""
 
     _attribute = "Type"
-
-    @property
-    def entity_category(self) -> Union[str, None]:
-        return ENTITY_CATEGORY_DIAGNOSTIC
 
     @property
     def native_value(self) -> StateType:
