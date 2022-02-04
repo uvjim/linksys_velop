@@ -1,8 +1,4 @@
 """Switches for the mesh"""
-
-import logging
-from typing import Any, Mapping
-
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
 try:
@@ -11,6 +7,9 @@ try:
 except ImportError:
     SwitchDeviceClass = None
     from homeassistant.components.switch import DEVICE_CLASS_SWITCH
+    
+import logging
+from typing import Any, Mapping
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
