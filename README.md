@@ -3251,344 +3251,354 @@ To create this view a number of custom cards have been used.  These are: -
   <summary>YAML for the view</summary>
 
   ```yaml
-  - title: Mesh
-    path: mesh
-    icon: ''
-    badges: []
+  - title: Velop
+    path: velop
     cards:
       - type: custom:button-card
         color_type: blank-card
       - type: custom:stack-in-card
-cards:
-  - type: custom:button-card
-    entity: binary_sensor.velop_mesh_wan_status
-    show_name: false
-    icon: hass:web
-    tap_action:
-      action: none
-    custom_fields:
-      attr_dns_servers: >-
-        [[[ if (entity.attributes.dns.length ) { return entity.attributes.dns }
-        ]]]
-      attr_public_ip: '[[[ return entity.attributes.ip ]]]'
-      attr_speedtest_latest: |
-        [[[
-          var entity_speedtest = states['sensor.velop_mesh_speedtest_latest_2']
-          if (entity_speedtest.state !== 'unknown') {
-            var d = new Date(entity_speedtest.state)
-            return d.toLocaleString()
-          }
-        ]]]
-      attr_speedtest_details: |
-        [[[
-          var round2 = (num) => Math.round(num * 100) / 100
-          var spacing_internal = 5
-          var spacing_external = 30
-          var icon_size = 22
-          var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']
-          if (entity_speedtest.state !== 'unknown') {
-            var latency = entity_speedtest.attributes.latency
-            var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
-            var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
-
-            return `<span style="margin-right: ${spacing_external}px;">
-                      <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
-                      <span>${latency}ms</span>
-                    </span>
-                    <span style="margin-right: ${spacing_external}px;">
-                      <ha-icon icon="hass:cloud-download-outline" style="width: ${icon_size}px;"></ha-icon>
-                      <span>${download_bandwidth} Mbps</span>
-                    </span>
-                    <span>
-                      <ha-icon icon="hass:cloud-upload-outline" style="width: ${icon_size}px;"></ha-icon>
-                      <span>${upload_bandwidth} Mbps</span>
-                    </span>
-                    `
-          } else {
-            return `<span>No Speedtest results yet</span>`
-          }
-        ]]]
-    state:
-      - value: 'on'
-        color: darkcyan
-      - value: 'off'
-        color: darkred
-    styles:
-      card:
-        - padding: 16px
-      grid:
-        - grid-template-areas: >-
-            "attr_dns_servers . attr_public_ip" "i i i" "attr_speedtest_details
-            attr_speedtest_details attr_speedtest_details"
-            "attr_speedtest_latest attr_speedtest_latest attr_speedtest_latest"
-        - grid-template-rows: 5% 1fr 15% 5%
-        - grid-template-columns: 1fr min-content 1fr
-      custom_fields:
-        attr_dns_servers:
-          - justify-self: self-start
-        attr_public_ip:
-          - justify-self: self-end
-    extra_styles: |
-      div[id^="attr_"] { font-size: smaller; color: var(--disabled-text-color);
-      }
-      div[id^="attr_speedtest_"] { margin-top: 10px; }
-      #attr_speedtest_latest::before { content: 'As at:' }
-      #attr_public_ip::before { content: 'Public IP: ' }
-      #attr_dns_servers::before { content: 'DNS: ' }
-  - type: entities
-    entities:
-      - type: conditional
-        conditions:
-          - entity: binary_sensor.velop_mesh_speedtest_status
-            state: 'on'
-        row:
-          type: divider
-      - type: conditional
-        conditions:
-          - entity: binary_sensor.velop_mesh_speedtest_status
-            state: 'on'
-        row:
-          type: custom:button-card
-          entity: binary_sensor.velop_mesh_speedtest_status
-          show_icon: false
-          show_name: false
-          show_label: true
-          label: '[[[ return entity.attributes.status ]]]'
-          tap_action:
-            action: none
-          styles:
-            card:
-              - box-shadow: none
-              - padding: 4px
-        card_mod:
-          style:
-            hui-attribute-row$:
-              hui-generic-entity-row$: |
-                state-badge, .info.pointer.text-content { display: none; }
-              hui-generic-entity-row: >
-                div { text-align: center !important; width: 100%; margin: 0;
-                padding: 4px; }
-      - type: divider
-      - type: custom:stack-in-card
-        mode: horizontal
-        keep:
-          margin: true
-        card_mod:
-          style: |
-            ha-card { box-shadow: none }
         cards:
           - type: custom:button-card
-            tap_action:
-              action: call-service
-              service: linksys_velop.check_updates
-            name: Check for Update
-            icon: hass:update
-            state:
-              - value: 'on'
-                color: darkcyan
-                icon: hass:refresh
-                spin: true
-              - value: 'off'
-                color: var(--primary-text-color)
-            styles:
-              card:
-                - margin-bottom: 3px
-              name:
-                - white-space: normal
-                - font-size: smaller
-          - type: custom:button-card
-            entity: switch.velop_mesh_guest_wi_fi
+            entity: binary_sensor.velop_mesh_wan_status
+            show_name: false
+            icon: hass:web
             tap_action:
               action: none
-            name: Guest<br />Wi-Fi
+            custom_fields:
+              attr_dns_servers: '[[[ return entity.attributes.dns ]]]'
+              attr_public_ip: '[[[ return entity.attributes.ip ]]]'
+              attr_speedtest_latest: |
+                [[[
+                  var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']          
+                  var d = new Date(entity_speedtest.state)
+                  return d.toLocaleString()
+                ]]]
+              attr_speedtest_details: |
+                [[[
+                  var round2 = (num) => Math.round(num * 100) / 100
+                  var spacing_internal = 5
+                  var spacing_external = 30
+                  var icon_size = 22
+                  var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']
+                  var latency = entity_speedtest.attributes.latency
+                  var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
+                  var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
+
+                  return `<span style="margin-right: ${spacing_external}px;">
+                            <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
+                            <span>${latency}ms</span>
+                          </span>
+                          <span style="margin-right: ${spacing_external}px;">
+                            <ha-icon icon="hass:cloud-download-outline" style="width: ${icon_size}px;"></ha-icon>
+                            <span>${download_bandwidth} Mbps</span>
+                          </span>
+                          <span>
+                            <ha-icon icon="hass:cloud-upload-outline" style="width: ${icon_size}px;"></ha-icon>
+                            <span>${upload_bandwidth} Mbps</span>
+                          </span>
+                          `
+                ]]]
             state:
               - value: 'on'
                 color: darkcyan
               - value: 'off'
-                color: var(--primary-text-color)
+                color: darkred
             styles:
               card:
-                - margin-bottom: 3px
-              name:
-                - font-size: smaller
-                - color: |
-                    [[[
-                      var ret = 'var(--primary-text-color)'
-                      if (entity.state == 'on') {
-                        ret = 'darkcyan'
-                      }
-                      return ret
-                    ]]]
-          - type: custom:button-card
-            entity: switch.velop_mesh_parental_control
-            tap_action:
-              action: toggle
-            name: Parental<br />Control
-            state:
-              - value: 'on'
-                color: darkcyan
-              - value: 'off'
-                color: var(--primary-text-color)
-            styles:
-              card:
-                - margin-bottom: 3px
-              name:
-                - font-size: smaller
-                - color: |
-                    [[[
-                      var ret = 'var(--primary-text-color)'
-                      if (entity.state == 'on') {
-                        ret = 'darkcyan'
-                      }
-                      return ret
-                    ]]]
-          - type: custom:button-card
-            entity: binary_sensor.velop_mesh_speedtest_status
-            tap_action:
-              action: call-service
-              service: linksys_velop.start_speedtest
-            name: Speedtest
-            icon: hass:refresh
-            state:
-              - value: 'on'
-                color: darkcyan
-                spin: true
-              - value: 'off'
-                color: var(--primary-text-color)
-            styles:
-              card:
-                - margin-bottom: 3px
-              name:
-                - font-size: smaller
-                - color: |
-                    [[[
-                      var ret = 'var(--primary-text-color)'
-                      if (entity.state == 'on') {
-                        ret = 'darkcyan'
-                      }
-                      return ret
-                    ]]]
-      - type: divider
-      - type: custom:fold-entity-row
-        padding: 0
-        clickable: true
-        head:
-          type: custom:template-entity-row
-          entity: sensor.velop_mesh_online_devices
-          tap_action:
-            action: fire-dom-event
-            fold_row: true
-          name: >-
-            {% set friendly_name = state_attr(config.entity, 'friendly_name') %}
-            {% if friendly_name %}
-              {{ friendly_name.split(':')[1].strip() }}
-            {% endif %}
-          card_mod:
-            style: |
-              state-badge { display: none; }
-              state-badge + div { margin-left: 8px !important; }
-              .info.pointer { font-weight: 500; }
-              .state { margin-right: 10px; }
-        entities:
-          - type: custom:hui-element
-            card_type: markdown
-            card_mod:
-              style:
-                .: |
-                  ha-card { border-radius: 0px; box-shadow: none; }
-                  ha-markdown { padding: 16px 0px 0px !important; }
-                ha-markdown$: >
-                  table { width: 100%; border-collapse: separate;
-                  border-spacing: 0px; }
+                - padding: 16px
+              grid:
+                - grid-template-areas: >-
+                    "attr_dns_servers . attr_public_ip" "i i i"
+                    "attr_speedtest_details attr_speedtest_details
+                    attr_speedtest_details" "attr_speedtest_latest
+                    attr_speedtest_latest attr_speedtest_latest"
+                - grid-template-rows: 5% 1fr 15% 5%
+                - grid-template-columns: 1fr min-content 1fr
+              custom_fields:
+                attr_dns_servers:
+                  - justify-self: self-start
+                attr_public_ip:
+                  - justify-self: self-end
+            extra_styles: >
+              div[id^="attr_"] { font-size: smaller; color:
+              var(--disabled-text-color);
 
-                  tbody tr:nth-child(2n+1) { background-color:
-                  var(--table-row-background-color); }
+              }
 
-                  thead tr th, tbody tr td { padding: 4px 10px; }
-            content: >
-              {% set devices = state_attr('sensor.velop_mesh_online_devices',
-              'devices') %} | # | Name | IP | Type |
+              div[id^="attr_speedtest_"] { margin-top: 10px; }
 
-              |:---:|---|---|:---:| {%- for device in devices -%}
-                {% set idx = loop.index %}
-                {%- for device_name, device_details in device.items() -%}
-                  {%- set device_ip = device_details.keys() | list | first -%}
-                  {%- set connection_type = device_details.values() | list | first | lower -%}
-                  {%- if connection_type == "wired" -%}
-                    {%- set connection_icon = "ethernet" -%}
-                  {% elif connection_type == "wireless" -%}
-                    {%- set connection_icon = "wifi" -%}
-                  {% elif connection_type == "unknown" -%}
-                    {%- set connection_icon = "help" -%}
-                  {% else -%}
-                    {%- set connection_icon = "" -%}
-                  {%- endif %}
-              {{ "| {} | {} | {} | {} |".format(idx, device_name, device_ip,
-              '<ha-icon icon="hass:' ~ connection_icon ~ '"></ha-icon>') }}
-                {%- endfor %}
-              {%- endfor %}
-      - type: custom:fold-entity-row
-        padding: 0
-        clickable: true
-        head:
-          type: custom:template-entity-row
-          entity: sensor.velop_mesh_offline_devices
-          tap_action:
-            action: fire-dom-event
-            fold_row: true
-          name: >-
-            {% set friendly_name = state_attr(config.entity, 'friendly_name') %}
-            {% if friendly_name %}
-              {{ friendly_name.split(':')[1].strip() }}
-            {% endif %}
-          card_mod:
-            style: |
-              state-badge { display: none; }
-              state-badge + div { margin-left: 8px !important; }
-              .info.pointer { font-weight: 500; }
-              .state { margin-right: 10px; }
-        entities:
-          - type: custom:hui-element
-            card_type: markdown
-            card_mod:
-              style:
-                .: |
-                  ha-card { border-radius: 0px; box-shadow: none; }
-                  ha-markdown { padding: 16px 0px 0px !important; }
-                ha-markdown$: >
-                  table { width: 100%; border-collapse: separate;
-                  border-spacing: 0px; }
+              #attr_speedtest_latest::before { content: 'As at:' }
 
-                  tbody tr:nth-child(2n+1) { background-color:
-                  var(--table-row-background-color); }
+              #attr_public_ip::before { content: 'Public IP: ' }
 
-                  thead tr th, tbody tr td { padding: 4px 10px; }
-            content: >
-              {% set devices = state_attr('sensor.velop_mesh_offline_devices',
-              'devices') %}
+              #attr_dns_servers::before { content: 'DNS: ' }
+          - type: entities
+            entities:
+              - type: conditional
+                conditions:
+                  - entity: binary_sensor.velop_mesh_speedtest_status
+                    state: 'on'
+                row:
+                  type: section
+              - type: conditional
+                card_mod:
+                  style:
+                    template-entity-row$: >
+                      state-badge, div.state { display: none; }
 
-              | # | Name |
+                      div.info { text-align: center !important; width: 100%;
+                      margin: 0; padding: 4px; }
+                conditions:
+                  - entity: binary_sensor.velop_mesh_speedtest_status
+                    state: 'on'
+                row:
+                  type: custom:button-card
+                  entity: binary_sensor.velop_mesh_speedtest_status
+                  show_icon: false
+                  show_name: false
+                  show_label: true
+                  label: '[[[ return entity.attributes.status ]]]'
+                  tap_action:
+                    action: none
+                  styles:
+                    card:
+                      - box-shadow: none
+                      - padding: 4px
+              - type: section
+              - type: custom:stack-in-card
+                mode: horizontal
+                keep:
+                  margin: true
+                card_mod:
+                  style: |
+                    ha-card { box-shadow: none }
+                cards:
+                  - type: custom:button-card
+                    tap_action:
+                      action: call-service
+                      service: linksys_velop.check_updates
+                    name: Check for Update
+                    icon: hass:update
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                        icon: hass:refresh
+                        spin: true
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - white-space: normal
+                        - font-size: smaller
+                  - type: custom:button-card
+                    entity: switch.velop_mesh_guest_wi_fi
+                    tap_action:
+                      action: none
+                    name: Guest<br />Wi-Fi
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+                  - type: custom:button-card
+                    entity: switch.velop_mesh_parental_control
+                    tap_action:
+                      action: toggle
+                    name: Parental<br />Control
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+                  - type: custom:button-card
+                    entity: binary_sensor.velop_mesh_speedtest_status
+                    tap_action:
+                      action: call-service
+                      service: linksys_velop.start_speedtest
+                    name: Speedtest
+                    icon: hass:refresh
+                    state:
+                      - value: 'on'
+                        color: darkcyan
+                        spin: true
+                      - value: 'off'
+                        color: var(--primary-text-color)
+                    styles:
+                      card:
+                        - margin-bottom: 3px
+                      name:
+                        - font-size: smaller
+                        - color: |
+                            [[[
+                              var ret = 'var(--primary-text-color)'
+                              if (entity.state == 'on') {
+                                ret = 'darkcyan'
+                              }
+                              return ret
+                            ]]]
+              - type: section
+              - type: custom:fold-entity-row
+                padding: 0
+                clickable: true
+                head:
+                  type: custom:template-entity-row
+                  entity: sensor.velop_mesh_online_devices
+                  tap_action:
+                    action: fire-dom-event
+                    fold_row: true
+                  name: >-
+                    {% set friendly_name = state_attr(config.entity,
+                    'friendly_name') %} {% if friendly_name %}
+                      {{ friendly_name.split(':')[1].strip() }}
+                    {% endif %}
+                  card_mod:
+                    style: |
+                      state-badge { display: none; }
+                      state-badge + div { margin-left: 8px !important; }
+                      .info.pointer { font-weight: 500; }
+                      .state { margin-right: 10px; }
+                entities:
+                  - type: custom:hui-element
+                    card_type: markdown
+                    card_mod:
+                      style:
+                        .: |
+                          ha-card { border-radius: 0px; box-shadow: none; }
+                          ha-markdown { padding: 16px 0px 0px !important; }
+                        ha-markdown$: >
+                          table { width: 100%; border-collapse: separate;
+                          border-spacing: 0px; }
 
-              |:---:|---|
+                          tbody tr:nth-child(2n+1) { background-color:
+                          var(--table-row-background-color); }
 
-              {% for device in devices %} {{ "| {} | {} |".format(loop.index,
-              device) }}
+                          thead tr th, tbody tr td { padding: 4px 10px; }
+                    content: >
+                      {% set devices =
+                      state_attr('sensor.velop_mesh_online_devices', 'devices')
+                      %} | # | Name | IP | Type |
 
-              {% endfor %}
+                      |:---:|---|---|:---:| {%- for device in devices -%}
+                        {% set idx = loop.index %}
+                        {%- for device_name, device_details in device.items() -%}
+                          {%- set device_ip = device_details.keys() | list | first -%}
+                          {%- set connection_type = device_details.values() | list | first | lower -%}
+                          {%- if connection_type == "wired" -%}
+                            {%- set connection_icon = "ethernet" -%}
+                          {% elif connection_type == "wireless" -%}
+                            {%- set connection_icon = "wifi" -%}
+                          {% elif connection_type == "unknown" -%}
+                            {%- set connection_icon = "help" -%}
+                          {% else -%}
+                            {%- set connection_icon = "" -%}
+                          {%- endif %}
+                      {{ "| {} | {} | {} | {} |".format(idx, device_name,
+                      device_ip, '<ha-icon icon="hass:' ~ connection_icon ~
+                      '"></ha-icon>') }}
+                        {%- endfor %}
+                      {%- endfor %}
+              - type: custom:fold-entity-row
+                padding: 0
+                clickable: true
+                head:
+                  type: custom:template-entity-row
+                  entity: sensor.velop_mesh_offline_devices
+                  tap_action:
+                    action: fire-dom-event
+                    fold_row: true
+                  name: >-
+                    {% set friendly_name = state_attr(config.entity,
+                    'friendly_name') %} {% if friendly_name %}
+                      {{ friendly_name.split(':')[1].strip() }}
+                    {% endif %}
+                  card_mod:
+                    style: |
+                      state-badge { display: none; }
+                      state-badge + div { margin-left: 8px !important; }
+                      .info.pointer { font-weight: 500; }
+                      .state { margin-right: 10px; }
+                entities:
+                  - type: custom:hui-element
+                    card_type: markdown
+                    card_mod:
+                      style:
+                        .: |
+                          ha-card { border-radius: 0px; box-shadow: none; }
+                          ha-markdown { padding: 16px 0px 0px !important; }
+                        ha-markdown$: >
+                          table { width: 100%; border-collapse: separate;
+                          border-spacing: 0px; }
+
+                          tbody tr:nth-child(2n+1) { background-color:
+                          var(--table-row-background-color); }
+
+                          thead tr th, tbody tr td { padding: 4px 10px; }
+                    content: >
+                      {% set devices =
+                      state_attr('sensor.velop_mesh_offline_devices', 'devices')
+                      %}
+
+                      | # | Name |
+
+                      |:---:|---|
+
+                      {% for device in devices %} {{ "| {} | {}
+                      |".format(loop.index, device) }}
+
+                      {% endfor %}
       - type: custom:auto-entities
         card:
           type: vertical-stack
         card_param: cards
+        sort:
+          method: friendly_name
+          reverse: false
         filter:
           include:
             - entity_id: /^binary_sensor\.velop_(?!(mesh)).*_status/
               options:
                 type: custom:config-template-card
                 variables:
+                  ID_BUTTON: >
+                    "button." +
+                    "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
+                    + "_reboot"
                   ID_CONNECTED_DEVICES: >
                     "sensor." +
                     "this.entity_id".split(".")[1].split("_").slice(0,
                     -1).join("_") + "_connected_devices"
+                  ID_LAST_UPDATE_CHECK: >
+                    "sensor." +
+                    "this.entity_id".split(".")[1].split("_").slice(0,
+                    -1).join("_") + "_last_update_check"
                   ID_MODEL: >
                     "sensor." +
                     "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
@@ -3622,7 +3632,7 @@ cards:
                               connection_icon = "ethernet"
                               break
                             case "unknown":
-                              connection_icon = "question"
+                              connection_icon = "help"
                               break
                           }
                           ret += "| " + (idx + 1) + " | " + device.name + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
@@ -3632,7 +3642,9 @@ cards:
                     }
                 entities:
                   - this.entity_id
+                  - ${ID_BUTTON}
                   - ${ID_CONNECTED_DEVICES}
+                  - ${ID_LAST_UPDATE_CHECK}
                   - ${ID_MODEL}
                   - ${ID_PARENT}
                   - ${ID_SERIAL}
@@ -3700,11 +3712,12 @@ cards:
                           - padding: 16px
                         grid:
                           - grid-template-areas: >-
-                              "n n n" "i attr_label_model attr_model" "i
+                              "n n attr_update s" "i attr_label_model
+                              attr_label_model attr_model" "i attr_label_serial
                               attr_label_serial attr_serial" "i attr_label_ip
-                              attr_ip" "l l attr_parent"
+                              attr_label_ip attr_ip" "l l l attr_parent"
                           - grid-template-rows: 1fr 1fr 1fr 1fr 1fr
-                          - grid-template-columns: 15% 1fr max-content
+                          - grid-template-columns: 15% 1fr 30px 30px
                         name:
                           - font-size: larger
                           - justify-self: start
@@ -3712,17 +3725,19 @@ cards:
                         label:
                           - justify-self: start
                         custom_fields:
+                          attr_label_last_update_check:
+                            - margin-left: 0px
+                          attr_last_update_check:
+                            - justify-self: end
                           attr_parent:
                             - justify-self: end
                           attr_update:
-                            - position: absolute
-                            - top: 8px
-                            - right: 48px
                             - color: darkred
+                            - justify-self: end
+                            - padding-bottom: 20px
                         state:
-                          - position: absolute
-                          - top: 8px
-                          - right: 16px
+                          - justify-self: end
+                          - padding-bottom: 20px
                           - color: |-
                               [[[
                                 return (entity.state == 'on' ? 'darkcyan' : 'darkred')
@@ -3730,32 +3745,71 @@ cards:
                     - type: entities
                       card_mod:
                         style: |
-                          #states { padding-left: 8px; padding-right: 8px; }
+                          #states { padding-left: 8px; }
                       entities:
-                        - type: divider
+                        - type: conditional
+                          card_mod:
+                            style:
+                              fold-entity-row:
+                                $: |
+                                  #head[open] + #items { padding-top: 10px; }
+                          conditions:
+                            - entity: ${ID_LAST_UPDATE_CHECK}
+                              state_not: unavailable
+                          row:
+                            type: custom:fold-entity-row
+                            padding: 0
+                            group_config:
+                              card_mod:
+                                style:
+                                  hui-generic-entity-row:
+                                    $: >
+                                      state-badge { display: none; }
+
+                                      state-badge + div { margin-left: 8px
+                                      !important; }
+                            head:
+                              type: section
+                              label: Additional Information
+                            entities:
+                              - entity: ${ID_LAST_UPDATE_CHECK}
+                                name: Last update check
+                        - type: conditional
+                          conditions:
+                            - entity: ${ID_BUTTON}
+                              state_not: unavailable
+                          row:
+                            type: custom:fold-entity-row
+                            padding: 0
+                            head:
+                              type: section
+                              label: Actions
+                            entities:
+                              - type: buttons
+                                entities:
+                                  - entity: ${ID_BUTTON}
+                                    name: Reboot
+                                    tap_action:
+                                      action: call-service
+                                      service: linksys_velop.reboot_node
+                                      service_data:
+                                        node_name: >-
+                                          ${states["this.entity_id"].attributes.friendly_name.split(':')[0].replace('Velop',
+                                          '').trim()}
+                                      confirmation:
+                                        text: >-
+                                          ${'Are you sure you want to reboot the '
+                                          +
+                                          states["this.entity_id"].attributes.friendly_name.split(':')[0].replace('Velop',
+                                          '').trim() + ' node?'}
+                        - type: section
                         - type: custom:fold-entity-row
                           padding: 0
-                          clickable: true
-                          group_config:
-                            card_mod:
-                              style:
-                                hui-generic-entity-row:
-                                  $: >
-                                    state-badge { display: none; }
-
-                                    state-badge + div { margin-left: 8px
-                                    !important; }
                           head:
                             type: custom:template-entity-row
-                            entity: ${ID_CONNECTED_DEVICES}
                             tap_action:
                               action: fire-dom-event
                               fold_row: true
-                            name: >-
-                              {% set name = state_attr(config.entity,
-                              'friendly_name') %} {% if name %}
-                                {{ name.split(':')[1].strip() }}
-                              {% endif %}
                             card_mod:
                               style: >
                                 state-badge { display: none; }
@@ -3766,9 +3820,16 @@ cards:
                                 .info.pointer { font-weight: 500; }
 
                                 .state { margin-right: 10px; }
+                            entity: ${ID_CONNECTED_DEVICES}
+                            name: >-
+                              {% set name = state_attr(config.entity,
+                              'friendly_name') %} {% if name %}
+                                {{ name.split(':')[1].strip() }}
+                              {% endif %}
                           entities:
                             - type: custom:hui-element
                               card_type: markdown
+                              content: ${CONNECTED_DEVICES_TEXT(ID_CONNECTED_DEVICES)}
                               card_mod:
                                 style:
                                   .: >
@@ -3786,7 +3847,6 @@ cards:
 
                                     thead tr th, tbody tr td { padding: 4px
                                     10px; }
-                              content: ${CONNECTED_DEVICES_TEXT(ID_CONNECTED_DEVICES)}
   ```
 </details>
 
