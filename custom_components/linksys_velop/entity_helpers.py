@@ -1,9 +1,10 @@
 """Base classes for managing entities in the integration"""
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
+# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
 try:
     from homeassistant.helpers.entity import EntityCategory
 except ImportError:
     EntityCategory = None
+    # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
     try:
         from homeassistant.const import (
             ENTITY_CATEGORY_CONFIG,
