@@ -13,6 +13,7 @@ except ImportError:
         ENTITY_CATEGORY_CONFIG: str = ""
         ENTITY_CATEGORY_DIAGNOSTIC: str = ""
 
+# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
 try:
     from homeassistant.components.button import ButtonEntity
 except ImportError:
