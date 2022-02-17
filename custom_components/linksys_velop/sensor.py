@@ -167,6 +167,7 @@ class LinksysVelopMeshStorageSensor(LinksysVelopMeshSensorPolled, LinksysVelopDi
     """Representation of the available storage for the mesh"""
 
     _attribute = "Available Storage"
+    _attr_icon = "mdi:nas"
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
