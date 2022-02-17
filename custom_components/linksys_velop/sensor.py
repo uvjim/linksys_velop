@@ -255,7 +255,8 @@ class LinksysVelopNodeParentSensor(LinksysVelopNodeSensorPolled, LinksysVelopDia
         """Set the additional attributes to be the details of the parent node"""
 
         ret = {
-            "parent_ip": self._node.parent_ip
+            "parent_ip": self._node.parent_ip,
+            "backhaul": self._node.backhaul or None,
         }
         return ret
 
