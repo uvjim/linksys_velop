@@ -44,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         LinksysVelopMeshOfflineDevicesSensor,
         LinksysVelopMeshOnlineDevicesSensor,
         LinksysVelopMeshSpeedtestLatestSensor,
+        LinksysVelopMeshStorageSensor,
         LinksysVelopNodeConnectedDevicesSensor,
         LinksysVelopNodeCurrentFirmwareSensor,
         LinksysVelopNodeLastFirmwareUpdateCheckSensor,
@@ -160,6 +161,28 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensorPolled, Linksy
         if self._value:
             ret = dt_util.parse_datetime(self._value[0].get("timestamp"))
         return ret
+
+
+class LinksysVelopMeshStorageSensor(LinksysVelopMeshSensorPolled, LinksysVelopDiagnosticEntity):
+    """Representation of the available storage for the mesh"""
+
+    _attribute = "Available Storage"
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set the additional attributes for the sensor"""
+
+        ret = {
+            "partitions": self._mesh.storage_available
+        }
+
+        return ret
+
+    @property
+    def native_value(self) -> int:
+        """Set the value of the sensor to the time the results were generated"""
+
+        return len(self._mesh.storage_available)
 
 
 class LinksysVelopNodeConnectedDevicesSensor(LinksysVelopNodeSensorPolled, LinksysVelopDiagnosticEntity):
