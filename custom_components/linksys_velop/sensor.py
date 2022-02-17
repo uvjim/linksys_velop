@@ -173,7 +173,7 @@ class LinksysVelopMeshStorageSensor(LinksysVelopMeshSensorPolled, LinksysVelopDi
         """Set the additional attributes for the sensor"""
 
         ret = {
-            "partitions": self._mesh.storage_available
+            "partitions": self._mesh.storage_available or None
         }
 
         return ret
