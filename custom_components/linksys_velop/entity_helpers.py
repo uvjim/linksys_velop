@@ -53,6 +53,7 @@ from .const import (
     ENTITY_SLUG,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
+from .logger import VelopLogger
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -421,5 +422,5 @@ def entity_remove(
             unique_id=entity.unique_id,
         )
         if entity_id:
-            _LOGGER.debug("Removing entity_id: %s", entity_id)
+            _LOGGER.debug(VelopLogger().message_format("Removing entity_id: %s"), entity_id)
             entity_registry.async_remove(entity_id=entity_id)
