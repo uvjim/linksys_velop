@@ -155,7 +155,7 @@ async def _async_get_devices(mesh: Mesh) -> dict:
 
 
 class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the initial install ConfigFlow"""
+    """Handle the initial installation ConfigFlow"""
 
     # Paths:
     # 1. user() --> login --> timers --> device_trackers --> finish
@@ -321,6 +321,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="already_configured")
         # endregion
 
+        # abort if a flow is in progress or an instance already exists
+        if self._async_in_progress() or self._async_current_entries():
+            _LOGGER.debug("async_step_ssdp --> only a single instance is allowed")
+            return self.async_abort(reason="single_instance_allowed")
+
         # region #-- set a unique_id, update details if device has changed IP --#
         _LOGGER.debug("async_step_ssdp --> setting unique_id")
         await self.async_set_unique_id(_serial)
@@ -410,6 +415,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initiated by the user"""
 
         _LOGGER.debug("async_step_user --> user_input: %s", user_input)
+
+        # abort if an instance already exists
+        if self._async_current_entries():
+            _LOGGER.debug("async_step_user --> only a single instance is allowed")
+            return self.async_abort(reason="single_instance_allowed")
+
         if user_input is not None:
             self.task_login = None
             self._errors = {}
