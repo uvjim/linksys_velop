@@ -26,6 +26,7 @@ from .entity_helpers import (
     LinksysVelopDeviceTracker,
     LinksysVelopMeshEntity
 )
+from .logger import VelopLogger
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
         try:
             device = await mesh.async_get_device_from_id(device_id=device_tracker)
         except MeshDeviceNotFoundResponse:
-            _LOGGER.warning("Device tracker with id %s was not found", device_tracker)
+            _LOGGER.warning(VelopLogger().message_format("Device tracker with id %s was not found"), device_tracker)
         else:
             # region #-- add the connection info to the mesh device --#
             if mesh_device:
@@ -114,7 +115,9 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshE
         if latest_dt_status:
             self._latest_dt_status = latest_dt_status[0]
         else:
-            _LOGGER.warning("Device tracker with id %s was not found", self._device.unique_id)
+            _LOGGER.warning(
+                VelopLogger().message_format("Device tracker with id %s was not found"), self._device.unique_id
+            )
             self._latest_dt_status = None
 
         self.async_schedule_update_ha_state(force_refresh=True)

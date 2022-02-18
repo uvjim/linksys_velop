@@ -27,8 +27,8 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
+from .logger import VelopLogger
 from .service_handler import LinksysVelopServiceHandler
-
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         try:
             devices: List[Device] = await mesh.async_get_devices()
         except Exception as err:
-            _LOGGER.error(err)
+            _LOGGER.error(VelopLogger().message_format("%s"), err)
         else:
             async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER, devices)
 
