@@ -3256,6 +3256,7 @@ To create this view a number of custom cards have been used.  These are: -
   ```yaml
   - title: Velop
     path: velop
+    badges: []
     cards:
       - type: custom:button-card
         color_type: blank-card
@@ -3470,7 +3471,6 @@ To create this view a number of custom cards have been used.  These are: -
               - type: section
               - type: custom:fold-entity-row
                 padding: 0
-                clickable: true
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_online_devices
@@ -3509,7 +3509,7 @@ To create this view a number of custom cards have been used.  These are: -
                       state_attr('sensor.velop_mesh_online_devices', 'devices')
                       %} | # | Name | IP | Type |
 
-                      |:---:|---|---|:---:| {%- for device in devices -%}
+                      |:---:|:---|---:|:---:| {%- for device in devices -%}
                         {% set idx = loop.index %}
                         {%- for device_name, device_details in device.items() -%}
                           {%- set device_ip = device_details.keys() | list | first -%}
@@ -3530,7 +3530,6 @@ To create this view a number of custom cards have been used.  These are: -
                       {%- endfor %}
               - type: custom:fold-entity-row
                 padding: 0
-                clickable: true
                 head:
                   type: custom:template-entity-row
                   entity: sensor.velop_mesh_offline_devices
@@ -3571,12 +3570,54 @@ To create this view a number of custom cards have been used.  These are: -
 
                       | # | Name |
 
-                      |:---:|---|
+                      |:---:|:---|
 
                       {% for device in devices %} {{ "| {} | {}
                       |".format(loop.index, device) }}
 
                       {% endfor %}
+              - type: conditional
+                conditions:
+                  - entity: sensor.velop_mesh_available_storage
+                    state_not: '0'
+                  - entity: sensor.velop_mesh_available_storage
+                    state_not: unavailable
+                row:
+                  type: custom:fold-entity-row
+                  padding: 0
+                  head:
+                    type: section
+                    label: Storage
+                  entities:
+                    - type: custom:hui-element
+                      card_type: markdown
+                      card_mod:
+                        style:
+                          .: |
+                            ha-card { border-radius: 0px; box-shadow: none; }
+                            ha-markdown { padding: 16px 0px 0px !important; }
+                          ha-markdown$: >
+                            table { width: 100%; border-collapse: separate;
+                            border-spacing: 0px; }
+
+                            tbody tr:nth-child(2n+1) { background-color:
+                            var(--table-row-background-color); }
+
+                            thead tr th, tbody tr td { padding: 4px 10px; }
+                      content: >
+                        {% set partitions =
+                        state_attr('sensor.velop_mesh_available_storage',
+                        'partitions') %}
+
+                        | Host | Label | %age used
+
+                        |:---:|:---:|:---:|
+
+                        {% for partition in partitions %} {{ "| {} | {} | {}
+                        |".format(partition.ip, partition.label,
+                        partition.used_percent) }}
+
+                        {% endfor %}
       - type: custom:auto-entities
         card:
           type: vertical-stack
@@ -3622,7 +3663,7 @@ To create this view a number of custom cards have been used.  These are: -
                     (entity_id) => {
                       var ret = `
                     | # | Name | IP | Type |
-                    |:---:|---|---|:---:|
+                    |:---:|:---|---:|:---:|
                     `
                       if (states[entity_id].attributes.devices) {
                         states[entity_id].attributes.devices.forEach((device, idx) => {
