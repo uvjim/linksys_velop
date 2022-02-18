@@ -196,7 +196,7 @@ class LinksysVelopMeshWANBinarySensor(LinksysVelopMeshBinarySensorPolled, Linksy
 
         return {
             "ip": self._mesh.wan_ip,
-            "dns": self._mesh.wan_dns,
+            "dns": self._mesh.wan_dns or None,
             "mac": self._mesh.wan_mac,
         }
 
