@@ -48,6 +48,9 @@ install time and from reconfiguring the integration.
   - list of device names, IP addresses and adapter types that are online
 - Mesh: Date of Latest Speedtest
   - Exit code, Latency, Download/Upload bandwidth, Result ID
+- Mesh: Number of Available Storage Partitions *(disabled by default)*
+  - list of the available partitions including the following information: IP, 
+    label, available Kb, used Kb, used %age and last checked time
 - Node: Number of Connected Devices
   - list of device names and IP addresses that are connected
 - Node: Current Firmware Version
