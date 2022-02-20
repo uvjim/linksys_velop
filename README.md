@@ -3624,7 +3624,7 @@ To create this view a number of custom cards have been used.  These are: -
         card_param: cards
         sort:
           method: friendly_name
-          reverse: true
+          reverse: false
         filter:
           include:
             - entity_id: /^binary_sensor\.velop_(?!(mesh)).*_status/
