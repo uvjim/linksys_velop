@@ -3624,17 +3624,39 @@ To create this view a number of custom cards have been used.  These are: -
         card_param: cards
         sort:
           method: friendly_name
-          reverse: false
+          reverse: true
         filter:
           include:
             - entity_id: /^binary_sensor\.velop_(?!(mesh)).*_status/
               options:
                 type: custom:config-template-card
                 variables:
-                  ID_BUTTON: >
-                    "button." +
-                    "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
-                    + "_reboot"
+                  BUTTONS: |
+                    () => {
+                      var ret = []
+                      var entity_prefix = "button." + "this.entity_id".split(".")[1].split("_").slice(0, -1).join("_")
+                      for (var entity_id in states) {
+                        if (entity_id.startsWith(entity_prefix)) {
+                          var entity_action = states[entity_id].attributes.friendly_name.split(':')[1].trim()
+                          var entity_name = states[entity_id].attributes.friendly_name.split(':')[0].replace('Velop', '').trim()
+                          ret.push({
+                            'entity': entity_id,
+                            'name': entity_action,
+                            'tap_action': {
+                                'action': 'call-service',
+                                'service': 'linksys_velop.' + entity_action.toLowerCase() + '_node',
+                                'service_data': {
+                                  'node_name': entity_name,
+                                },
+                                'confirmation': {
+                                  'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
+                              }
+                            }
+                          })
+                        }
+                      }
+                      return ret
+                    }
                   ID_CONNECTED_DEVICES: >
                     "sensor." +
                     "this.entity_id".split(".")[1].split("_").slice(0,
@@ -3686,7 +3708,6 @@ To create this view a number of custom cards have been used.  These are: -
                     }
                 entities:
                   - this.entity_id
-                  - ${ID_BUTTON}
                   - ${ID_CONNECTED_DEVICES}
                   - ${ID_LAST_UPDATE_CHECK}
                   - ${ID_MODEL}
@@ -3788,21 +3809,14 @@ To create this view a number of custom cards have been used.  These are: -
                               ]]]
                     - type: entities
                       card_mod:
-                        style: |
-                          #states { padding-left: 8px; }
+                        style:
+                          .: |
+                            #states { padding-left: 8px; }
                       entities:
-                        - type: conditional
-                          card_mod:
-                            style:
-                              fold-entity-row:
-                                $: |
-                                  #head[open] + #items { padding-top: 10px; }
-                          conditions:
-                            - entity: ${ID_LAST_UPDATE_CHECK}
-                              state_not: unavailable
-                          row:
+                        - type: custom:auto-entities
+                          show_empty: false
+                          card:
                             type: custom:fold-entity-row
-                            padding: 0
                             group_config:
                               card_mod:
                                 style:
@@ -3811,18 +3825,26 @@ To create this view a number of custom cards have been used.  These are: -
                                       state-badge { display: none; }
 
                                       state-badge + div { margin-left: 8px
-                                      !important; }
+                                      !important; padding-top: 10px; }
                             head:
                               type: section
                               label: Additional Information
-                            entities:
-                              - entity: ${ID_LAST_UPDATE_CHECK}
-                                name: Last update check
-                        - type: conditional
-                          conditions:
-                            - entity: ${ID_BUTTON}
-                              state_not: unavailable
-                          row:
+                            padding: 0
+                          filter:
+                            include:
+                              - entity_id: ${ID_LAST_UPDATE_CHECK}
+                                options:
+                                  name: Last update check
+                        - type: custom:auto-entities
+                          show_empty: false
+                          filter:
+                            include:
+                              - domain: button
+                                entity_id: >-
+                                  ${"/" +
+                                  "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
+                                  + "/"}
+                          card:
                             type: custom:fold-entity-row
                             padding: 0
                             head:
@@ -3830,22 +3852,7 @@ To create this view a number of custom cards have been used.  These are: -
                               label: Actions
                             entities:
                               - type: buttons
-                                entities:
-                                  - entity: ${ID_BUTTON}
-                                    name: Reboot
-                                    tap_action:
-                                      action: call-service
-                                      service: linksys_velop.reboot_node
-                                      service_data:
-                                        node_name: >-
-                                          ${states["this.entity_id"].attributes.friendly_name.split(':')[0].replace('Velop',
-                                          '').trim()}
-                                      confirmation:
-                                        text: >-
-                                          ${'Are you sure you want to reboot the '
-                                          +
-                                          states["this.entity_id"].attributes.friendly_name.split(':')[0].replace('Velop',
-                                          '').trim() + ' node?'}
+                                entities: ${BUTTONS()}
                         - type: section
                         - type: custom:fold-entity-row
                           padding: 0
