@@ -58,7 +58,8 @@ install time and from reconfiguring the integration.
 - Node: Model Number
 - Node: Newest Firmware Version
 - Node: Parent Name
-  - IP address of the parent
+  - IP address of the parent, backhaul information (connection type and 
+    speed in Mbps)
 - Node: Serial Number
 - Node: Type of Node, e.g. Primary Secondary
 
