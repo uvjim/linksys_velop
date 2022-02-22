@@ -447,6 +447,7 @@ cards:
                 {%- for device_name, device_details in device.items() -%}
                   {%- set device_ip = device_details.ip -%}
                   {%- set connection_type = device_details.connection | lower -%}
+                  {%- set guest_network = device_details.guest_network -%}
                   {%- if connection_type == "wired" -%}
                     {%- set connection_icon = "ethernet" -%}
                   {% elif connection_type == "wireless" -%}
@@ -456,8 +457,10 @@ cards:
                   {% else -%}
                     {%- set connection_icon = "" -%}
                   {%- endif %}
-              {{ "| {} | {} | {} | {} |".format(idx, device_name, device_ip,
-              '<ha-icon icon="hass:' ~ connection_icon ~ '"></ha-icon>') }}
+              {{ "| {} | {}{} | {} | {} |".format(idx, device_name,
+              '&nbsp;<ha-icon icon="hass:account-multiple"></ha-icon>' if
+              guest_network else '', device_ip, '<ha-icon icon="hass:' ~
+              connection_icon ~ '"></ha-icon>') }}
                 {%- endfor %}
               {%- endfor %}
       - type: custom:fold-entity-row
@@ -652,7 +655,7 @@ filter:
                       connection_icon = "help"
                       break
                   }
-                  ret += "| " + (idx + 1) + " | " + device.name + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
+                  ret += "| " + (idx + 1) + " | " + device.name + ((device.guest_network) ? "&nbsp;<ha-icon icon='hass:account-multiple'></ha-icon>" : "") + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
                 })
               }
               return ret
