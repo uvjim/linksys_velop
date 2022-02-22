@@ -98,10 +98,12 @@ class LinksysVelopMeshOnlineDevicesSensor(LinksysVelopMeshSensorPolled, LinksysV
             "devices": [
                 {
                     device.name: {
-                        adapter.get("ip"): adapter.get("type")
-                        for adapter in device.network
-                        if adapter.get("ip")
+                        "ip": adapter.get("ip"),
+                        "connection": adapter.get("type"),
+                        "guest_network": adapter.get("guest_network"),
                     }
+                    for adapter in device.network
+                    if adapter.get("ip")
                 }
                 for device in self._get_devices(status=self._device_state)
             ]

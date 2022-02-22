@@ -45,14 +45,16 @@ install time and from reconfiguring the integration.
 - Mesh: Number of Offline Devices
   - list of device names that are offline
 - Mesh: Number of Online Devices
-  - list of device names, IP addresses and adapter types that are online
+  - list of device names, IP addresses, adapter types and guest network 
+    state for the online devices
 - Mesh: Date of Latest Speedtest
   - Exit code, Latency, Download/Upload bandwidth, Result ID
 - Mesh: Number of Available Storage Partitions *(disabled by default)*
   - list of the available partitions including the following information: IP, 
     label, available Kb, used Kb, used %age and last checked time
 - Node: Number of Connected Devices
-  - list of device names and IP addresses that are connected
+  - list of names, IP addresses and guest network state for the connected 
+    devices
 - Node: Current Firmware Version
 - Node: Last Update Check *(disabled by default)*
 - Node: Model Number
@@ -443,8 +445,8 @@ cards:
               |:---:|:---|---:|:---:| {%- for device in devices -%}
                 {% set idx = loop.index %}
                 {%- for device_name, device_details in device.items() -%}
-                  {%- set device_ip = device_details.keys() | list | first -%}
-                  {%- set connection_type = device_details.values() | list | first | lower -%}
+                  {%- set device_ip = device_details.ip -%}
+                  {%- set connection_type = device_details.connection | lower -%}
                   {%- if connection_type == "wired" -%}
                     {%- set connection_icon = "ethernet" -%}
                   {% elif connection_type == "wireless" -%}
