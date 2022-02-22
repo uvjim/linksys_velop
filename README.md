@@ -331,7 +331,7 @@ cards:
           - type: custom:button-card
             entity: switch.velop_mesh_guest_wi_fi
             tap_action:
-              action: none
+              action: toggle
             name: Guest<br />Wi-Fi
             state:
               - value: 'on'
