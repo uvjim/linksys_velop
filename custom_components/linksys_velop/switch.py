@@ -9,11 +9,17 @@ except ImportError:
     from homeassistant.components.switch import DEVICE_CLASS_SWITCH
     
 import logging
-from typing import Any, Mapping
+from typing import (
+    Any,
+    Mapping,
+    Optional,
+)
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from pyvelop.device import Device
 
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .entity_helpers import (
@@ -85,6 +91,19 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelop
         await self._mesh.async_set_parental_control_state(state=to_state)
         self._state_value = to_state
         self.async_schedule_update_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+        """"""
+
+        device: Device
+        ret = {"rules": {
+            device.name: device.parental_control_schedule
+            for device in self._mesh.devices
+            if device.parental_control_schedule
+        }}
+
+        return ret
 
     @property
     def icon(self) -> str:
