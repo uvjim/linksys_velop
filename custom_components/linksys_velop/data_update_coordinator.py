@@ -51,8 +51,7 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_update_data(self) -> Mesh:
         """Fetch the latest data from the source
 
-        Will signal relevant sensors that have a state that needs updating more frequently or uses a state that is a
-        combination of the real state and one assumed by an action
+        Will signal relevant sensors that have a state that needs updating more frequently
         """
 
         try:

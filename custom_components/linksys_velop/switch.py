@@ -7,8 +7,9 @@ try:
 except ImportError:
     SwitchDeviceClass = None
     from homeassistant.components.switch import DEVICE_CLASS_SWITCH
-    
+
 import logging
+from abc import ABC
 from typing import (
     Any,
     Mapping,
@@ -18,7 +19,6 @@ from typing import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from pyvelop.device import Device
 
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
@@ -47,8 +47,84 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
     entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=switch_classes, hass=hass)
 
 
-# noinspection PyAbstractClass
-class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity):
+class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity, ABC):
+    """Representation of the switch entity for the guest Wi-Fi state"""
+
+    _attribute = "Guest Wi-Fi"
+    _attr_device_class = DEVICE_CLASS_SWITCH
+    _state_value: bool = False
+
+    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str):
+        """"""
+
+        self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
+
+        LinksysVelopMeshSwitch.__init__(
+            self,
+            mesh=coordinator.data,
+            identity=identity,
+        )
+
+    def update_state_value(self):
+        """"""
+
+        self._state_value = self._mesh.guest_wifi_enabled
+        self.async_schedule_update_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks and set initial status"""
+
+        self.update_state_value()
+        self.async_on_remove(
+            self._coordinator.async_add_listener(update_callback=self.update_state_value)
+        )
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the switch off"""
+
+        to_state: bool = False
+        await self._mesh.async_set_guest_wifi_state(state=to_state)
+        self._state_value = to_state
+        self.async_schedule_update_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the switch on"""
+
+        to_state: bool = True
+        await self._mesh.async_set_guest_wifi_state(state=to_state)
+        self._state_value = to_state
+        self.async_schedule_update_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Set additional attributes detailing the available guest networks"""
+
+        ret = {
+            f"network {idx}": network
+            for idx, network in enumerate(self._mesh.guest_wifi_details)
+        }
+        return ret
+
+    @property
+    def icon(self) -> str:
+        """Returns the icon for the switch"""
+
+        return "hass:wifi" if self.is_on else "hass:wifi-off"
+
+    @property
+    def is_on(self) -> bool:
+        """Returns True if the switch is on, False otherwise"""
+
+        return self._state_value
+
+    @property
+    def should_poll(self) -> bool:
+        """"""
+
+        return False
+
+
+class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity, ABC):
     """Representation of the switch entity for the Parental Control state"""
 
     _attribute = "Parental Control"
@@ -60,7 +136,11 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelop
 
         self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
 
-        LinksysVelopMeshSwitch.__init__(self, coordinator, identity)
+        LinksysVelopMeshSwitch.__init__(
+            self,
+            mesh=coordinator.data,
+            identity=identity,
+        )
 
     def update_state_value(self):
         """"""
@@ -117,70 +197,8 @@ class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelop
 
         return self._state_value
 
-
-# noinspection PyAbstractClass
-class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity):
-    """Representation of the switch entity for the guest Wi-Fi state"""
-
-    _attribute = "Guest Wi-Fi"
-    _attr_device_class = DEVICE_CLASS_SWITCH
-    _state_value: bool = False
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str):
+    @property
+    def should_poll(self) -> bool:
         """"""
 
-        self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
-
-        LinksysVelopMeshSwitch.__init__(self, coordinator, identity)
-
-    def update_state_value(self):
-        """"""
-
-        self._state_value = self._mesh.guest_wifi_enabled
-        self.async_schedule_update_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks and set initial status"""
-
-        self.update_state_value()
-        self.async_on_remove(
-            self._coordinator.async_add_listener(update_callback=self.update_state_value)
-        )
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off"""
-
-        to_state: bool = False
-        await self._mesh.async_set_guest_wifi_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on"""
-
-        to_state: bool = True
-        await self._mesh.async_set_guest_wifi_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set additional attributes detailing the available guest networks"""
-
-        ret = {
-            f"network {idx}": network
-            for idx, network in enumerate(self._mesh.guest_wifi_details)
-        }
-        return ret
-
-    @property
-    def icon(self) -> str:
-        """Returns the icon for the switch"""
-
-        return "hass:wifi" if self.is_on else "hass:wifi-off"
-
-    @property
-    def is_on(self) -> bool:
-        """Returns True if the switch is on, False otherwise"""
-
-        return self._state_value
+        return False
