@@ -9,7 +9,12 @@ except ImportError:
     from homeassistant.components.sensor import DEVICE_CLASS_TIMESTAMP
 
 import logging
-from typing import Mapping, Any, List, Optional
+from typing import (
+    Any,
+    List,
+    Mapping,
+    Optional,
+)
 
 from homeassistant.components.sensor import STATE_CLASS_MEASUREMENT
 from homeassistant.config_entries import ConfigEntry
@@ -19,9 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
 
-from .const import (
-    SIGNAL_UPDATE_SPEEDTEST_RESULTS
-)
+from .const import SIGNAL_UPDATE_SPEEDTEST_RESULTS
 from .entity_helpers import (
     entity_remove,
     entity_setup,
