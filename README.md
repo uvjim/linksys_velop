@@ -27,7 +27,7 @@ available.
 - Mesh: WAN Status
   - IP, DNS, MAC
 - Node: Status
-  - IP, MAC
+  - IP, MAC, guest network
 - Node: Update Available
 
 #### Buttons
@@ -53,15 +53,15 @@ install time and from reconfiguring the integration.
   - list of the available partitions including the following information: IP, 
     label, available Kb, used Kb, used %age and last checked time
 - Node: Number of Connected Devices
-  - list of names, IP addresses and guest network state for the connected 
-    devices
+  - list of names, IP addresses, type of connection and guest network state for 
+    the connectedvdevices
 - Node: Current Firmware Version
 - Node: Last Update Check *(disabled by default)*
 - Node: Model Number
 - Node: Newest Firmware Version
 - Node: Parent Name
-  - IP address of the parent, backhaul information (connection type and 
-    speed in Mbps)
+  - IP address of the parent, backhaul information (connection type, speed 
+    in Mbps and last checked time)
 - Node: Serial Number
 - Node: Type of Node, e.g. Primary Secondary
 
@@ -70,6 +70,7 @@ install time and from reconfiguring the integration.
 - Mesh: Guest Wi-Fi state
   - list of guest networks available
 - Mesh: Parental Control state
+  - list of the rules being applied
 
 ### Services
 
