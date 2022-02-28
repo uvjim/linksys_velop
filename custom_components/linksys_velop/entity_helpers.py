@@ -116,13 +116,20 @@ class LinksysVelopNodeEntity(Entity):
     """"""
 
     _attribute: str
-    _coordinator: LinksysVelopDataUpdateCoordinator
+    coordinator: LinksysVelopDataUpdateCoordinator
     _identity: str
     _listener: Optional[Callable] = None
     _mesh: Mesh
     _node: Node
 
-    def _get_node(self):
+    def __init__(self):
+        """"""
+
+        if hasattr(self, "coordinator"):
+            self._mesh: Mesh = self.coordinator.data
+            self._get_node()
+
+    def _get_node(self) -> None:
         node = [n for n in self._mesh.nodes if n.unique_id == self._identity]
         if node:
             self._node = node[0]
@@ -130,8 +137,8 @@ class LinksysVelopNodeEntity(Entity):
     async def async_added_to_hass(self) -> None:
         """"""
 
-        if self.enabled and self._coordinator:
-            self._listener = self._coordinator.async_add_listener(update_callback=self._get_node)
+        if hasattr(self, "coordinator"):
+            self._listener = self.coordinator.async_add_listener(update_callback=self._get_node)
 
     async def async_will_remove_from_hass(self) -> None:
         """"""
@@ -323,26 +330,23 @@ class LinksysVelopNodeBinarySensorPolled(LinksysVelopBinarySensorPolled, Linksys
     def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
         """Constructor"""
 
-        self._coordinator = coordinator
         self._identity = identity
-        self._mesh: Mesh = self._coordinator.data
-
-        self._get_node()
 
         LinksysVelopBinarySensorPolled.__init__(self, coordinator)
+        LinksysVelopNodeEntity.__init__(self)
 
 
 class LinksysVelopNodeButton(LinksysVelopButton, LinksysVelopNodeEntity, ABC):
     """"""
 
+    # noinspection PyUnusedLocal
     def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
         """Constructor"""
 
-        self._coordinator = coordinator
         self._identity = identity
-        self._mesh: Mesh = self._coordinator.data
+        self.coordinator = coordinator
 
-        self._get_node()
+        LinksysVelopNodeEntity.__init__(self)
 
 
 class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEntity):
@@ -351,13 +355,10 @@ class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEnt
     def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
         """Constructor"""
 
-        self._coordinator = coordinator
         self._identity = identity
-        self._mesh: Mesh = self._coordinator.data
-
-        self._get_node()
 
         LinksysVelopSensorPolled.__init__(self, coordinator)
+        LinksysVelopNodeEntity.__init__(self)
 
 
 def entity_setup(
