@@ -54,7 +54,7 @@ install time and from reconfiguring the integration.
     label, available Kb, used Kb, used %age and last checked time
 - Node: Number of Connected Devices
   - list of names, IP addresses, type of connection and guest network state for 
-    the connectedvdevices
+    the connected devices
 - Node: Current Firmware Version
 - Node: Last Update Check *(disabled by default)*
 - Node: Model Number
