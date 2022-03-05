@@ -1,5 +1,7 @@
 """Base classes for managing entities in the integration"""
 # TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
+import dataclasses
+
 try:
     from homeassistant.helpers.entity import EntityCategory
 except ImportError:
@@ -16,10 +18,16 @@ except ImportError:
 
 # TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
 try:
-    from homeassistant.components.button import ButtonEntity
+    from homeassistant.components.button import (
+        ButtonEntity,
+        ButtonEntityDescription,
+    )
 except ImportError:
     class ButtonEntity:
         """Dummy Button Entity"""
+
+    class ButtonEntityDescription:
+        """"""
 
 import logging
 from abc import ABC
@@ -56,6 +64,8 @@ from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     ENTITY_SLUG,
+    SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .logger import VelopLogger
@@ -190,20 +200,6 @@ class LinksysVelopBinarySensorPolled(CoordinatorEntity, LinksysVelopBinarySensor
         CoordinatorEntity.__init__(self, coordinator)
 
 
-class LinksysVelopButton(ButtonEntity, ABC):
-    """Representation of a button"""
-
-    _attribute: str
-    _identity: str
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID for the button"""
-
-        ret = f"{self._identity}::button::{slugify(self._attribute).lower()}"
-        return ret
-
-
 class LinksysVelopDeviceTracker(ScannerEntity, ABC):
     """Representation of a device tracker"""
 
@@ -283,16 +279,6 @@ class LinksysVelopMeshBinarySensorPolled(LinksysVelopBinarySensorPolled, Linksys
         LinksysVelopBinarySensorPolled.__init__(self, coordinator)
 
 
-class LinksysVelopMeshButton(LinksysVelopButton, LinksysVelopMeshEntity, ABC):
-    """"""
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
-
-
 class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEntity):
     """"""
 
@@ -336,19 +322,6 @@ class LinksysVelopNodeBinarySensorPolled(LinksysVelopBinarySensorPolled, Linksys
         LinksysVelopNodeEntity.__init__(self)
 
 
-class LinksysVelopNodeButton(LinksysVelopButton, LinksysVelopNodeEntity, ABC):
-    """"""
-
-    # noinspection PyUnusedLocal
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._identity = identity
-        self.coordinator = coordinator
-
-        LinksysVelopNodeEntity.__init__(self)
-
-
 class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEntity):
     """"""
 
@@ -359,6 +332,103 @@ class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEnt
 
         LinksysVelopSensorPolled.__init__(self, coordinator)
         LinksysVelopNodeEntity.__init__(self)
+
+
+# region #-- buttons --#
+@dataclasses.dataclass
+class OptionalLinksysVelopDescription:
+    """Represent the optional attributes of the button description."""
+
+    press_action_arguments: Optional[dict] = dict
+
+
+@dataclasses.dataclass
+class RequiredLinksysVelopDescription:
+    """Represent the required attributes of the button description."""
+
+    press_action: str
+
+
+@dataclasses.dataclass
+class LinksysVelopButtonDescription(
+    OptionalLinksysVelopDescription,
+    ButtonEntityDescription,
+    RequiredLinksysVelopDescription
+):
+    """Describes button entity"""
+
+
+BUTTONS: tuple[LinksysVelopButtonDescription, ...] = (
+    LinksysVelopButtonDescription(
+        key="",
+        name="Check for Updates",
+        press_action="async_check_for_updates",
+        press_action_arguments={
+            "signal": SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS
+        }
+    ),
+    LinksysVelopButtonDescription(
+        key="",
+        name="Start Speedtest",
+        press_action="async_start_speedtest",
+        press_action_arguments={
+            "signal": SIGNAL_UPDATE_SPEEDTEST_STATUS
+        }
+    ),
+)
+# endregion
+
+
+# region #-- base entities --#
+class LinksysVelopMeshEntityByDescription(Entity):
+    """"""
+
+    def __init__(self, mesh: Mesh, config_entry: ConfigEntry) -> None:
+        """"""
+
+        self._config = config_entry
+        self._mesh: Mesh = mesh
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        # noinspection HttpUrlsUsage
+        ret = DeviceInfo(**{
+            "configuration_url": f"http://{self._mesh.connected_node}",
+            "identifiers": {(DOMAIN, self._config.entry_id)},
+            "manufacturer": PYVELOP_AUTHOR,
+            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            "name": "Mesh",
+            "sw_version": "",
+        })
+        return ret
+
+
+class LinksysVelopNodeEntityByDescription(Entity):
+    """"""
+
+    def __init__(self, node: Node, config_entry: ConfigEntry) -> None:
+        """"""
+
+        self._config = config_entry
+        self._node: Node = node
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        ret = DeviceInfo(**{
+            "hw_version": self._node.hardware_version,
+            "identifiers": {(DOMAIN, self._node.serial)},
+            "model": self._node.model,
+            "name": self._node.name,
+            "manufacturer": self._node.manufacturer,
+            "sw_version": self._node.firmware.get("version", ""),
+        })
+
+        return ret
+# endregion
 
 
 def entity_setup(
