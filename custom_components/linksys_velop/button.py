@@ -3,23 +3,32 @@
 # region #-- imports --#
 import logging
 from abc import ABC
-from typing import Optional
+from typing import (
+    Callable,
+    List,
+    Optional,
+    Union,
+)
 
-from homeassistant.components.button import ButtonDeviceClass
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
+from pyvelop.mesh import Mesh
+from pyvelop.node import Node
 
 from .const import (
-    SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+    CONF_COORDINATOR,
+    DOMAIN,
+    ENTITY_SLUG,
 )
 from .entity_helpers import (
-    entity_remove,
-    entity_setup,
-    LinksysVelopMeshButton,
-    LinksysVelopNodeButton,
+    BUTTONS,
+    LinksysVelopButtonDescription,
+    LinksysVelopMeshEntityByDescription,
+    LinksysVelopNodeEntityByDescription,
 )
 
 # endregion
@@ -27,76 +36,107 @@ from .entity_helpers import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
     """"""
 
-    remove_binary_sensor_classes = []
+    mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR].data
 
-    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
-
-    button_classes = [
-        LinksysVelopMeshCheckForUpdates,
-        LinksysVelopMeshStartSpeedtest,
-        LinksysVelopNodeRebootButton,
+    buttons: List[Union[LinksysVelopMeshButton, LinksysVelopNodeButton]] = [
+        LinksysVelopMeshButton(
+            config_entry=config_entry,
+            mesh=mesh,
+            description=button_description,
+        )
+        for button_description in BUTTONS
     ]
 
-    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=button_classes, hass=hass)
+    # region #-- node buttons --#
+    node: Node
+    for node in mesh.nodes:
+        if node.type.lower() != "primary":
+            buttons.append(
+                LinksysVelopNodeButton(
+                    config_entry=config_entry,
+                    mesh=mesh,
+                    node=node,
+                    description=LinksysVelopButtonDescription(
+                        key="",
+                        device_class=ButtonDeviceClass.RESTART,
+                        name="Reboot",
+                        press_action="async_reboot_node",
+                        press_action_arguments={
+                            "node_name": node.name
+                        }
+                    )
+                )
+            )
+    # endregion
+
+    async_add_entities(buttons)
 
 
-class LinksysVelopMeshCheckForUpdates(LinksysVelopMeshButton, ABC):
+class LinksysVelopMeshButton(LinksysVelopMeshEntityByDescription, ButtonEntity, ABC):
     """"""
 
-    _attribute: str = "Check for Updates"
+    def __init__(
+        self,
+        mesh: Mesh,
+        config_entry: ConfigEntry,
+        description: LinksysVelopButtonDescription
+    ) -> None:
+        """Constructor"""
+
+        super().__init__(config_entry=config_entry, mesh=mesh)
+
+        self.entity_description: LinksysVelopButtonDescription = description
+
+        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
+        self._attr_unique_id = f"{config_entry.unique_id}::button::{slugify(self.entity_description.name)}"
 
     async def async_press(self) -> None:
         """"""
 
-        await self._mesh.async_check_for_updates()
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS)
-
-    # region #-- properties --#
-    @property
-    def device_class(self) -> Optional[ButtonDeviceClass]:
-        """"""
-
-        return None
-    # endregion
+        action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
+        action_arguments = self.entity_description.press_action_arguments.copy()
+        signal: str = action_arguments.pop("signal", None)
+        if action and isinstance(action, Callable):
+            await action(**action_arguments)
+            if signal:
+                async_dispatcher_send(self.hass, signal)
 
 
-class LinksysVelopMeshStartSpeedtest(LinksysVelopMeshButton, ABC):
+class LinksysVelopNodeButton(LinksysVelopNodeEntityByDescription, ButtonEntity, ABC):
     """"""
 
-    _attribute: str = "Start Speedtest"
+    def __init__(
+        self,
+        mesh: Mesh,
+        node: Node,
+        config_entry: ConfigEntry,
+        description: LinksysVelopButtonDescription
+    ) -> None:
+        """Constructor"""
+
+        super().__init__(config_entry=config_entry, node=node)
+
+        self.entity_description: LinksysVelopButtonDescription = description
+
+        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+        self._attr_unique_id = f"{self._node.unique_id}::button::{slugify(self.entity_description.name)}"
+
+        self._mesh = mesh
 
     async def async_press(self) -> None:
         """"""
 
-        await self._mesh.async_start_speedtest()
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
-
-    # region #-- properties --#
-    @property
-    def device_class(self) -> Optional[ButtonDeviceClass]:
-        """"""
-
-        return None
-    # endregion
-
-
-class LinksysVelopNodeRebootButton(LinksysVelopNodeButton, ABC):
-    """"""
-
-    _attribute = "Reboot"
-
-    async def async_press(self) -> None:
-        """"""
-
-        await self._mesh.async_reboot_node(node_name=self._node.name)
-
-    # region #-- properties --#
-    @property
-    def device_class(self) -> Optional[ButtonDeviceClass]:
-        """"""
-
-        return ButtonDeviceClass.RESTART
-    # endregion
+        action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
+        action_arguments = self.entity_description.press_action_arguments.copy()
+        signal: str = action_arguments.pop("signal", None)
+        if action and isinstance(action, Callable):
+            await action(**action_arguments)
+            if signal:
+                async_dispatcher_send(self.hass, signal)
