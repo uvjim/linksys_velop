@@ -37,7 +37,6 @@ from typing import (
 )
 
 import homeassistant.helpers.entity_registry as er
-from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.sensor import SensorEntity
@@ -172,29 +171,6 @@ class LinksysVelopNodeEntity(Entity):
         return f"{ENTITY_SLUG} {self._node.name}: {self._attribute}"
 
 
-class LinksysVelopBinarySensor(BinarySensorEntity):
-    """Representation of an unpolled binary sensor"""
-
-    _attribute: str
-    _identity: str
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID for the binary sensor"""
-
-        ret = f"{self._identity}::binary_sensor::{slugify(self._attribute).lower()}"
-        return ret
-
-
-class LinksysVelopBinarySensorPolled(CoordinatorEntity, LinksysVelopBinarySensor):
-    """"""
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator):
-        """"""
-
-        CoordinatorEntity.__init__(self, coordinator)
-
-
 class LinksysVelopDeviceTracker(ScannerEntity, ABC):
     """Representation of a device tracker"""
 
@@ -238,28 +214,6 @@ class LinksysVelopSensorPolled(CoordinatorEntity, LinksysVelopSensor):
         CoordinatorEntity.__init__(self, coordinator)
 
 
-class LinksysVelopMeshBinarySensor(LinksysVelopBinarySensor, LinksysVelopMeshEntity):
-    """"""
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
-
-
-class LinksysVelopMeshBinarySensorPolled(LinksysVelopBinarySensorPolled, LinksysVelopMeshEntity):
-    """"""
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = coordinator.data
-        self._identity = identity
-
-        LinksysVelopBinarySensorPolled.__init__(self, coordinator)
-
-
 class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEntity):
     """"""
 
@@ -279,18 +233,6 @@ class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEnt
         """
 
         return [device for device in self._mesh.devices if device.status == status]
-
-
-class LinksysVelopNodeBinarySensorPolled(LinksysVelopBinarySensorPolled, LinksysVelopNodeEntity):
-    """"""
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str) -> None:
-        """Constructor"""
-
-        self._identity = identity
-
-        LinksysVelopBinarySensorPolled.__init__(self, coordinator)
-        LinksysVelopNodeEntity.__init__(self)
 
 
 class LinksysVelopNodeSensorPolled(LinksysVelopSensorPolled, LinksysVelopNodeEntity):
