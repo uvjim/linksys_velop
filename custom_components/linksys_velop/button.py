@@ -182,7 +182,9 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
         self.entity_description: LinksysVelopButtonDescription = description
 
         self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-        self._attr_unique_id = f"{self._node.unique_id}::button::{slugify(self.entity_description.name)}"
+        self._attr_unique_id = f"{self._node.unique_id}::" \
+                               f"{ENTITY_DOMAIN.lower()}::" \
+                               f"{slugify(self.entity_description.name)}"
 
     async def async_press(self) -> None:
         """"""
