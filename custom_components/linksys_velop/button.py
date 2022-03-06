@@ -15,6 +15,7 @@ from homeassistant.components.button import (
     ButtonDeviceClass,
     ButtonEntity,
     ButtonEntityDescription,
+    DOMAIN as ENTITY_DOMAIN,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -25,7 +26,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import (
-    LinksysVelopMeshEntity,
+    LinksysVelopMeshEntityPolled,
     LinksysVelopNodeEntity,
 )
 
@@ -36,12 +37,13 @@ from .const import (
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
+from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# region #-- button entity descriptions
+# region #-- button entity descriptions --#
 @dataclasses.dataclass
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the button description."""
@@ -66,7 +68,7 @@ class LinksysVelopButtonDescription(
 # endregion
 
 
-BUTTON_DECSRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
+BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
     LinksysVelopButtonDescription(
         key="",
         name="Check for Updates",
@@ -93,15 +95,16 @@ async def async_setup_entry(
 ) -> None:
     """"""
 
-    mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR].data
+    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    mesh: Mesh = coordinator.data
 
     buttons: List[Union[LinksysVelopMeshButton, LinksysVelopNodeButton]] = [
         LinksysVelopMeshButton(
             config_entry=config_entry,
-            mesh=mesh,
+            coordinator=coordinator,
             description=button_description,
         )
-        for button_description in BUTTON_DECSRIPTIONS
+        for button_description in BUTTON_DESCRIPTIONS
     ]
 
     # region #-- node buttons --#
@@ -129,23 +132,25 @@ async def async_setup_entry(
     async_add_entities(buttons)
 
 
-class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
+class LinksysVelopMeshButton(LinksysVelopMeshEntityPolled, ButtonEntity, ABC):
     """"""
 
     def __init__(
         self,
-        mesh: Mesh,
+        coordinator: LinksysVelopDataUpdateCoordinator,
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, mesh=mesh)
+        super().__init__(config_entry=config_entry, coordinator=coordinator)
 
         self.entity_description: LinksysVelopButtonDescription = description
 
         self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-        self._attr_unique_id = f"{config_entry.unique_id}::button::{slugify(self.entity_description.name)}"
+        self._attr_unique_id = f"{config_entry.entry_id}::" \
+                               f"{ENTITY_DOMAIN.lower()}::" \
+                               f"{slugify(self.entity_description.name)}"
 
     async def async_press(self) -> None:
         """"""
