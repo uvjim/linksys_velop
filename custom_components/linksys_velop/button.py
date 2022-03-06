@@ -176,7 +176,8 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator, node=node)
+        self._node_id: str = node.unique_id
+        super().__init__(config_entry=config_entry, coordinator=coordinator)
 
         self.entity_description: LinksysVelopButtonDescription = description
 

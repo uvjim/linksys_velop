@@ -4,7 +4,10 @@
 import datetime
 import logging
 from datetime import timedelta
-from typing import List
+from typing import (
+    List,
+    Optional,
+)
 
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -185,10 +188,11 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 class LinksysVelopNodeEntity(CoordinatorEntity):
     """"""
 
+    _node_id: str
+
     def __init__(
         self,
         coordinator: LinksysVelopDataUpdateCoordinator,
-        node: Node,
         config_entry: ConfigEntry
     ) -> None:
         """"""
@@ -196,7 +200,22 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         super().__init__(coordinator=coordinator)
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
-        self._node: Node = node
+        self._node: Node = self._get_node()
+
+    def _get_node(self) -> Optional[Node]:
+        """Get the current node"""
+
+        node = [n for n in self._mesh.nodes if n.unique_id == self._node_id]
+        if node:
+            return node[0]
+
+        return None
+
+    def _handle_coordinator_update(self) -> None:
+        """Update the node information when the coordinator updates"""
+
+        self._node = self._get_node()
+        super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> DeviceInfo:
