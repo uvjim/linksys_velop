@@ -6,8 +6,12 @@ import logging
 from datetime import timedelta
 from typing import List
 
-from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigEntryNotReady
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import (
     DeviceInfo,
@@ -159,6 +163,36 @@ class LinksysVelopMeshEntity(Entity):
 
         self._config = config_entry
         self._mesh: Mesh = mesh
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        # noinspection HttpUrlsUsage
+        ret = DeviceInfo(**{
+            "configuration_url": f"http://{self._mesh.connected_node}",
+            "identifiers": {(DOMAIN, self._config.entry_id)},
+            "manufacturer": PYVELOP_AUTHOR,
+            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            "name": "Mesh",
+            "sw_version": "",
+        })
+        return ret
+
+
+class LinksysVelopMeshEntityPolled(CoordinatorEntity):
+    """"""
+
+    def __init__(
+        self,
+        coordinator: LinksysVelopDataUpdateCoordinator,
+        config_entry: ConfigEntry
+    ) -> None:
+        """"""
+
+        super().__init__(coordinator=coordinator)
+        self._config = config_entry
+        self._mesh: Mesh = coordinator.data
 
     @property
     def device_info(self) -> DeviceInfo:
