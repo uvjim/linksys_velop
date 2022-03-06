@@ -1,6 +1,7 @@
 """"""
 
 # region #-- imports --#
+import dataclasses
 import logging
 from abc import ABC
 from typing import (
@@ -10,7 +11,11 @@ from typing import (
     Union,
 )
 
-from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
+from homeassistant.components.button import (
+    ButtonDeviceClass,
+    ButtonEntity,
+    ButtonEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -19,21 +24,66 @@ from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
+from . import (
+    LinksysVelopMeshEntity,
+    LinksysVelopNodeEntity,
+)
+
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     ENTITY_SLUG,
+    SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from .entity_helpers import (
-    BUTTONS,
-    LinksysVelopButtonDescription,
-    LinksysVelopMeshEntityByDescription,
-    LinksysVelopNodeEntityByDescription,
-)
-
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
+
+
+# region #-- button entity descriptions
+@dataclasses.dataclass
+class OptionalLinksysVelopDescription:
+    """Represent the optional attributes of the button description."""
+
+    press_action_arguments: Optional[dict] = dict
+
+
+@dataclasses.dataclass
+class RequiredLinksysVelopDescription:
+    """Represent the required attributes of the button description."""
+
+    press_action: str
+
+
+@dataclasses.dataclass
+class LinksysVelopButtonDescription(
+    OptionalLinksysVelopDescription,
+    ButtonEntityDescription,
+    RequiredLinksysVelopDescription
+):
+    """Describes button entity"""
+# endregion
+
+
+BUTTON_DECSRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
+    LinksysVelopButtonDescription(
+        key="",
+        name="Check for Updates",
+        press_action="async_check_for_updates",
+        press_action_arguments={
+            "signal": SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS
+        }
+    ),
+    LinksysVelopButtonDescription(
+        key="",
+        name="Start Speedtest",
+        press_action="async_start_speedtest",
+        press_action_arguments={
+            "signal": SIGNAL_UPDATE_SPEEDTEST_STATUS
+        }
+    ),
+)
 
 
 async def async_setup_entry(
@@ -51,7 +101,7 @@ async def async_setup_entry(
             mesh=mesh,
             description=button_description,
         )
-        for button_description in BUTTONS
+        for button_description in BUTTON_DECSRIPTIONS
     ]
 
     # region #-- node buttons --#
@@ -79,7 +129,7 @@ async def async_setup_entry(
     async_add_entities(buttons)
 
 
-class LinksysVelopMeshButton(LinksysVelopMeshEntityByDescription, ButtonEntity, ABC):
+class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     """"""
 
     def __init__(
@@ -109,7 +159,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntityByDescription, ButtonEntity, 
                 async_dispatcher_send(self.hass, signal)
 
 
-class LinksysVelopNodeButton(LinksysVelopNodeEntityByDescription, ButtonEntity, ABC):
+class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
     """"""
 
     def __init__(

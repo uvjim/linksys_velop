@@ -9,9 +9,20 @@ from typing import List
 from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.entity import (
+    DeviceInfo,
+    Entity,
+)
 from homeassistant.helpers.event import async_track_time_interval
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
+from pyvelop.node import Node
 
 from .const import (
     CONF_COORDINATOR,
@@ -137,3 +148,55 @@ async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry)
     """Reload the config entry"""
 
     return await hass.config_entries.async_reload(config_entry.entry_id)
+
+
+# region #-- base entities --#
+class LinksysVelopMeshEntity(Entity):
+    """"""
+
+    def __init__(self, mesh: Mesh, config_entry: ConfigEntry) -> None:
+        """"""
+
+        self._config = config_entry
+        self._mesh: Mesh = mesh
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        # noinspection HttpUrlsUsage
+        ret = DeviceInfo(**{
+            "configuration_url": f"http://{self._mesh.connected_node}",
+            "identifiers": {(DOMAIN, self._config.entry_id)},
+            "manufacturer": PYVELOP_AUTHOR,
+            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            "name": "Mesh",
+            "sw_version": "",
+        })
+        return ret
+
+
+class LinksysVelopNodeEntity(Entity):
+    """"""
+
+    def __init__(self, node: Node, config_entry: ConfigEntry) -> None:
+        """"""
+
+        self._config = config_entry
+        self._node: Node = node
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        ret = DeviceInfo(**{
+            "hw_version": self._node.hardware_version,
+            "identifiers": {(DOMAIN, self._node.serial)},
+            "model": self._node.model,
+            "name": self._node.name,
+            "manufacturer": self._node.manufacturer,
+            "sw_version": self._node.firmware.get("version", ""),
+        })
+
+        return ret
+# endregion
