@@ -133,7 +133,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
-    """"""
+    """Representation for a button in the Mesh"""
 
     def __init__(
         self,
@@ -153,7 +153,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
                                f"{slugify(self.entity_description.name)}"
 
     async def async_press(self) -> None:
-        """"""
+        """Handle the button being pressed"""
 
         action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
         action_arguments = self.entity_description.press_action_arguments.copy()
@@ -165,7 +165,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
 
 
 class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
-    """"""
+    """Representation for a button related to a node"""
 
     def __init__(
         self,
@@ -187,7 +187,7 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
                                f"{slugify(self.entity_description.name)}"
 
     async def async_press(self) -> None:
-        """"""
+        """Handle the button being pressed"""
 
         action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
         action_arguments = self.entity_description.press_action_arguments.copy()

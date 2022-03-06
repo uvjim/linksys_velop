@@ -144,7 +144,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """"""
+    """Set up the sensors from a config entry"""
 
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
@@ -268,7 +268,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
-    """"""
+    """Representation of a sensor related to the Mesh"""
 
     def __init__(
         self,
@@ -291,7 +291,7 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """"""
+        """Additional attributes for the sensor"""
 
         if (
             self.entity_description.extra_attributes
@@ -310,7 +310,7 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 
 
 class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
-    """"""
+    """Representation of a sensor for a node"""
 
     def __init__(
         self,
@@ -335,7 +335,7 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """"""
+        """Additional attributes for the sensor"""
 
         if (
             self.entity_description.extra_attributes
@@ -345,7 +345,7 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
 
     @property
     def native_value(self) -> StateType:
-        """"""
+        """Get the state of the sensor"""
 
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._node)
@@ -354,7 +354,7 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
 
 
 class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
-    """"""
+    """Representation of the sensor the latest Speedtest results"""
 
     _value: List = []
 
@@ -368,7 +368,7 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
         self.async_schedule_update_ha_state()
 
     def _handle_coordinator_update(self) -> None:
-        """Update the tuner information when the coordinator updates"""
+        """Update the status information when the coordinator updates"""
 
         self._value = self._mesh.speedtest_results
         super()._handle_coordinator_update()

@@ -203,7 +203,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         return getattr(self._mesh, self.entity_description.key, False)
 
     def _handle_coordinator_update(self) -> None:
-        """Update the tuner information when the coordinator updates"""
+        """Update the switch value information when the coordinator updates"""
 
         self._value = self._get_value()
         super()._handle_coordinator_update()
