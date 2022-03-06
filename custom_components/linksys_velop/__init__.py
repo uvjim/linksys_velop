@@ -155,32 +155,7 @@ async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry)
 
 
 # region #-- base entities --#
-class LinksysVelopMeshEntity(Entity):
-    """"""
-
-    def __init__(self, mesh: Mesh, config_entry: ConfigEntry) -> None:
-        """"""
-
-        self._config = config_entry
-        self._mesh: Mesh = mesh
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device information of the entity."""
-
-        # noinspection HttpUrlsUsage
-        ret = DeviceInfo(**{
-            "configuration_url": f"http://{self._mesh.connected_node}",
-            "identifiers": {(DOMAIN, self._config.entry_id)},
-            "manufacturer": PYVELOP_AUTHOR,
-            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            "name": "Mesh",
-            "sw_version": "",
-        })
-        return ret
-
-
-class LinksysVelopMeshEntityPolled(CoordinatorEntity):
+class LinksysVelopMeshEntity(CoordinatorEntity):
     """"""
 
     def __init__(
@@ -210,13 +185,20 @@ class LinksysVelopMeshEntityPolled(CoordinatorEntity):
         return ret
 
 
-class LinksysVelopNodeEntity(Entity):
+class LinksysVelopNodeEntity(CoordinatorEntity):
     """"""
 
-    def __init__(self, node: Node, config_entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        coordinator: LinksysVelopDataUpdateCoordinator,
+        node: Node,
+        config_entry: ConfigEntry
+    ) -> None:
         """"""
 
+        super().__init__(coordinator=coordinator)
         self._config = config_entry
+        self._mesh: Mesh = coordinator.data
         self._node: Node = node
 
     @property

@@ -26,7 +26,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import (
-    LinksysVelopMeshEntityPolled,
+    LinksysVelopMeshEntity,
     LinksysVelopNodeEntity,
 )
 
@@ -114,7 +114,7 @@ async def async_setup_entry(
             buttons.append(
                 LinksysVelopNodeButton(
                     config_entry=config_entry,
-                    mesh=mesh,
+                    coordinator=coordinator,
                     node=node,
                     description=LinksysVelopButtonDescription(
                         key="",
@@ -132,7 +132,7 @@ async def async_setup_entry(
     async_add_entities(buttons)
 
 
-class LinksysVelopMeshButton(LinksysVelopMeshEntityPolled, ButtonEntity, ABC):
+class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     """"""
 
     def __init__(
@@ -169,21 +169,19 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
 
     def __init__(
         self,
-        mesh: Mesh,
+        coordinator: LinksysVelopDataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, node=node)
+        super().__init__(config_entry=config_entry, coordinator=coordinator, node=node)
 
         self.entity_description: LinksysVelopButtonDescription = description
 
         self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
         self._attr_unique_id = f"{self._node.unique_id}::button::{slugify(self.entity_description.name)}"
-
-        self._mesh = mesh
 
     async def async_press(self) -> None:
         """"""

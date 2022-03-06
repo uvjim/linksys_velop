@@ -48,7 +48,7 @@ from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.device import Device
 
-from . import LinksysVelopMeshEntityPolled
+from . import LinksysVelopMeshEntity
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
@@ -172,7 +172,7 @@ async def async_setup_entry(
     async_add_entities(switches)
 
 
-class LinksysVelopMeshSwitch(LinksysVelopMeshEntityPolled, SwitchEntity, ABC):
+class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     """"""
 
     def __init__(
