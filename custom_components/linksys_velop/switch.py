@@ -1,4 +1,20 @@
 """Switches for the mesh"""
+# region #-- imports --#
+# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
+try:
+    from homeassistant.helpers.entity import EntityCategory
+except ImportError:
+    EntityCategory = None
+    # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
+    try:
+        from homeassistant.const import (
+            ENTITY_CATEGORY_CONFIG,
+            ENTITY_CATEGORY_DIAGNOSTIC,
+        )
+    except ImportError:
+        ENTITY_CATEGORY_CONFIG: str = "config"
+        ENTITY_CATEGORY_DIAGNOSTIC: str = "diagnostic"
+
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
 try:
@@ -8,197 +24,229 @@ except ImportError:
     SwitchDeviceClass = None
     from homeassistant.components.switch import DEVICE_CLASS_SWITCH
 
+import dataclasses
 import logging
 from abc import ABC
 from typing import (
     Any,
+    Callable,
+    List,
     Mapping,
     Optional,
 )
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.components.switch import (
+    DOMAIN as ENTITY_DOMAIN,
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
+
+from pyvelop.mesh import Mesh
 from pyvelop.device import Device
 
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
-from .entity_helpers import (
-    entity_remove,
-    entity_setup,
-    LinksysVelopConfigurationEntity,
-    LinksysVelopMeshSwitch,
+from . import LinksysVelopMeshEntityPolled
+from .const import (
+    CONF_COORDINATOR,
+    DOMAIN,
+    ENTITY_SLUG,
 )
+from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
+# endregion
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+# region #-- functions for classes --#
+def _get_guest_wifi_details(mesh: Mesh) -> Optional[dict]:
+    """Gather details for guest networks"""
+
+    ret = {
+        f"network {idx}": network
+        for idx, network in enumerate(mesh.guest_wifi_details)
+    }
+    return ret
+
+
+def _get_parental_control_rules(mesh: Mesh) -> Optional[dict]:
+    """Gather the rules for Parental Control"""
+
+    device: Device
+    ret = {
+        "rules": {
+            device.name: device.parental_control_schedule
+            for device in mesh.devices
+            if device.parental_control_schedule
+        }
+    }
+
+    return ret
+# endregion
+
+
+# region #-- switch entity descriptions --#
+@dataclasses.dataclass
+class OptionalLinksysVelopDescription:
+    """Represent the optional attributes of the switch description."""
+
+    extra_attributes: Optional[Callable] = None
+    icon_off: Optional[str] = None
+    icon_on: Optional[str] = None
+    turn_off_args: Optional[dict] = dict
+    turn_on_args: Optional[dict] = dict
+
+
+@dataclasses.dataclass
+class RequiredLinksysVelopDescription:
+    """Represent the required attributes of the switch description."""
+
+    turn_off: str
+    turn_on: str
+
+
+@dataclasses.dataclass
+class LinksysVelopSwitchDescription(
+    OptionalLinksysVelopDescription,
+    SwitchEntityDescription,
+    RequiredLinksysVelopDescription
+):
+    """Describes switch entity"""
+# endregion
+
+
+SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
+    LinksysVelopSwitchDescription(
+        extra_attributes=_get_guest_wifi_details,
+        icon_off="hass:wifi-off",
+        icon_on="hass:wifi",
+        key="guest_wifi_enabled",
+        name="Guest Wi-Fi",
+        turn_off="async_set_guest_wifi_state",
+        turn_off_args={
+            "state": False,
+        },
+        turn_on="async_set_guest_wifi_state",
+        turn_on_args={
+            "state": True,
+        }
+    ),
+    LinksysVelopSwitchDescription(
+        extra_attributes=_get_parental_control_rules,
+        icon_off="hass:account-off",
+        icon_on="hass:account",
+        key="parental_control_enabled",
+        name="Parental Control",
+        turn_off="async_set_parental_control_state",
+        turn_off_args={
+            "state": False,
+        },
+        turn_on="async_set_parental_control_state",
+        turn_on_args={
+            "state": True,
+        }
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
     """Set up the switches from a config entry"""
 
-    remove_binary_sensor_classes = []
+    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
-    entity_remove(config=config, entity_classes=remove_binary_sensor_classes, hass=hass)
-
-    switch_classes = [
-        LinksysVelopMeshGuestWiFiSwitch,
-        LinksysVelopMeshParentalControlSwitch,
+    switches: List[LinksysVelopMeshSwitch] = [
+        LinksysVelopMeshSwitch(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=switch_description,
+        )
+        for switch_description in SWITCH_DESCRIPTIONS
     ]
 
-    entity_setup(async_add_entities=async_add_entities, config=config, entity_classes=switch_classes, hass=hass)
+    async_add_entities(switches)
 
 
-class LinksysVelopMeshGuestWiFiSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity, ABC):
-    """Representation of the switch entity for the guest Wi-Fi state"""
+class LinksysVelopMeshSwitch(LinksysVelopMeshEntityPolled, SwitchEntity, ABC):
+    """"""
 
-    _attribute = "Guest Wi-Fi"
-    _attr_device_class = DEVICE_CLASS_SWITCH
-    _state_value: bool = False
+    def __init__(
+        self,
+        coordinator: LinksysVelopDataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description: LinksysVelopSwitchDescription
+    ) -> None:
+        """Constructor"""
 
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str):
-        """"""
+        super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
+        self._attr_device_class = DEVICE_CLASS_SWITCH
+        self._attr_entity_category = ENTITY_CATEGORY_CONFIG if EntityCategory is None else EntityCategory.CONFIG
 
-        LinksysVelopMeshSwitch.__init__(
-            self,
-            mesh=coordinator.data,
-            identity=identity,
-        )
+        self.entity_description: LinksysVelopSwitchDescription = description
 
-    def update_state_value(self):
-        """"""
+        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
+        self._attr_unique_id = f"{config_entry.entry_id}::" \
+                               f"{ENTITY_DOMAIN.lower()}::" \
+                               f"{slugify(self.entity_description.name)}"
 
-        self._state_value = self._mesh.guest_wifi_enabled
-        self.async_schedule_update_ha_state()
+        self._value = self._get_value()
 
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks and set initial status"""
+    def _get_value(self) -> bool:
+        """Get the value from the coordinator"""
 
-        self.update_state_value()
-        self.async_on_remove(
-            self._coordinator.async_add_listener(update_callback=self.update_state_value)
-        )
+        return getattr(self._mesh, self.entity_description.key, False)
 
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off"""
+    def _handle_coordinator_update(self) -> None:
+        """Update the tuner information when the coordinator updates"""
 
-        to_state: bool = False
-        await self._mesh.async_set_guest_wifi_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on"""
-
-        to_state: bool = True
-        await self._mesh.async_set_guest_wifi_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set additional attributes detailing the available guest networks"""
-
-        ret = {
-            f"network {idx}": network
-            for idx, network in enumerate(self._mesh.guest_wifi_details)
-        }
-        return ret
-
-    @property
-    def icon(self) -> str:
-        """Returns the icon for the switch"""
-
-        return "hass:wifi" if self.is_on else "hass:wifi-off"
-
-    @property
-    def is_on(self) -> bool:
-        """Returns True if the switch is on, False otherwise"""
-
-        return self._state_value
-
-    @property
-    def should_poll(self) -> bool:
-        """"""
-
-        return False
-
-
-class LinksysVelopMeshParentalControlSwitch(LinksysVelopMeshSwitch, LinksysVelopConfigurationEntity, ABC):
-    """Representation of the switch entity for the Parental Control state"""
-
-    _attribute = "Parental Control"
-    _attr_device_class = DEVICE_CLASS_SWITCH
-    _state_value: bool = False
-
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, identity: str):
-        """"""
-
-        self._coordinator: LinksysVelopDataUpdateCoordinator = coordinator
-
-        LinksysVelopMeshSwitch.__init__(
-            self,
-            mesh=coordinator.data,
-            identity=identity,
-        )
-
-    def update_state_value(self):
-        """"""
-
-        self._state_value = self._mesh.parental_control_enabled
-        self.async_schedule_update_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks and set initial status"""
-
-        self.update_state_value()
-        self.async_on_remove(
-            self._coordinator.async_add_listener(update_callback=self.update_state_value)
-        )
+        self._value = self._get_value()
+        super()._handle_coordinator_update()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off"""
 
-        to_state: bool = False
-        await self._mesh.async_set_parental_control_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
+        action = getattr(self._mesh, self.entity_description.turn_off)
+        if isinstance(action, Callable):
+            await action(**self.entity_description.turn_off_args)
+            self._value = False
+            await self.async_update_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on"""
 
-        to_state: bool = True
-        await self._mesh.async_set_parental_control_state(state=to_state)
-        self._state_value = to_state
-        self.async_schedule_update_ha_state()
+        action = getattr(self._mesh, self.entity_description.turn_on)
+        if isinstance(action, Callable):
+            await action(**self.entity_description.turn_on_args)
+            self._value = True
+            await self.async_update_ha_state()
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """"""
 
-        device: Device
-        ret = {"rules": {
-            device.name: device.parental_control_schedule
-            for device in self._mesh.devices
-            if device.parental_control_schedule
-        }}
-
-        return ret
+        if (
+            self.entity_description.extra_attributes
+            and isinstance(self.entity_description.extra_attributes, Callable)
+        ):
+            return self.entity_description.extra_attributes(self._mesh)
 
     @property
-    def icon(self) -> str:
-        """Returns the icon for the switch"""
+    def icon(self) -> Optional[str]:
+        """Get the icon"""
 
-        return "hass:account" if self.is_on else "hass:account-off"
-
-    @property
-    def is_on(self) -> bool:
-        """Returns True if the switch is on, False otherwise"""
-
-        return self._state_value
+        if self.entity_description.icon_on and self.is_on:
+            return self.entity_description.icon_on
+        elif self.entity_description.icon_off and not self.is_on:
+            return self.entity_description.icon_off
 
     @property
-    def should_poll(self) -> bool:
-        """"""
+    def is_on(self) -> Optional[bool]:
+        """Get the current state of the switch"""
 
-        return False
+        return self._value

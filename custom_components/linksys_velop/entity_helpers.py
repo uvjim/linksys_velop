@@ -1,7 +1,5 @@
 """Base classes for managing entities in the integration"""
 # TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
-import dataclasses
-
 try:
     from homeassistant.helpers.entity import EntityCategory
 except ImportError:
@@ -43,7 +41,6 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, Entity
@@ -241,20 +238,6 @@ class LinksysVelopSensorPolled(CoordinatorEntity, LinksysVelopSensor):
         CoordinatorEntity.__init__(self, coordinator)
 
 
-class LinksysVelopSwitch(SwitchEntity, ABC):
-    """Representation of a Switch"""
-
-    _attribute: str
-    _identity: str
-
-    @property
-    def unique_id(self) -> str:
-        """Returns the unique ID of the switch"""
-
-        ret = f"{self._identity}::switch::{slugify(self._attribute).lower()}"
-        return ret
-
-
 class LinksysVelopMeshBinarySensor(LinksysVelopBinarySensor, LinksysVelopMeshEntity):
     """"""
 
@@ -296,16 +279,6 @@ class LinksysVelopMeshSensorPolled(LinksysVelopSensorPolled, LinksysVelopMeshEnt
         """
 
         return [device for device in self._mesh.devices if device.status == status]
-
-
-class LinksysVelopMeshSwitch(LinksysVelopSwitch, LinksysVelopMeshEntity, ABC):
-    """"""
-
-    def __init__(self, mesh: Mesh, identity: str) -> None:
-        """Constructor"""
-
-        self._mesh: Mesh = mesh
-        self._identity = identity
 
 
 class LinksysVelopNodeBinarySensorPolled(LinksysVelopBinarySensorPolled, LinksysVelopNodeEntity):
