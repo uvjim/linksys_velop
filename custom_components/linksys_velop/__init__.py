@@ -13,10 +13,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.entity import (
-    DeviceInfo,
-    Entity,
-)
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
