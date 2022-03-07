@@ -19,6 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
 from pyvelop.exceptions import MeshDeviceNotFoundResponse
@@ -33,7 +34,6 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .logger import VelopLogger
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
     device_trackers: List[str] = config.options.get(CONF_DEVICE_TRACKERS, [])
 
-    coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
+    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
     entities: list = []
 
@@ -102,7 +102,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopMeshEntity, ScannerEntity, ABC):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
         device: Device
     ) -> None:

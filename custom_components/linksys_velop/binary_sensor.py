@@ -55,6 +55,7 @@ from homeassistant.helpers.dispatcher import (
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
 from pyvelop.mesh import Mesh
@@ -71,7 +72,6 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -201,7 +201,7 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
         description: LinksysVelopBinarySensorDescription
     ) -> None:
@@ -243,7 +243,7 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
         description: LinksysVelopBinarySensorDescription
