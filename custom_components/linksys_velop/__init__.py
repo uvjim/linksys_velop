@@ -10,30 +10,39 @@ from typing import (
 )
 
 from homeassistant.config_entries import (
-    ConfigEntry,
-    ConfigEntryNotReady
+    ConfigEntry
+)
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed
+)
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from .const import (
+    CONF_API_REQUEST_TIMEOUT,
     CONF_COORDINATOR,
     CONF_DEVICE_TRACKERS,
+    CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
+    DEF_API_REQUEST_TIMEOUT,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
@@ -41,9 +50,10 @@ from .const import (
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
+# from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .logger import VelopLogger
 from .service_handler import LinksysVelopServiceHandler
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,14 +68,36 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- setup the coordinator for data updates --#
-    coordinator = LinksysVelopDataUpdateCoordinator(
-        hass=hass,
-        config_entry=config_entry,
-    )
+    async def _async_get_mesh_data() -> Mesh:
+        """Fetch the latest data from the Mesh
 
-    await coordinator.async_refresh()
-    if not coordinator.last_update_success:
-        raise ConfigEntryNotReady(coordinator.last_exception)
+        Will signal relevant sensors that have a state that needs updating more frequently
+        """
+
+        mesh = Mesh(
+            node=config_entry.options[CONF_NODE],
+            password=config_entry.options[CONF_PASSWORD],
+            request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+        )
+
+        try:
+            async with mesh:
+                await mesh.async_gather_details()
+                if mesh.speedtest_status:
+                    async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
+        except Exception as err:
+            raise UpdateFailed(err)
+
+        return mesh
+
+    coordinator = DataUpdateCoordinator(
+        hass=hass,
+        logger=_LOGGER,
+        name=DOMAIN,
+        update_interval=timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL]),
+        update_method=_async_get_mesh_data
+    )
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = coordinator
     # endregion
@@ -116,7 +148,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     """Cleanup when unloading a config entry"""
 
     # region #-- close the mesh connection --#
-    coordinator: LinksysVelopDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
     await mesh.close()
     # endregion
@@ -154,7 +186,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry
     ) -> None:
         """"""
@@ -162,6 +194,12 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         super().__init__(coordinator=coordinator)
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
+
+    def _handle_coordinator_update(self) -> None:
+        """Update the information when the coordinator updates"""
+
+        self._mesh = self.coordinator.data
+        super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -186,7 +224,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry
     ) -> None:
         """"""
@@ -206,8 +244,9 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         return None
 
     def _handle_coordinator_update(self) -> None:
-        """Update the node information when the coordinator updates"""
+        """Update the information when the coordinator updates"""
 
+        self._mesh = self.coordinator.data
         self._node = self._get_node()
         super()._handle_coordinator_update()
 

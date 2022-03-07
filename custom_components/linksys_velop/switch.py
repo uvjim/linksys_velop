@@ -43,6 +43,7 @@ from homeassistant.components.switch import (
     SwitchEntityDescription,
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
 from pyvelop.mesh import Mesh
@@ -54,7 +55,6 @@ from .const import (
     DOMAIN,
     ENTITY_SLUG,
 )
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -177,7 +177,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
         description: LinksysVelopSwitchDescription
     ) -> None:

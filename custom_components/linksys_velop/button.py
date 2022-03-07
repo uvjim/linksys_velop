@@ -21,6 +21,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
@@ -37,7 +38,6 @@ from .const import (
     SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
     ) -> None:
@@ -169,7 +169,7 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
 
     def __init__(
         self,
-        coordinator: LinksysVelopDataUpdateCoordinator,
+        coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
