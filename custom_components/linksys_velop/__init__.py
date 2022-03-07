@@ -98,13 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         :return: None
         """
 
-        mesh: Mesh = coordinator.data
-        try:
-            devices: List[Device] = await mesh.async_get_devices()
-        except Exception as err:
-            _LOGGER.error(VelopLogger().message_format("%s"), err)
-        else:
-            async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER, devices)
+        async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER)
 
     # region #-- set up the timer for checking device trackers --#
     if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
