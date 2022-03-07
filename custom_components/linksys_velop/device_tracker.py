@@ -1,16 +1,22 @@
 """Device trackers for the mesh"""
 import logging
 from abc import ABC
-from typing import List, Union
+from typing import (
+    Callable,
+    List,
+    Optional,
+)
 
 import homeassistant.helpers.device_registry as dr
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_point_in_time
+from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
 from pyvelop.exceptions import MeshDeviceNotFoundResponse
 from pyvelop.mesh import Mesh
@@ -18,6 +24,7 @@ from pyvelop.mesh import Mesh
 from .const import (
     CONF_COORDINATOR,
     CONF_DEVICE_TRACKERS,
+    DEF_CONSIDER_HOME,
     DOMAIN,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
@@ -97,30 +104,62 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshE
 
         self._attribute: str = device.name
         self._config: ConfigEntry = config
+        self._consider_home_listener: Optional[Callable] = None
         self._device: Device = device
+        self._device_id = device.unique_id
         self._identity: str = self._config.entry_id
-        self._latest_dt_status: Union[Device, None] = None
+        self._is_connected: bool = device.status
+        self._log_formatter: VelopLogger = VelopLogger(unique_id=config.unique_id)
         self._mesh: Mesh = coordinator.data
-        self._offline_at: int = 0
+        self._tracking: bool = False
 
-    @callback
-    def _update_callback(self, devices: List[Device]):
-        """Get the latest device information from the list passed in"""
+    async def _async_get_current_device_status(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
+        """"""
 
-        latest_dt_status = [
-            device
-            for device in devices
-            if device.unique_id == self._device.unique_id
+        # region #-- get the current device status --#
+        devices: List[Device] = await self._mesh.async_get_devices()
+        device: List[Device] = [
+            d
+            for d in devices
+            if d.unique_id == self._device_id
         ]
-        if latest_dt_status:
-            self._latest_dt_status = latest_dt_status[0]
-        else:
-            _LOGGER.warning(
-                VelopLogger().message_format("Device tracker with id %s was not found"), self._device.unique_id
-            )
-            self._latest_dt_status = None
+        if device:
+            self._device = device[0]
+        # endregion
 
-        self.async_schedule_update_ha_state(force_refresh=True)
+        if self._is_connected != self._device.status:
+            if evt:  # made it here because of the listener so must be offline now
+                _LOGGER.debug(self._log_formatter.message_format("%s is offline"), self._device.name)
+                self._is_connected = False
+                self._consider_home_listener = None
+
+        if not self._device.status:  # start listener for the CONF_CONSIDER_HOME period
+            if not self._consider_home_listener and self._is_connected != self._device.status:
+                _LOGGER.debug(
+                    self._log_formatter.message_format("%s: setting consider home listener"), self._device.name
+                )
+                # noinspection PyTypeChecker
+                self._consider_home_listener = async_track_point_in_time(
+                    hass=self.hass,
+                    action=self._async_get_current_device_status,
+                    point_in_time=dt_util.dt.datetime.fromtimestamp(
+                        int(self._device.results_time) +
+                        self._config.options.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME)
+                    )
+                )
+        else:
+            if self._is_connected != self._device.status:
+                _LOGGER.debug(self._log_formatter.message_format("%s is online"), self._device.name)
+            self._is_connected = True
+            # stop listener if it is going
+            if self._consider_home_listener:
+                _LOGGER.debug(
+                    self._log_formatter.message_format("%s: cancelling consider home listener"), self._device.name
+                )
+                self._consider_home_listener()
+                self._consider_home_listener = None
+
+        await self.async_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks and set initial status"""
@@ -129,42 +168,15 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshE
             async_dispatcher_connect(
                 hass=self.hass,
                 signal=SIGNAL_UPDATE_DEVICE_TRACKER,
-                target=self._update_callback,
+                target=self._async_get_current_device_status,
             )
         )
-
-    async def async_update(self) -> None:
-        """Update the tracker status taking into account the 'consider home' setting"""
-
-        if self._latest_dt_status:
-            if self._latest_dt_status.status:
-                if not self.is_connected:
-                    self._offline_at = 0
-            else:
-                if self.is_connected:
-                    if not self._offline_at:
-                        self._offline_at = self._latest_dt_status.results_time
-
-                    if self._offline_at + self._config.options[CONF_CONSIDER_HOME] >\
-                            self._latest_dt_status.results_time:
-                        return
-
-            self._device = self._latest_dt_status
-
-    @property
-    def available(self) -> bool:
-        """Return True if the tracker is still available on the Mesh, False otherwise"""
-
-        return self._latest_dt_status is not None
 
     @property
     def is_connected(self) -> bool:
         """Return True if the tracker is connected, False otherwise"""
 
-        if not self._latest_dt_status:
-            return False
-        else:
-            return self._device.status
+        return self._is_connected
 
     @property
     def mac_address(self) -> str:
