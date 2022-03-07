@@ -10,7 +10,10 @@ from typing import (
 import homeassistant.helpers.device_registry as dr
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
+    DOMAIN as ENTITY_DOMAIN,
 )
+from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
+from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -21,18 +24,16 @@ from pyvelop.device import Device
 from pyvelop.exceptions import MeshDeviceNotFoundResponse
 from pyvelop.mesh import Mesh
 
+from . import LinksysVelopMeshEntity
 from .const import (
     CONF_COORDINATOR,
     CONF_DEVICE_TRACKERS,
     DEF_CONSIDER_HOME,
     DOMAIN,
+    ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
 from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
-from .entity_helpers import (
-    LinksysVelopDeviceTracker,
-    LinksysVelopMeshEntity
-)
 from .logger import VelopLogger
 
 _LOGGER = logging.getLogger(__name__)
@@ -89,29 +90,34 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
                 LinksysVelopMeshDeviceTracker(
                     coordinator=coordinator,
                     device=device,
-                    config=config,
+                    config_entry=config,
                 )
             )
 
     async_add_entities(entities)
 
 
-class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshEntity, ABC):
+class LinksysVelopMeshDeviceTracker(LinksysVelopMeshEntity, ScannerEntity, ABC):
     """Representation of a device tracker"""
 
-    def __init__(self, coordinator: LinksysVelopDataUpdateCoordinator, config: ConfigEntry, device: Device) -> None:
+    def __init__(
+        self,
+        coordinator: LinksysVelopDataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        device: Device
+    ) -> None:
         """Constructor"""
 
-        self._attribute: str = device.name
-        self._config: ConfigEntry = config
+        super().__init__(config_entry=config_entry, coordinator=coordinator)
+
+        self._config: ConfigEntry = config_entry
         self._consider_home_listener: Optional[Callable] = None
         self._device: Device = device
-        self._device_id = device.unique_id
-        self._identity: str = self._config.entry_id
         self._is_connected: bool = device.status
-        self._log_formatter: VelopLogger = VelopLogger(unique_id=config.unique_id)
+        self._log_formatter: VelopLogger = VelopLogger(unique_id=self._config.unique_id)
         self._mesh: Mesh = coordinator.data
-        self._tracking: bool = False
+
+        self._attr_name = f"{ENTITY_SLUG} Mesh: {self._device.name}"
 
     async def _async_get_current_device_status(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
         """"""
@@ -121,7 +127,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshE
         device: List[Device] = [
             d
             for d in devices
-            if d.unique_id == self._device_id
+            if d.unique_id == self._device.unique_id
         ]
         if device:
             self._device = device[0]
@@ -188,3 +194,17 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopDeviceTracker, LinksysVelopMeshE
             ret = mac_address[0].get("mac", "")
 
         return ret
+
+    @property
+    def source_type(self) -> str:
+        """Return the source type"""
+
+        return SOURCE_TYPE_ROUTER
+
+    @property
+    def unique_id(self) -> Optional[str]:
+        """"""
+
+        return f"{self._config.entry_id}::" \
+               f"{ENTITY_DOMAIN.lower()}::" \
+               f"{self._device.unique_id}"
