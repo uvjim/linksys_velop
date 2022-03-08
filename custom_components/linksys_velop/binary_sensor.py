@@ -62,6 +62,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import (
+    entity_cleanup,
     LinksysVelopMeshEntity,
     LinksysVelopNodeEntity,
 )
@@ -194,6 +195,19 @@ async def async_setup_entry(
         ])
 
     async_add_entities(binary_sensors)
+
+    binary_sensors_to_remove: List = [
+        LinksysVelopMeshBinarySensor(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=LinksysVelopBinarySensorDescription(
+                key="",
+                name="Check for Updates Status",
+            )
+        )
+    ]
+    if binary_sensors_to_remove:
+        entity_cleanup(config_entry=config_entry, entities=binary_sensors_to_remove, hass=hass)
 
 
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):

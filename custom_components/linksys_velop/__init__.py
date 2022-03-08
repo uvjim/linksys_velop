@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import (
     List,
     Optional,
+    Union,
 )
 
 from homeassistant.config_entries import (
@@ -264,4 +265,36 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         })
 
         return ret
+# endregion
+
+
+# region #-- cleanup entities --#
+def entity_cleanup(
+    config_entry: ConfigEntry,
+    entities: List[Union[LinksysVelopMeshEntity, LinksysVelopNodeEntity]],
+    hass: HomeAssistant
+):
+    """"""
+
+    import homeassistant.helpers.entity_registry as er
+
+    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+    _LOGGER.debug(log_formatter.message_format("entered"))
+
+    entity_registry: er.EntityRegistry = er.async_get(hass=hass)
+    er_entries: List[er.RegistryEntry] = er.async_entries_for_config_entry(
+        registry=entity_registry,
+        config_entry_id=config_entry.entry_id
+    )
+
+    cleanup_unique_ids = [e.unique_id for e in entities]
+    for entity in er_entries:
+        if entity.unique_id not in cleanup_unique_ids:
+            continue
+
+        # remove the entity
+        _LOGGER.debug(VelopLogger().message_format("removing %s"), entity.entity_id)
+        entity_registry.async_remove(entity_id=entity.entity_id)
+
+    _LOGGER.debug(log_formatter.message_format("exited"))
 # endregion
