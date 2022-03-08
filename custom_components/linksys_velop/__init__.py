@@ -38,6 +38,7 @@ from pyvelop.node import Node
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_COORDINATOR,
+    CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
@@ -69,24 +70,26 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- setup the coordinator for data updates --#
+    hass.data[DOMAIN][CONF_COORDINATOR_MESH] = Mesh(
+        node=config_entry.options[CONF_NODE],
+        password=config_entry.options[CONF_PASSWORD],
+        request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+    )
+
     async def _async_get_mesh_data() -> Mesh:
         """Fetch the latest data from the Mesh
 
         Will signal relevant sensors that have a state that needs updating more frequently
         """
 
-        mesh = Mesh(
-            node=config_entry.options[CONF_NODE],
-            password=config_entry.options[CONF_PASSWORD],
-            request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
-        )
-
+        mesh = hass.data[DOMAIN][CONF_COORDINATOR_MESH]
         try:
-            async with mesh:
-                await mesh.async_gather_details()
-                if mesh.speedtest_status:
-                    async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
+            await mesh.async_gather_details()
+            if mesh.speedtest_status:
+                async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
         except Exception as err:
+            if mesh:
+                await mesh.close()
             raise UpdateFailed(err)
 
         return mesh
