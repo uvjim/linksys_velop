@@ -78,28 +78,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-# region #-- functions for classes --#
-def _get_node_network_adapters(node: Node) -> dict:
-    """Get the connected adapter details for the node"""
-
-    ret = {}
-    if node.connected_adapters:
-        ret = node.connected_adapters[0]
-
-    return ret
-
-
-def _get_wan_details(mesh: Mesh) -> dict:
-    """Get the WAN details from the Mesh"""
-
-    return {
-        "ip": mesh.wan_ip,
-        "dns": mesh.wan_dns or None,
-        "mac": mesh.wan_mac,
-    }
-# endregion
-
-
 # region #-- binary sensor entity descriptions --#
 @dataclasses.dataclass
 class OptionalLinksysVelopDescription:
@@ -127,7 +105,7 @@ class LinksysVelopBinarySensorDescription(
 BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     LinksysVelopBinarySensorDescription(
         device_class=DEVICE_CLASS_CONNECTIVITY,
-        extra_attributes=_get_wan_details,
+        extra_attributes=lambda m: {"ip": m.wan_ip, "dns": m.wan_dns or None, "mac": m.wan_mac},
         key="wan_status",
         name="WAN Status",
     ),
@@ -176,7 +154,7 @@ async def async_setup_entry(
                 node=node,
                 description=LinksysVelopBinarySensorDescription(
                     device_class=DEVICE_CLASS_CONNECTIVITY,
-                    extra_attributes=_get_node_network_adapters,
+                    extra_attributes=lambda n: n.connected_adapters[0] if n.connected_adapters else {},
                     key="status",
                     name="Status",
                 )
