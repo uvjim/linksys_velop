@@ -69,29 +69,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-# region #-- functions for classes --#
-def _get_online_devices(mesh: Mesh) -> dict:
-    """Get the online devices in the mesh"""
-
-    device: Device
-
-    return {
-        "devices": [
-            {
-                device.name: {
-                    "ip": adapter.get("ip"),
-                    "connection": adapter.get("type"),
-                    "guest_network": adapter.get("guest_network"),
-                }
-                for adapter in device.network
-                if adapter.get("ip")
-            }
-            for device in mesh.devices if device.status is True
-        ]
-    }
-# endregion
-
-
 # region #-- sensor entity descriptions --#
 @dataclasses.dataclass
 class OptionalLinksysVelopDescription:
@@ -124,7 +101,22 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
         state_value=lambda m: len([d for d in m.devices if d.status is False])
     ),
     LinksysVelopSensorDescription(
-        extra_attributes=_get_online_devices,
+        extra_attributes=lambda m: (
+            {
+                "devices": [
+                    {
+                        d.name: {
+                            "ip": a.get("ip"),
+                            "connection": a.get("type"),
+                            "guest_network": a.get("guest_network"),
+                        }
+                        for a in d.network
+                        if a.get("ip")
+                    }
+                    for d in m.devices if d.status is True
+                ]
+            }
+        ),
         key="online_devices",
         name="Online Devices",
         state_value=lambda m: len([d for d in m.devices if d.status is True])
@@ -270,6 +262,7 @@ async def async_setup_entry(
     sensors_to_remove: List = []
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
+
 
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
     """Representation of a sensor related to the Mesh"""
