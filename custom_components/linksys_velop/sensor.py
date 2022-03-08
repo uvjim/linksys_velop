@@ -49,7 +49,6 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -64,6 +63,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
