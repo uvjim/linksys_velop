@@ -49,7 +49,10 @@ from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.device import Device
 
-from . import LinksysVelopMeshEntity
+from . import (
+    entity_cleanup,
+    LinksysVelopMeshEntity
+)
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
@@ -171,6 +174,9 @@ async def async_setup_entry(
 
     async_add_entities(switches)
 
+    switches_to_remove: List = []
+    if switches_to_remove:
+        entity_cleanup(config_entry=config_entry, entities=switches_to_remove, hass=hass)
 
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     """"""

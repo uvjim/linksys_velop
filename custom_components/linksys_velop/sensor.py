@@ -54,6 +54,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import (
+    entity_cleanup,
     LinksysVelopMeshEntity,
     LinksysVelopNodeEntity,
 )
@@ -266,6 +267,9 @@ async def async_setup_entry(
 
     async_add_entities(sensors)
 
+    sensors_to_remove: List = []
+    if sensors_to_remove:
+        entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
 
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
     """Representation of a sensor related to the Mesh"""

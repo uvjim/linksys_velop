@@ -27,6 +27,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import (
+    entity_cleanup,
     LinksysVelopMeshEntity,
     LinksysVelopNodeEntity,
 )
@@ -130,6 +131,10 @@ async def async_setup_entry(
     # endregion
 
     async_add_entities(buttons)
+
+    buttons_to_remove: List = []
+    if buttons_to_remove:
+        entity_cleanup(config_entry=config_entry, entities=buttons_to_remove, hass=hass)
 
 
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
