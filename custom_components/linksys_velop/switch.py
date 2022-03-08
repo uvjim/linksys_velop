@@ -63,33 +63,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-# region #-- functions for classes --#
-def _get_guest_wifi_details(mesh: Mesh) -> Optional[dict]:
-    """Gather details for guest networks"""
-
-    ret = {
-        f"network {idx}": network
-        for idx, network in enumerate(mesh.guest_wifi_details)
-    }
-    return ret
-
-
-def _get_parental_control_rules(mesh: Mesh) -> Optional[dict]:
-    """Gather the rules for Parental Control"""
-
-    device: Device
-    ret = {
-        "rules": {
-            device.name: device.parental_control_schedule
-            for device in mesh.devices
-            if device.parental_control_schedule
-        }
-    }
-
-    return ret
-# endregion
-
-
 # region #-- switch entity descriptions --#
 @dataclasses.dataclass
 class OptionalLinksysVelopDescription:
@@ -122,7 +95,7 @@ class LinksysVelopSwitchDescription(
 
 SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
     LinksysVelopSwitchDescription(
-        extra_attributes=_get_guest_wifi_details,
+        extra_attributes=lambda m: {f"network {idx}": network for idx, network in enumerate(m.guest_wifi_details)},
         icon_off="hass:wifi-off",
         icon_on="hass:wifi",
         key="guest_wifi_enabled",
@@ -137,7 +110,15 @@ SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
         }
     ),
     LinksysVelopSwitchDescription(
-        extra_attributes=_get_parental_control_rules,
+        extra_attributes=lambda m: (
+            {
+                "rules": {
+                    device.name: device.parental_control_schedule
+                    for device in m.devices
+                    if device.parental_control_schedule
+                }
+            }
+        ),
         icon_off="hass:account-off",
         icon_on="hass:account",
         key="parental_control_enabled",
@@ -177,6 +158,7 @@ async def async_setup_entry(
     switches_to_remove: List = []
     if switches_to_remove:
         entity_cleanup(config_entry=config_entry, entities=switches_to_remove, hass=hass)
+
 
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     """"""
