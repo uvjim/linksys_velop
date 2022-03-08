@@ -35,19 +35,16 @@ from typing import (
     Optional,
 )
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.components.switch import (
     DOMAIN as ENTITY_DOMAIN,
     SwitchEntity,
     SwitchEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
-
-from pyvelop.mesh import Mesh
-from pyvelop.device import Device
 
 from . import (
     entity_cleanup,
@@ -58,6 +55,7 @@ from .const import (
     DOMAIN,
     ENTITY_SLUG,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
