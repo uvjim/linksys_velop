@@ -237,6 +237,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 multi_select_contents=devices
             ),
             errors=self._errors,
+            last_step=False,
         )
 
     async def async_step_finish(self) -> data_entry_flow.FlowResult:
@@ -379,6 +380,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id=STEP_TIMERS,
             data_schema=await _async_build_schema_with_user_input(STEP_TIMERS, self._options),
             errors=self._errors,
+            last_step=False,
         )
 
     async def async_step_unignore(self, user_input=None) -> data_entry_flow.FlowResult:
@@ -431,7 +433,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id=STEP_USER,
             data_schema=await _async_build_schema_with_user_input(STEP_USER, self._options),
-            errors=self._errors
+            errors=self._errors,
+            last_step=False,
         )
 
 
@@ -490,6 +493,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 multi_select_contents=devices
             ),
             errors=self._errors,
+            last_step=False,
         )
 
     # noinspection PyUnusedLocal
@@ -519,4 +523,5 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             step_id=STEP_TIMERS,
             data_schema=await _async_build_schema_with_user_input(STEP_TIMERS, self._options),
             errors=self._errors,
+            last_step=False,
         )
