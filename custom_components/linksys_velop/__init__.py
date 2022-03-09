@@ -5,8 +5,11 @@ import datetime
 import logging
 from datetime import timedelta
 from typing import (
+    Any,
+    Dict,
     List,
     Optional,
+    Set,
     Union,
 )
 
@@ -32,6 +35,7 @@ from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
+from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -52,13 +56,18 @@ from .const import (
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-# from .data_update_coordinator import LinksysVelopDataUpdateCoordinator
 from .logger import VelopLogger
 from .service_handler import LinksysVelopServiceHandler
-
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
+
+EVENT_NEW_DEVICE_ON_MESH = f"{DOMAIN}_new_device_on_mesh"
+EVENT_NEW_DEVICE_ON_MESH_PROPERTIES = [
+    "connected_adapters",
+    "name",
+    "status",
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -82,7 +91,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         Will signal relevant sensors that have a state that needs updating more frequently
         """
 
-        mesh = hass.data[DOMAIN][CONF_COORDINATOR_MESH]
+        mesh: Mesh = hass.data[DOMAIN][CONF_COORDINATOR_MESH]
+        log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+        device: Device
+        previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
         try:
             await mesh.async_gather_details()
             if mesh.speedtest_status:
@@ -91,6 +103,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             if mesh:
                 await mesh.close()
             raise UpdateFailed(err)
+        else:
+            if previous_devices:
+                current_devices: Set[str] = {device.unique_id for device in mesh.devices}
+                new_devices: Set[str] = current_devices.difference(previous_devices)
+                if new_devices:
+                    for device in mesh.devices:
+                        if device.unique_id in new_devices:
+                            payload: Dict[str, Any] = {
+                                prop: getattr(device, prop, None)
+                                for prop in EVENT_NEW_DEVICE_ON_MESH_PROPERTIES
+                            }
+                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
+                            hass.bus.async_fire(
+                                event_type=EVENT_NEW_DEVICE_ON_MESH,
+                                event_data=payload,
+                            )
 
         return mesh
 
