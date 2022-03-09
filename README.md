@@ -72,6 +72,44 @@ install time and from reconfiguring the integration.
 - Mesh: Parental Control state
   - list of the rules being applied
 
+### Events Fired
+
+#### `linksys_velop_new_device_on_mesh`
+
+This event is fired when a brand-new device appears on the Mesh. A device is 
+considered new if it presents a device ID (determined by the Velop) that was 
+not seen at the last poll period. This means that it will not fire for 
+devices that change from online to offline and vice-versa.
+
+The event is fired for each new device that is discovered.
+
+The event looks as follows: -
+
+```json
+{
+    "event_type": "linksys_velop_new_device_on_mesh",
+    "data": {
+        "connected_adapters": [
+            {
+                "mac": "00:11:22:33:44:55",
+                "ip": "192.168.1.51",
+                "guest_network": false
+            }
+        ],
+        "name": "Network Device",
+        "status": true
+    },
+    "origin": "LOCAL",
+    "time_fired": "2022-03-09T20:54:24.640505+00:00",
+    "context": {
+        "id": "8f78ddb28033c0d8f682117969163cbc",
+        "parent_id": null,
+        "user_id": null
+    }
+}
+```
+
+
 ### Services
 
 Services are available for the following: -
@@ -901,4 +939,33 @@ generic or even done in a better way but these are for example purposes only.
       default: []
   mode: single
   ```
+</details>
+
+<details>
+  <summary>Notify when a brand-new device comes onto the Mesh</summary>
+
+```yaml
+alias: 'Notify: New Device on Mesh'
+description: ''
+trigger:
+  - platform: event
+    event_type: linksys_velop_new_device_on_mesh
+condition: []
+action:
+  - service: persistent_notification.create
+    data:
+      title: 'Linksys Velop: New Device on Mesh'
+      message: >-
+        <b>{{ trigger.event.data.name }}</b><br /> Status: {{ "Online" if
+        trigger.event.data.status is eq true else "Offline" }}<br /> IP: {{
+        trigger.event.data.connected_adapters[0].ip }}<br /> MAC: {{
+        trigger.event.data.connected_adapters[0].mac }}<br /> Guest network: {{
+        "Yes" if trigger.event.data.connected_adapters[0].guest_network is eq
+        true else "No" }}
+mode: parallel
+````
+
+This will create a notification that looks like the following screenshot.
+
+![new device on mesh](images/linksys_velop_new_device_on_mesh.png)
 </details>
