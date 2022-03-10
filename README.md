@@ -97,6 +97,7 @@ The event looks as follows: -
             }
         ],
         "name": "Network Device",
+        "parent_name": "Lounge",
         "status": true
     },
     "origin": "LOCAL",
@@ -956,12 +957,12 @@ action:
     data:
       title: 'Linksys Velop: New Device on Mesh'
       message: >-
-        <b>{{ trigger.event.data.name }}</b><br /> Status: {{ "Online" if
-        trigger.event.data.status is eq true else "Offline" }}<br /> IP: {{
-        trigger.event.data.connected_adapters[0].ip }}<br /> MAC: {{
-        trigger.event.data.connected_adapters[0].mac }}<br /> Guest network: {{
-        "Yes" if trigger.event.data.connected_adapters[0].guest_network is eq
-        true else "No" }}
+        <b>{{ trigger.event.data.name }}</b><br />Status: {{ "Online" if
+        trigger.event.data.status is eq true else "Offline" }}<br />IP: {{
+        trigger.event.data.connected_adapters[0].ip }}<br />MAC: {{
+        trigger.event.data.connected_adapters[0].mac }}<br />Guest network: {{ "Yes"
+        if trigger.event.data.connected_adapters[0].guest_network is eq true else
+        "No" }}<br />Parent Node: {{ trigger.event.data.parent_name }}
 mode: parallel
 ````
 
