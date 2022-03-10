@@ -65,7 +65,13 @@ _LOGGER = logging.getLogger(__name__)
 EVENT_NEW_DEVICE_ON_MESH = f"{DOMAIN}_new_device_on_mesh"
 EVENT_NEW_DEVICE_ON_MESH_PROPERTIES = [
     "connected_adapters",
+    "description",
+    "manufacturer",
+    "model",
     "name",
+    "operating_system",
+    "parent_name",
+    "serial",
     "status",
 ]
 

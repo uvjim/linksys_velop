@@ -92,18 +92,23 @@ The event looks as follows: -
         "connected_adapters": [
             {
                 "mac": "00:11:22:33:44:55",
-                "ip": "192.168.1.51",
+                "ip": "192.168.123.51",
                 "guest_network": false
             }
         ],
+        "description": null,
+        "manufacturer": "OnePlus Technology (Shenzhen) Co., Ltd",
+        "model": null,
         "name": "Network Device",
+        "operating_system": null,
         "parent_name": "Lounge",
+        "serial": null,
         "status": true
     },
     "origin": "LOCAL",
-    "time_fired": "2022-03-09T20:54:24.640505+00:00",
+    "time_fired": "2022-03-10T12:57:30.843508+00:00",
     "context": {
-        "id": "8f78ddb28033c0d8f682117969163cbc",
+        "id": "f7078df4140d268320612e7ccc47ac35",
         "parent_id": null,
         "user_id": null
     }
@@ -960,9 +965,19 @@ action:
         <b>{{ trigger.event.data.name }}</b><br />Status: {{ "Online" if
         trigger.event.data.status is eq true else "Offline" }}<br />IP: {{
         trigger.event.data.connected_adapters[0].ip }}<br />MAC: {{
-        trigger.event.data.connected_adapters[0].mac }}<br />Guest network: {{ "Yes"
-        if trigger.event.data.connected_adapters[0].guest_network is eq true else
-        "No" }}<br />Parent Node: {{ trigger.event.data.parent_name }}
+        trigger.event.data.connected_adapters[0].mac }}<br />Guest network: {{
+        "Yes" if trigger.event.data.connected_adapters[0].guest_network is eq
+        true else "No" }}<br />{{"Parent Node: " ~
+        trigger.event.data.parent_name if trigger.event.data.parent_name is not
+        none else ""}}<br />{{"Manufacturer: " ~
+        trigger.event.data.manufacturer if trigger.event.data.manufacturer is
+        not none else ""}}<br />{{"Model: " ~ trigger.event.data.model if
+        trigger.event.data.model is not none else ""}}<br />{{"Serial: " ~
+        trigger.event.data.serial if trigger.event.data.serial is not none else
+        ""}}<br />{{"Description: " ~ trigger.event.data.description if
+        trigger.event.data.description is not none else ""}}<br />{{"Operating
+        System: " ~ trigger.event.data.operating_system if
+        trigger.event.data.operating_system is not none else ""}}
 mode: parallel
 ````
 
