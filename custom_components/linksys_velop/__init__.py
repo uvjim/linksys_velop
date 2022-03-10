@@ -66,6 +66,7 @@ EVENT_NEW_DEVICE_ON_MESH = f"{DOMAIN}_new_device_on_mesh"
 EVENT_NEW_DEVICE_ON_MESH_PROPERTIES = [
     "connected_adapters",
     "name",
+    "parent_name",
     "status",
 ]
 
