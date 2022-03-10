@@ -35,10 +35,17 @@ available.
 - Mesh: Check for Updates
 - Node: Reboot
 
-#### Device  Trackers
+#### Device Trackers
 
 These are selectable and are presented as part of the configuration at both 
 install time and from reconfiguring the integration.
+
+#### Select
+
+- Mesh: Devices *(disabled by default)*
+  - Once a device is selected the attributes will be updated to reflect the 
+    following: connected adapters, description, manufacturer, model, name, 
+    operating_system, parent name, serial, status and unique_id
 
 #### Sensors
 
@@ -120,7 +127,6 @@ The event looks as follows: -
 }
 ```
 
-
 ### Services
 
 Services are available for the following: -
@@ -201,6 +207,8 @@ Example output can be found [here](examples/diagnostics_ouput.json)
 
 # Example Lovelace UI
 
+## Main UI
+
 | Dark Mode | Light Mode |
 |:---:|:---:|
 | ![Lovelace Dark UI](images/lovelace_dark.png) | ![Lovelace Light UI](images/lovelace_light.png) |
@@ -209,18 +217,17 @@ Example output can be found [here](examples/diagnostics_ouput.json)
 
 The view consists of 3 main cards.  These are detailed below.
 
-## Card 1
+### Card 1
 
 This card is used mainly to work around a limitation in Button Card documented
 [here](https://github.com/custom-cards/button-card#injecting-css-with-extra_styles).
 
-### Pre-requisites
+#### Pre-requisites
 
 The following custom cards are required for this part of the view.
 
 - [Button Card](https://github.com/custom-cards/button-card)
 - [card-mod](https://github.com/thomasloven/lovelace-card-mod)
-
 
 <details>
   <summary>YAML for the card</summary>
@@ -234,11 +241,11 @@ card_mod:
 ```
 </details>
 
-## Card 2
+### Card 2
 
 This card creates the Mesh part of the view.
 
-### Pre-requisites
+#### Pre-requisites
 
 - [Button Card](https://github.com/custom-cards/button-card)
 - [card-mod](https://github.com/thomasloven/lovelace-card-mod)
@@ -605,11 +612,11 @@ cards:
 ```
 </details>
 
-## Card 3
+### Card 3
 
 This card creates the Node part of the view.
 
-### Pre-requisites
+#### Pre-requisites
 
 - [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
 - [Button Card](https://github.com/custom-cards/button-card)
@@ -905,6 +912,114 @@ filter:
                             var(--table-row-background-color); }
 
                             thead tr th, tbody tr td { padding: 4px 10px; }
+```
+</details>
+
+## Using the Select Entity
+
+This card allows you to select a device and see details about it.
+
+![Lovelace Device Details](images/lovelace_device_details.png)
+
+### Pre-requisites
+
+- [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+- [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
+
+<details>
+  <summary>YAML for the card</summary>
+
+```yaml
+type: entities
+title: Device Details
+entities:
+  - entity: select.velop_mesh_devices
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: unique_id
+    name: ID
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: manufacturer
+    name: Manufacturer
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: model
+    name: Model
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: description
+    name: Description
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: parent_name
+    name: Parent Node
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: serial
+    name: Serial
+  - type: attribute
+    entity: select.velop_mesh_devices
+    attribute: operating_system
+    name: Operating System
+  - type: custom:template-entity-row
+    entity: select.velop_mesh_devices
+    name: Connected
+    state: |-
+      {% if states('select.velop_mesh_devices') == 'unknown' %}
+        —
+      {% else %}
+        {{ "Yes" if state_attr(config.entity, "status") is eq true else "No" }}
+      {% endif %}
+  - type: custom:template-entity-row
+    entity: select.velop_mesh_devices
+    name: IP
+    state: |-
+      {% if states('select.velop_mesh_devices') == 'unknown' %}
+        —
+      {% else %}
+        {{ (state_attr('select.velop_mesh_devices', 'connected_adapters') | first).ip }}
+      {% endif %}
+  - type: custom:template-entity-row
+    entity: select.velop_mesh_devices
+    name: MAC
+    state: |-
+      {% if states('select.velop_mesh_devices') == 'unknown' %}
+        —
+      {% else %}
+        {{ (state_attr(config.entity, 'connected_adapters') | first).mac }}
+      {% endif %}
+  - type: custom:template-entity-row
+    entity: select.velop_mesh_devices
+    name: Guest Network
+    state: |-
+      {% if states('select.velop_mesh_devices') == 'unknown' %}
+        —
+      {% else %}
+        {{ "Yes" if (state_attr(config.entity, 'connected_adapters') | first).guest_network else "No" }}
+      {% endif %}
+show_header_toggle: false
+card_mod:
+  style:
+    .: |
+      #states > div:first-of-type { margin-bottom: 20px; }
+    hui-select-entity-row:
+      $:
+        hui-generic-entity-row:
+          $: |
+            state-badge { display: none; }
+            state-badge + div.info { margin-left: 0px; }
+    hui-attribute-row:
+      $:
+        hui-generic-entity-row:
+          $: |
+            state-badge { display: none; }
+            state-badge + div.info { margin-left: 0px; }
+    template-entity-row:
+      $: |
+        #wrapper { min-height: auto !important; }
+        state-badge { display: none; }
+        state-badge + div.info { margin-left: 0px; }
 ```
 </details>
 
