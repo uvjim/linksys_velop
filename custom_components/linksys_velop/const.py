@@ -6,6 +6,10 @@ try:
 except ImportError:
     BUTTON_DOMAIN = None
 from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
+try:
+    from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
+except ImportError:
+    SELECT_DOMAIN = None
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 
@@ -33,6 +37,7 @@ PLATFORMS = [
     BINARY_SENSOR_DOMAIN,
     BUTTON_DOMAIN,
     DEVICE_TRACKER_DOMAIN,
+    SELECT_DOMAIN,
     SENSOR_DOMAIN,
     SWITCH_DOMAIN,
 ]
