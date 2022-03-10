@@ -81,7 +81,12 @@ considered new if it presents a device ID (determined by the Velop) that was
 not seen at the last poll period. This means that it will not fire for 
 devices that change from online to offline and vice-versa.
 
-The event is fired for each new device that is discovered.
+The event is fired for each new device that is discovered. The data is as 
+the Velop mesh sees it, i.e. there is no magic by the integration to 
+establish the manufacturer, model, operating system or serial.
+
+> **N.B.** The name will default to `Network Device` if there is no name 
+established by the Velop or assigned by the user.
 
 The event looks as follows: -
 
