@@ -65,6 +65,7 @@ def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
         "name",
         "operating_system",
         "parent_name",
+        "parental_control_schedule",
         "serial",
         "status",
         "unique_id",
