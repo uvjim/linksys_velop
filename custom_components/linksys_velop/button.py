@@ -71,6 +71,7 @@ class LinksysVelopButtonDescription(
 
 BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
     LinksysVelopButtonDescription(
+        icon="hass:update",
         key="",
         name="Check for Updates",
         press_action="async_check_for_updates",
@@ -79,6 +80,7 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
         }
     ),
     LinksysVelopButtonDescription(
+        icon="hass:refresh",
         key="",
         name="Start Speedtest",
         press_action="async_start_speedtest",
