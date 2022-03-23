@@ -4,7 +4,8 @@
             "abort_login": "Nie udało się ukończyć procesu logowania.",
             "already_configured": "Urządzenie już skonfigurowane.",
             "not_found": "Urządzenie nie zostało znalezione.",
-            "not_velop": "Nie jest to urządzenie Velop."
+            "not_velop": "Nie jest to urządzenie Velop.",
+            "single_instance_allowed": "Integracja jest już skonfigurowana."
         },
         "error": {
             "connection_error": "Błąd połączenia.",
