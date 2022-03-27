@@ -1,14 +1,5 @@
 """Switches for the mesh"""
 # region #-- imports --#
-# TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
-# HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
-try:
-    from homeassistant.components.switch import SwitchDeviceClass
-    DEVICE_CLASS_SWITCH = SwitchDeviceClass.SWITCH
-except ImportError:
-    SwitchDeviceClass = None
-    from homeassistant.components.switch import DEVICE_CLASS_SWITCH
-
 import dataclasses
 import logging
 from abc import ABC
@@ -22,6 +13,7 @@ from typing import (
 
 from homeassistant.components.switch import (
     DOMAIN as ENTITY_DOMAIN,
+    SwitchDeviceClass,
     SwitchEntity,
     SwitchEntityDescription,
 )
@@ -157,7 +149,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
 
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._attr_device_class = DEVICE_CLASS_SWITCH
+        self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_entity_category = EntityCategory.CONFIG
 
         self.entity_description: LinksysVelopSwitchDescription = description
