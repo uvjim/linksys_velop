@@ -10,21 +10,6 @@ except ImportError:
     SensorDeviceClass = None
     from homeassistant.components.sensor import DEVICE_CLASS_TIMESTAMP
 
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
-try:
-    from homeassistant.helpers.entity import EntityCategory
-except ImportError:
-    EntityCategory = None
-    # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-    try:
-        from homeassistant.const import (
-            ENTITY_CATEGORY_CONFIG,
-            ENTITY_CATEGORY_DIAGNOSTIC,
-        )
-    except ImportError:
-        ENTITY_CATEGORY_CONFIG: str = "config"
-        ENTITY_CATEGORY_DIAGNOSTIC: str = "diagnostic"
-
 import dataclasses
 import logging
 from typing import (
@@ -44,6 +29,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -277,7 +263,7 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._attr_entity_category = ENTITY_CATEGORY_DIAGNOSTIC if EntityCategory is None else EntityCategory.DIAGNOSTIC
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self.entity_description: LinksysVelopSensorDescription = description
 
@@ -321,7 +307,7 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
         self._node_id: str = node.unique_id
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._attr_entity_category = ENTITY_CATEGORY_DIAGNOSTIC if EntityCategory is None else EntityCategory.DIAGNOSTIC
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self.entity_description: LinksysVelopSensorDescription = description
 
