@@ -1,10 +1,7 @@
 """Constants for Linksys Velop"""
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
-try:
-    from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
-except ImportError:
-    BUTTON_DOMAIN = None
+from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
 from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
 try:
     from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
