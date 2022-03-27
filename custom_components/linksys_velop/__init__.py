@@ -85,7 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- setup the coordinator for data updates --#
-    hass.data[DOMAIN][CONF_COORDINATOR_MESH] = Mesh(
+    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
         request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
@@ -97,7 +97,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         Will signal relevant sensors that have a state that needs updating more frequently
         """
 
-        mesh: Mesh = hass.data[DOMAIN][CONF_COORDINATOR_MESH]
+        mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
         log_formatter = VelopLogger(unique_id=config_entry.unique_id)
         device: Device
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
@@ -146,7 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- Service Definition --#
-    services = LinksysVelopServiceHandler(hass=hass, config_entry=config_entry)
+    services = LinksysVelopServiceHandler(hass=hass)
     services.register_services()
     hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER] = services
     # endregion

@@ -3,11 +3,28 @@
 check_updates:
   name: Check for Updates
   description: Instruct the mesh to check for firmware updates
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
 
 delete_device:
     name: Delete Device
     description: Delete a device from the mesh Device List (only a single device can be deleted at a time)
     fields:
+      mesh:
+        name: Mesh
+        description: The Mesh that the action should be executed on
+        required: true
+        selector:
+          device:
+            integration: linksys_velop
+            manufacturer: uvjim
       device_id:
         name: Device ID
         description: The device ID for the device to delete
@@ -25,6 +42,14 @@ reboot_node:
   name: "Reboot Node"
   description: Instruct the mesh to reboot a node
   fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
     node_name:
       name: "Name"
       description: The name of the node to reboot
@@ -41,3 +66,12 @@ reboot_node:
 start_speedtest:
   name: Execute Speedtest
   description: Instruct the mesh to carry out a Speedtest
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
