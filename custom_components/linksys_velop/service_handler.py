@@ -15,7 +15,6 @@ from pyvelop.mesh import Mesh
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS
 )
 from .logger import VelopLogger
@@ -148,7 +147,6 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.message_format("entered"))
 
         await self._mesh.async_check_for_updates()
-        async_dispatcher_send(self._hass, SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS)
 
         _LOGGER.debug(self._log_formatter.message_format("exited"))
 

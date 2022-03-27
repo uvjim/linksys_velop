@@ -36,7 +36,6 @@ from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     ENTITY_SLUG,
-    SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 # endregion
@@ -49,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the button description."""
 
-    press_action_arguments: Optional[dict] = dict
+    press_action_arguments: Optional[dict] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -75,9 +74,6 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
         key="",
         name="Check for Updates",
         press_action="async_check_for_updates",
-        press_action_arguments={
-            "signal": SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS
-        }
     ),
     LinksysVelopButtonDescription(
         icon="hass:refresh",

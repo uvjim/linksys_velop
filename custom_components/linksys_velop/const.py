@@ -42,7 +42,6 @@ PLATFORMS = [
     SWITCH_DOMAIN,
 ]
 
-SIGNAL_UPDATE_CHECK_FOR_UPDATES_STATUS = "update_check_for_updates_status"
 SIGNAL_UPDATE_DEVICE_TRACKER = "update_device_tracker"
 SIGNAL_UPDATE_SPEEDTEST_RESULTS = "update_speedtest_results"
 SIGNAL_UPDATE_SPEEDTEST_STATUS = "update_speedtest_status"
