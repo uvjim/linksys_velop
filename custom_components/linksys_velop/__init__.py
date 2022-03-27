@@ -14,7 +14,8 @@ from typing import (
 )
 
 from homeassistant.config_entries import (
-    ConfigEntry
+    ConfigEntry,
+    device_registry as dr,
 )
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -85,7 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- setup the coordinator for data updates --#
-    hass.data[DOMAIN][CONF_COORDINATOR_MESH] = Mesh(
+    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
         request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
@@ -97,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         Will signal relevant sensors that have a state that needs updating more frequently
         """
 
-        mesh: Mesh = hass.data[DOMAIN][CONF_COORDINATOR_MESH]
+        mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
         log_formatter = VelopLogger(unique_id=config_entry.unique_id)
         device: Device
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
@@ -115,11 +116,26 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 new_devices: Set[str] = current_devices.difference(previous_devices)
                 if new_devices:
                     for device in mesh.devices:
+                        # region #-- get the mesh device_id --#
+                        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
+                        dr_device: dr.DeviceEntry
+                        mesh_id = [
+                            dr_device
+                            for dr_id, dr_device in device_registry.devices.items()
+                            if (
+                                config_entry.entry_id in dr_device.config_entries
+                                and dr_device.manufacturer == PYVELOP_AUTHOR
+                                and dr_device.name.lower() == "mesh"
+                            )
+                        ]
+                        # endregion
                         if device.unique_id in new_devices:
                             payload: Dict[str, Any] = {
                                 prop: getattr(device, prop, None)
                                 for prop in EVENT_NEW_DEVICE_ON_MESH_PROPERTIES
                             }
+                            if mesh_id:
+                                payload["mesh_device_id"] = mesh_id[0].id
                             _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
                             hass.bus.async_fire(
                                 event_type=EVENT_NEW_DEVICE_ON_MESH,
@@ -146,7 +162,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     # region #-- Service Definition --#
-    services = LinksysVelopServiceHandler(hass=hass, config_entry=config_entry)
+    services = LinksysVelopServiceHandler(hass=hass)
     services.register_services()
     hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER] = services
     # endregion
