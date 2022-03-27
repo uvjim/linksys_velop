@@ -1,21 +1,6 @@
 """Binary sensors for the mesh, nodes and devices"""
 
 # region #-- imports --#
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
-try:
-    from homeassistant.helpers.entity import EntityCategory
-except ImportError:
-    EntityCategory = None
-    # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-    try:
-        from homeassistant.const import (
-            ENTITY_CATEGORY_CONFIG,
-            ENTITY_CATEGORY_DIAGNOSTIC,
-        )
-    except ImportError:
-        ENTITY_CATEGORY_CONFIG: str = "config"
-        ENTITY_CATEGORY_DIAGNOSTIC: str = "diagnostic"
-
 import asyncio
 import dataclasses
 import logging
@@ -41,6 +26,7 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -189,7 +175,7 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
 
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._attr_entity_category = ENTITY_CATEGORY_DIAGNOSTIC if EntityCategory is None else EntityCategory.DIAGNOSTIC
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self.entity_description: LinksysVelopBinarySensorDescription = description
 
@@ -233,7 +219,7 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
         self._node_id: str = node.unique_id
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
-        self._attr_entity_category = ENTITY_CATEGORY_DIAGNOSTIC if EntityCategory is None else EntityCategory.DIAGNOSTIC
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self.entity_description: LinksysVelopBinarySensorDescription = description
 
