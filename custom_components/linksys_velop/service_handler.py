@@ -95,7 +95,7 @@ class LinksysVelopServiceHandler:
 
         return ret
 
-    async def _async_service_call(self, call: ServiceCall):
+    async def _async_service_call(self, call: ServiceCall) -> None:
         """Call the required method based on the given argument
 
         :param call: the service call that should be made
