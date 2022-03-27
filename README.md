@@ -103,24 +103,25 @@ The event looks as follows: -
     "data": {
         "connected_adapters": [
             {
-                "mac": "00:11:22:33:44:55",
-                "ip": "192.168.123.51",
+                "mac": "11:22:33:44:55:66",
+                "ip": "192.168.1.45",
                 "guest_network": false
             }
         ],
         "description": null,
-        "manufacturer": "OnePlus Technology (Shenzhen) Co., Ltd",
+        "manufacturer": null,
         "model": null,
         "name": "Network Device",
         "operating_system": null,
-        "parent_name": "Lounge",
+        "parent_name": "Test Parent",
         "serial": null,
-        "status": true
+        "status": true,
+        "mesh_device_id": "04e9bfe6c39d52f8272de96cbf85909c"
     },
     "origin": "LOCAL",
-    "time_fired": "2022-03-10T12:57:30.843508+00:00",
+    "time_fired": "2022-03-27T13:43:48.335952+00:00",
     "context": {
-        "id": "f7078df4140d268320612e7ccc47ac35",
+        "id": "0bcafe321fc4919958c350da1aaef6de",
         "parent_id": null,
         "user_id": null
     }
