@@ -1203,22 +1203,26 @@ condition: []
 action:
   - service: persistent_notification.create
     data:
-      title: 'Linksys Velop: New Device on Mesh'
+      title: 'Linksys Velop: New Device'
       message: >-
-        <b>{{ trigger.event.data.name }}</b><br />Status: {{ "Online" if
-        trigger.event.data.status is eq true else "Offline" }}<br />IP: {{
-        trigger.event.data.connected_adapters[0].ip }}<br />MAC: {{
-        trigger.event.data.connected_adapters[0].mac }}<br />Guest network: {{
+        {% set device_id = trigger.event.data.mesh_device_id %} {% set mesh_name
+        = device_attr(device_id, 'name_by_user') %} {% if mesh_name is none %}
+          {% set mesh_name = device_attr(device_id, 'name') %}
+        {% endif %} <b>{{ trigger.event.data.name }}</b><br />Mesh: {{ mesh_name
+        }}<br /> Status: {{ "Online" if trigger.event.data.status is eq true
+        else "Offline" }}<br /> IP: {{
+        trigger.event.data.connected_adapters[0].ip }}<br /> MAC: {{
+        trigger.event.data.connected_adapters[0].mac }}<br /> Guest network: {{
         "Yes" if trigger.event.data.connected_adapters[0].guest_network is eq
-        true else "No" }}<br />{{"Parent Node: " ~
+        true else "No" }}<br /> {{"Parent Node: " ~
         trigger.event.data.parent_name if trigger.event.data.parent_name is not
-        none else ""}}<br />{{"Manufacturer: " ~
+        none else ""}}<br /> {{"Manufacturer: " ~
         trigger.event.data.manufacturer if trigger.event.data.manufacturer is
-        not none else ""}}<br />{{"Model: " ~ trigger.event.data.model if
-        trigger.event.data.model is not none else ""}}<br />{{"Serial: " ~
+        not none else ""}}<br /> {{"Model: " ~ trigger.event.data.model if
+        trigger.event.data.model is not none else ""}}<br /> {{"Serial: " ~
         trigger.event.data.serial if trigger.event.data.serial is not none else
-        ""}}<br />{{"Description: " ~ trigger.event.data.description if
-        trigger.event.data.description is not none else ""}}<br />{{"Operating
+        ""}}<br /> {{"Description: " ~ trigger.event.data.description if
+        trigger.event.data.description is not none else ""}}<br /> {{"Operating
         System: " ~ trigger.event.data.operating_system if
         trigger.event.data.operating_system is not none else ""}}
 mode: parallel
