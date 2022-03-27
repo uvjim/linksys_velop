@@ -323,11 +323,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="already_configured")
         # endregion
 
-        # abort if a flow is in progress or an instance already exists
-        if self._async_in_progress() or self._async_current_entries():
-            _LOGGER.debug(self._log_formatter.message_format("only a single instance is allowed"))
-            return self.async_abort(reason="single_instance_allowed")
-
         # region #-- set a unique_id, update details if device has changed IP --#
         _LOGGER.debug(self._log_formatter.message_format("setting unique_id"))
         await self.async_set_unique_id(_serial)
@@ -418,11 +413,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initiated by the user"""
 
         _LOGGER.debug(self._log_formatter.message_format("entered, user_input: %s"), user_input)
-
-        # abort if an instance already exists
-        if self._async_current_entries():
-            _LOGGER.debug(self._log_formatter.message_format("only a single instance is allowed"))
-            return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
             self.task_login = None
