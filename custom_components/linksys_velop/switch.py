@@ -1,20 +1,5 @@
 """Switches for the mesh"""
 # region #-- imports --#
-# TODO: Remove the try/except block when setting the minimum HASS version to 2021.12
-try:
-    from homeassistant.helpers.entity import EntityCategory
-except ImportError:
-    EntityCategory = None
-    # TODO: Remove the try/except block when setting the minimum HASS version to 2021.11
-    try:
-        from homeassistant.const import (
-            ENTITY_CATEGORY_CONFIG,
-            ENTITY_CATEGORY_DIAGNOSTIC,
-        )
-    except ImportError:
-        ENTITY_CATEGORY_CONFIG: str = "config"
-        ENTITY_CATEGORY_DIAGNOSTIC: str = "diagnostic"
-
 # TODO: Fix up the try/except block when setting the minimum HASS version to 2021.12
 # HASS 2021.12 introduces StrEnum for DEVICE_CLASS_* constants
 try:
@@ -42,6 +27,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
@@ -172,7 +158,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         super().__init__(config_entry=config_entry, coordinator=coordinator)
 
         self._attr_device_class = DEVICE_CLASS_SWITCH
-        self._attr_entity_category = ENTITY_CATEGORY_CONFIG if EntityCategory is None else EntityCategory.CONFIG
+        self._attr_entity_category = EntityCategory.CONFIG
 
         self.entity_description: LinksysVelopSwitchDescription = description
 
