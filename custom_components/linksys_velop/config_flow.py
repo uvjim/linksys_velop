@@ -1,11 +1,5 @@
 """Provide UI for configuring the integration"""
-# TODO: fix up this try/except block when setting the minimum HASS version to 2021.12
-# HASS 2021.12 uses dataclasses for discovery information
-try:
-    from homeassistant.components.ssdp import SsdpServiceInfo
-except ImportError:
-    SsdpServiceInfo = None
-
+# region #-- imports --#
 import logging
 from typing import (
     List,
@@ -20,6 +14,7 @@ from homeassistant import (
 )
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
+from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
@@ -29,7 +24,6 @@ from homeassistant.core import (
     HomeAssistant,
 )
 from homeassistant.helpers import entity_registry
-from homeassistant.helpers.typing import DiscoveryInfoType
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
@@ -62,6 +56,8 @@ from .const import (
     STEP_USER,
 )
 from .logger import VelopLogger
+
+# endregion
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -287,7 +283,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_ssdp(
         self,
-        discovery_info: Union[DiscoveryInfoType, SsdpServiceInfo]
+        discovery_info: SsdpServiceInfo
     ) -> data_entry_flow.FlowResult:
         """Allow the Mesh primary node to be discovered via SSDP"""
 
