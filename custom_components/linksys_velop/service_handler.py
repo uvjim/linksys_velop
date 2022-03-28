@@ -1,4 +1,6 @@
 """Manage the services for the pyvelop integration"""
+
+# region #-- imports --#
 import logging
 from typing import (
     List,
@@ -18,6 +20,9 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS
 )
 from .logger import VelopLogger
+
+# endregion
+
 
 _LOGGER = logging.getLogger(__name__)
 

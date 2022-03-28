@@ -1,9 +1,10 @@
 """Provide UI for configuring the integration"""
 # region #-- imports --#
+from __future__ import annotations
+
 import logging
 from typing import (
     List,
-    Union,
 )
 
 import homeassistant.helpers.config_validation as cv
@@ -62,7 +63,7 @@ from .logger import VelopLogger
 _LOGGER = logging.getLogger(__name__)
 
 
-def _is_mesh_by_host(hass: HomeAssistant, host: str) -> Union[config_entries.ConfigEntry, None]:
+def _is_mesh_by_host(hass: HomeAssistant, host: str) -> config_entries.ConfigEntry | None:
     """"""
 
     current_entries = hass.config_entries.async_entries(DOMAIN)
@@ -344,7 +345,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not self.unique_id:
             _LOGGER.debug(self._log_formatter.message_format("no unique_id"))
             # region #-- get the unique_id --#
-            unique_id: Union[str, None] = None
+            unique_id: str | None = None
             if self._mesh:
                 nodes: List[Node] = self._mesh.nodes
                 for node in nodes:

@@ -1,6 +1,8 @@
 """Binary sensors for the mesh, nodes and devices"""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import asyncio
 import dataclasses
 import logging
@@ -11,7 +13,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Union,
 )
 
 from homeassistant.components.binary_sensor import (
@@ -31,7 +32,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
-
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -47,6 +47,7 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,11 +97,11 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
-    binary_sensors: List[Union[
-        LinksysVelopMeshBinarySensor,
-        LinksysVelopNodeBinarySensor,
+    binary_sensors: List[
+        LinksysVelopMeshBinarySensor |
+        LinksysVelopNodeBinarySensor |
         LinksysVelopMeshSpeedtestStatusBinarySensor
-    ]] = [
+    ] = [
         LinksysVelopMeshBinarySensor(
             config_entry=config_entry,
             coordinator=coordinator,
@@ -255,7 +256,7 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
     _status_update_interval: int = 1
     _remove_time_interval: Optional[Callable] = None
 
-    async def _async_get_speedtest_state(self, _: Union[datetime, None] = None):
+    async def _async_get_speedtest_state(self, _: datetime | None = None):
         """Update the state of the binary sensor
 
         Triggers a time interval to ensure that data is checked for more regularly when the state

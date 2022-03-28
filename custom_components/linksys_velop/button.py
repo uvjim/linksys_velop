@@ -1,6 +1,8 @@
 """"""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import dataclasses
 import logging
 from abc import ABC
@@ -8,7 +10,6 @@ from typing import (
     Callable,
     List,
     Optional,
-    Union,
 )
 
 from homeassistant.components.button import (
@@ -31,13 +32,13 @@ from . import (
     LinksysVelopMeshEntity,
     LinksysVelopNodeEntity,
 )
-
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
-    buttons: List[Union[LinksysVelopMeshButton, LinksysVelopNodeButton]] = [
+    buttons: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = [
         LinksysVelopMeshButton(
             config_entry=config_entry,
             coordinator=coordinator,
