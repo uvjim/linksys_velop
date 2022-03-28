@@ -1,6 +1,8 @@
 """Sensors for the mesh, nodes and devices"""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import dataclasses
 import logging
 from typing import (
@@ -9,7 +11,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Union,
 )
 
 from homeassistant.components.sensor import (
@@ -120,11 +121,11 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
-    sensors: List[Union[
-        LinksysVelopMeshSensor,
-        LinksysVelopNodeSensor,
+    sensors: List[
+        LinksysVelopMeshSensor |
+        LinksysVelopNodeSensor |
         LinksysVelopMeshSpeedtestLatestSensor
-    ]] = [
+    ] = [
         LinksysVelopMeshSensor(
             config_entry=config_entry,
             coordinator=coordinator,

@@ -1,6 +1,8 @@
 """Select entities"""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import dataclasses
 import logging
 from abc import ABC
@@ -10,7 +12,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Union,
 )
 
 from homeassistant.components.select import (
@@ -80,7 +81,7 @@ class OptionalLinksysVelopDescription:
 class RequiredLinksysVelopDescription:
     """Represent the required attributes of the select description."""
 
-    options: Union[Callable[[Any], list[str]], list[str]]
+    options: Callable[[Any], list[str]] | list[str]
 
 
 @dataclasses.dataclass

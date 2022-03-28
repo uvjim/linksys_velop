@@ -1,6 +1,8 @@
 """The Linksys Velop integration"""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import datetime
 import logging
 from datetime import timedelta
@@ -10,7 +12,6 @@ from typing import (
     List,
     Optional,
     Set,
-    Union,
 )
 
 from homeassistant.config_entries import (
@@ -59,6 +60,7 @@ from .const import (
 )
 from .logger import VelopLogger
 from .service_handler import LinksysVelopServiceHandler
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -324,7 +326,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 # region #-- cleanup entities --#
 def entity_cleanup(
     config_entry: ConfigEntry,
-    entities: List[Union[LinksysVelopMeshEntity, LinksysVelopNodeEntity]],
+    entities: List[LinksysVelopMeshEntity | LinksysVelopNodeEntity],
     hass: HomeAssistant
 ):
     """"""

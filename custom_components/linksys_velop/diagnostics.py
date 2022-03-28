@@ -1,9 +1,11 @@
 """Diagnostics support for Linksys Velop"""
 
+# region #-- imports --#
+from __future__ import annotations
+
 from typing import (
     Any,
     List,
-    Union,
 )
 
 from homeassistant.components.diagnostics import (
@@ -24,6 +26,7 @@ from .const import (
     CONF_COORDINATOR,
     DOMAIN,
 )
+# endregion
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: ConfigEntry) -> dict[str, Any]:
@@ -54,7 +57,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: 
     # region #-- get the node and device details --#
     keys = ("nodes", "devices")
     for k in keys:
-        items: List[Union[Device, Node]] = mesh_attributes.get(k, [])
+        items: List[Device | Node] = mesh_attributes.get(k, [])
         if items:
             ret[k] = []
             for i in items:
