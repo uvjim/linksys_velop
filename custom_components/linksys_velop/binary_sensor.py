@@ -46,6 +46,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
+    UPDATE_DOMAIN,
 )
 
 # endregion
@@ -121,19 +122,10 @@ async def async_setup_entry(
         )
     )
 
+    binary_sensors_update: List[LinksysVelopNodeBinarySensor] = []
     for node in mesh.nodes:
-        binary_sensors.extend([
-            LinksysVelopNodeBinarySensor(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopBinarySensorDescription(
-                    device_class=BinarySensorDeviceClass.CONNECTIVITY,
-                    extra_attributes=lambda n: n.connected_adapters[0] if n.connected_adapters else {},
-                    key="status",
-                    name="Status",
-                )
-            ),
+        # -- build the binary sensor for showing an update available for each node --#
+        binary_sensors_update.extend([
             LinksysVelopNodeBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
@@ -147,6 +139,24 @@ async def async_setup_entry(
             ),
         ])
 
+        # -- build the additional binary sensors --#
+        binary_sensors.extend([
+            LinksysVelopNodeBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopBinarySensorDescription(
+                    device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                    extra_attributes=lambda n: n.connected_adapters[0] if n.connected_adapters else {},
+                    key="status",
+                    name="Status",
+                )
+            ),
+        ])
+
+    if UPDATE_DOMAIN is None:  # if the update entity isn't available create the update available binary sensors
+        binary_sensors.extend(binary_sensors_update)
+
     async_add_entities(binary_sensors)
 
     binary_sensors_to_remove: List = [
@@ -159,6 +169,9 @@ async def async_setup_entry(
             )
         )
     ]
+    if UPDATE_DOMAIN is not None:  # if the update entity is available remove any existing update available sensor
+        binary_sensors_to_remove.extend(binary_sensors_update)
+
     if binary_sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=binary_sensors_to_remove, hass=hass)
 

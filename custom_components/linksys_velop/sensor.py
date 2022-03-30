@@ -41,6 +41,7 @@ from .const import (
     DOMAIN,
     ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
+    UPDATE_DOMAIN,
 )
 
 # endregion
@@ -148,7 +149,33 @@ async def async_setup_entry(
 
     # region #-- node sensors --#
     node: Node
+    sensors_versions: List[LinksysVelopNodeSensor] = []
     for node in mesh.nodes:
+        # -- build the sensors for showing version numbers for each node --#
+        sensors_versions.extend([
+            LinksysVelopNodeSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopSensorDescription(
+                    key="",
+                    name="Newest Version",
+                    state_value=lambda n: n.firmware.get("latest_version", None)
+                )
+            ),
+            LinksysVelopNodeSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopSensorDescription(
+                    key="",
+                    name="Version",
+                    state_value=lambda n: n.firmware.get("version", None)
+                )
+            ),
+        ])
+
+        # -- build the additional sensors --#
         sensors.extend([
             LinksysVelopNodeSensor(
                 config_entry=config_entry,
@@ -198,17 +225,6 @@ async def async_setup_entry(
                 coordinator=coordinator,
                 node=node,
                 description=LinksysVelopSensorDescription(
-                    key="",
-                    name="Newest Version",
-                    state_value=lambda n: n.firmware.get("latest_version", None)
-                )
-            ),
-
-            LinksysVelopNodeSensor(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopSensorDescription(
                     icon="hass:barcode",
                     key="serial",
                     name="Serial"
@@ -223,22 +239,18 @@ async def async_setup_entry(
                     name="Type"
                 )
             ),
-            LinksysVelopNodeSensor(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopSensorDescription(
-                    key="",
-                    name="Version",
-                    state_value=lambda n: n.firmware.get("version", None)
-                )
-            ),
         ])
+
+    if UPDATE_DOMAIN is None:  # don't create the version sensors if the update entity is available
+        sensors.extend(sensors_versions)
     # endregion
 
     async_add_entities(sensors)
 
-    sensors_to_remove: List = []
+    sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
+    if UPDATE_DOMAIN is not None:  # remove the existing version sensors if the update entity is available
+        sensors_to_remove.extend(sensors_versions)
+
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
 
