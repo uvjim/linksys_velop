@@ -28,7 +28,7 @@ available.
   - IP, DNS, MAC
 - Node: Status
   - IP, MAC, guest network
-- Node: Update Available
+- Node: Update Available (only if HASS < 2022.4.0)
 
 #### Buttons
 
@@ -62,10 +62,10 @@ install time and from reconfiguring the integration.
 - Node: Number of Connected Devices
   - list of names, IP addresses, type of connection and guest network state for 
     the connected devices
-- Node: Current Firmware Version
+- Node: Current Firmware Version (only if HASS < 2022.4.0)
 - Node: Last Update Check *(disabled by default)*
 - Node: Model Number
-- Node: Newest Firmware Version
+- Node: Newest Firmware Version (only if HASS < 2022.4.0)
 - Node: Parent Name
   - IP address of the parent, backhaul information (connection type, speed 
     in Mbps and last checked time)
@@ -78,6 +78,11 @@ install time and from reconfiguring the integration.
   - list of guest networks available
 - Mesh: Parental Control state
   - list of the rules being applied
+
+#### Update (only if HASS > 2022.4.0)
+
+- Node: Firmware update available.
+  - includes current and latest firmware versions 
 
 ### Events Fired
 
