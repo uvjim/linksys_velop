@@ -9,6 +9,7 @@
         },
         "error": {
             "connection_error": "Błąd połączenia.",
+            "invalid_input": "Nieprawidłowe dane wejściowe.",
             "login_error": "Nie udało się zalogować. Sprawdź nazwę użytkownika i hasło.",
             "login_bad_response": "Niewłąściwa odpowiedź podczas logowania. Sprawdź, czy główny węzeł sieci kratowej jest poprawny.",
             "node_not_primary": "Należy określić główny węzeł sieci kratowej Velop.",
