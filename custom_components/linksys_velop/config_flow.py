@@ -29,6 +29,7 @@ from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
     MeshInvalidCredentials,
+    MeshInvalidInput,
     MeshNodeNotPrimary,
     MeshBadResponse,
     MeshTimeoutError,
@@ -202,6 +203,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except MeshBadResponse:
                 _LOGGER.debug(self._log_formatter.message_format("bad response"))
                 self._errors["base"] = "login_bad_response"
+            except MeshInvalidInput as err:
+                _LOGGER.debug(self._log_formatter.message_format("invalid input"))
+                _LOGGER.warning("%s", err)
+                self._errors["base"] = "invalid_input"
             except MeshNodeNotPrimary:
                 _LOGGER.debug(self._log_formatter.message_format("not primary"))
                 self._errors["base"] = "node_not_primary"
