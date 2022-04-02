@@ -111,19 +111,9 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
 
         self.entity_description: LinksysVelopUpdateDescription = description
 
+        self._attr_installed_version = self._node.firmware.get("version", None)
+        self._attr_latest_version = self._node.firmware.get("latest_version", None)
         self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
         self._attr_unique_id = f"{self._node.unique_id}::" \
                                f"{ENTITY_DOMAIN.lower()}::" \
                                f"{slugify(self.entity_description.name)}"
-
-    @property
-    def current_version(self) -> str | None:
-        """Get the current version"""
-
-        return self._node.firmware.get("version", None)
-
-    @property
-    def latest_version(self) -> str | None:
-        """Get the latest version"""
-
-        return self._node.firmware.get("latest_version", None)
