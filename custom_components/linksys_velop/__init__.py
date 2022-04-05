@@ -110,7 +110,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
         except Exception as err:
             if mesh:
-                await mesh.close()
+                await mesh.async_close()
             raise UpdateFailed(err)
         else:
             if previous_devices:
@@ -206,7 +206,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     # region #-- close the mesh connection --#
     coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-    await mesh.close()
+    await mesh.async_close()
     # endregion
 
     # region #-- unsubscribe from listening for updates --#

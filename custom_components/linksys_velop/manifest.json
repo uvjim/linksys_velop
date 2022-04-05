@@ -12,7 +12,7 @@
   "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
   "name": "Linksys Velop",
   "requirements": [
-    "pyvelop==2022.3.2"
+    "pyvelop==2022.4.5"
   ],
   "ssdp": [
     {
