@@ -25,6 +25,7 @@ from homeassistant.core import (
     HomeAssistant,
 )
 from homeassistant.helpers import entity_registry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
@@ -144,7 +145,6 @@ async def _async_get_devices(mesh: Mesh) -> dict:
     ret: dict = {}
 
     devices: List[Device] = await mesh.async_get_devices()
-    await mesh.async_close()
     devices = [device for device in devices if device.name != "Network Device"]
     for device in devices:
         for adapter in device.network:
@@ -189,33 +189,32 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
 
         _LOGGER.debug(self._log_formatter.message_format("entered, user_input: %s"), user_input)
-        async with Mesh(**user_input) as mesh:
-            try:
-                _LOGGER.debug(self._log_formatter.message_format("gathering details"))
-                await mesh.async_gather_details()
-                _LOGGER.debug(self._log_formatter.message_format("details gathered"))
-            except MeshConnectionError:
-                _LOGGER.debug(self._log_formatter.message_format("connection error"))
-                self._errors["base"] = "connection_error"
-            except MeshInvalidCredentials:
-                _LOGGER.debug(self._log_formatter.message_format("login error"))
-                self._errors["base"] = "login_error"
-            except MeshBadResponse:
-                _LOGGER.debug(self._log_formatter.message_format("bad response"))
-                self._errors["base"] = "login_bad_response"
-            except MeshInvalidInput as err:
-                _LOGGER.debug(self._log_formatter.message_format("invalid input"))
-                _LOGGER.warning("%s", err)
-                self._errors["base"] = "invalid_input"
-            except MeshNodeNotPrimary:
-                _LOGGER.debug(self._log_formatter.message_format("not primary"))
-                self._errors["base"] = "node_not_primary"
-            except MeshTimeoutError:
-                _LOGGER.debug(self._log_formatter.message_format("timeout"))
-                self._errors["base"] = "node_timeout"
-            else:
-                _LOGGER.debug(self._log_formatter.message_format("no exceptions"))
-                self._mesh = mesh
+        self._mesh = Mesh(**user_input, session=async_get_clientsession(hass=self.hass))
+        try:
+            _LOGGER.debug(self._log_formatter.message_format("gathering details"))
+            await self._mesh.async_gather_details()
+            _LOGGER.debug(self._log_formatter.message_format("details gathered"))
+        except MeshConnectionError:
+            _LOGGER.debug(self._log_formatter.message_format("connection error"))
+            self._errors["base"] = "connection_error"
+        except MeshInvalidCredentials:
+            _LOGGER.debug(self._log_formatter.message_format("login error"))
+            self._errors["base"] = "login_error"
+        except MeshBadResponse:
+            _LOGGER.debug(self._log_formatter.message_format("bad response"))
+            self._errors["base"] = "login_bad_response"
+        except MeshInvalidInput as err:
+            _LOGGER.debug(self._log_formatter.message_format("invalid input"))
+            _LOGGER.warning("%s", err)
+            self._errors["base"] = "invalid_input"
+        except MeshNodeNotPrimary:
+            _LOGGER.debug(self._log_formatter.message_format("not primary"))
+            self._errors["base"] = "node_not_primary"
+        except MeshTimeoutError:
+            _LOGGER.debug(self._log_formatter.message_format("timeout"))
+            self._errors["base"] = "node_timeout"
+        else:
+            _LOGGER.debug(self._log_formatter.message_format("no exceptions"))
 
         self.hass.async_create_task(self.hass.config_entries.flow.async_configure(flow_id=self.flow_id))
         _LOGGER.debug(self._log_formatter.message_format("exited"))
@@ -473,7 +472,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         mesh = Mesh(
             node=self._config_entry.options[CONF_NODE],
-            password=self._config_entry.options[CONF_PASSWORD]
+            password=self._config_entry.options[CONF_PASSWORD],
+            session=async_get_clientsession(hass=self.hass)
         )
         devices: dict = await _async_get_devices(mesh=mesh)
 
