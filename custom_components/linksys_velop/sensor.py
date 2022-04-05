@@ -8,6 +8,7 @@ import logging
 from typing import (
     Any,
     Callable,
+    Dict,
     List,
     Mapping,
     Optional,
@@ -344,28 +345,28 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
 class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
     """Representation of the sensor the latest Speedtest results"""
 
-    _value: List = []
+    _value: Dict = {}
 
     async def _get_results(self):
         """Refresh the Speedtest details from the API"""
 
         results: List = await self._mesh.async_get_speedtest_results(only_completed=True, only_latest=True)
         if results:
-            self._value = results
+            self._value = results[0]
 
         self.async_schedule_update_ha_state()
 
     def _handle_coordinator_update(self) -> None:
         """Update the status information when the coordinator updates"""
 
-        self._value = self._mesh.speedtest_results
+        self._value = self._mesh.latest_speedtest_result
         super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
         """Register for callbacks and set initial value"""
 
         await super().async_added_to_hass()
-        self._value = self._mesh.speedtest_results
+        self._value = self._mesh.latest_speedtest_result
         self.async_on_remove(
             async_dispatcher_connect(
                 hass=self.hass,
@@ -380,7 +381,7 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
 
         ret = None
         if self._value:
-            ret = self._value[0].copy()
+            ret = self._value.copy()
             ret.pop("timestamp")
 
         return ret
@@ -392,5 +393,5 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
         ret = None
 
         if self._value:
-            ret = dt_util.parse_datetime(self._value[0].get("timestamp"))
+            ret = dt_util.parse_datetime(self._value.get("timestamp"))
         return ret
