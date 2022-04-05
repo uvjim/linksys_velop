@@ -23,6 +23,7 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -92,6 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
         request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+        session=async_get_clientsession(hass=hass),
     )
 
     async def _async_get_mesh_data() -> Mesh:
@@ -109,8 +111,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             if mesh.speedtest_status:
                 async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
         except Exception as err:
-            if mesh:
-                await mesh.async_close()
             raise UpdateFailed(err)
         else:
             if previous_devices:
@@ -202,12 +202,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Cleanup when unloading a config entry"""
-
-    # region #-- close the mesh connection --#
-    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
-    mesh: Mesh = coordinator.data
-    await mesh.async_close()
-    # endregion
 
     # region #-- unsubscribe from listening for updates --#
     hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
