@@ -130,3 +130,14 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         """
 
         return self._mesh.firmware_update_setting != "manual"
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Retrieve the entity picture for the node"""
+
+        ret = None
+        parent_path = self._config.options.get("node_images")
+        if parent_path is not None:
+            ret = f"{parent_path}/{self._node.model}.png"
+
+        return ret
