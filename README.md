@@ -650,9 +650,9 @@ filter:
             "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
             "_serial"
           ID_UPDATE_AVAILABLE: >
-            "binary_sensor." +
+            "update." +
             "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
-            "_update_available"
+            "_update"
           CONNECTED_DEVICES_TEXT: |
             (entity_id) => {
               var ret = `
@@ -739,7 +739,7 @@ filter:
                 attr_update: |
                   [[[
                     var ret
-                    var entity_update = 'binary_sensor.' + entity.entity_id.split('.')[1].split('_').slice(0, -1).join('_') + '_update_available'
+                    var entity_update = 'update.' + entity.entity_id.split('.')[1].split('_').slice(0, -1).join('_') + '_update'
                     var update_available = states[entity_update].state
                     if (update_available == 'on') {
                       ret = `<ha-icon
