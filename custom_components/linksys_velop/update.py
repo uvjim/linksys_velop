@@ -6,7 +6,9 @@ from __future__ import annotations
 import dataclasses
 import logging
 from abc import ABC
-from typing import List
+from typing import (
+    List,
+)
 
 from homeassistant.components.update import (
     DOMAIN as ENTITY_DOMAIN,
@@ -117,3 +119,14 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         self._attr_unique_id = f"{self._node.unique_id}::" \
                                f"{ENTITY_DOMAIN.lower()}::" \
                                f"{slugify(self.entity_description.name)}"
+
+    @property
+    def auto_update(self) -> bool:
+        """Return the status of auto-update
+
+        N.B. Velop sets auto update at the mesh level (on/off for all nodes)
+        Using a property here because the value of self._mesh is update at each
+        DataUpdateCoordinator update interval
+        """
+
+        return self._mesh.firmware_update_setting != "manual"
