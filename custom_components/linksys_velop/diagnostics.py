@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import (
     Any,
     List,
+    Optional,
 )
 
 from homeassistant.components.diagnostics import (
@@ -34,41 +35,20 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: 
 
     coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-    mesh_attributes = getattr(mesh, "_Mesh__mesh_attributes")
-    mesh_details_keys = (
-        "check_update_state",
-        "guest_network",
-        "parental_control",
-        "speedtest_results",
-        "speedtest_state",
-        "wan_info",
-    )
+    mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
+    # noinspection PyUnusedLocal
+    mesh_devices: Optional[List[Device]] = mesh_attributes.pop("devices", None)  # these will be a non-serialisable form
+    # noinspection PyUnusedLocal
+    mesh_nodes: Optional[List[Node]] = mesh_attributes.pop("nodes", None)  # these will be a non-serialisable form
 
     # region #-- create generic details --#
     ret: dict[str, Any] = {
         "config_entry": config_entry.as_dict(),  # get the config entry details
         "mesh_details": {  # get mesh details
             key: mesh_attributes.get(key)
-            for key in mesh_details_keys
+            for key in mesh_attributes
         },
     }
-    # endregion
-
-    # region #-- get the node and device details --#
-    keys = ("nodes", "devices")
-    for k in keys:
-        items: List[Device | Node] = mesh_attributes.get(k, [])
-        if items:
-            ret[k] = []
-            for i in items:
-                ret[k].append({
-                    "parent_name": i.parent_name,
-                    "raw_attributes": getattr(i, "_attribs"),
-                })
-                if isinstance(i, Node):
-                    ret[k][-1]["connected_devices"] = getattr(i, "_Node__connected_devices")
-        else:
-            ret[k] = items
     # endregion
 
     # region #-- redact additional buried data --#
