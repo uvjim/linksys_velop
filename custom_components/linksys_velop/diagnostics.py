@@ -63,4 +63,4 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, config_entry: 
                 ret["mesh_details"]["guest_network"]["radios"][idx][k] = REDACTED
     # endregion
 
-    return async_redact_data(ret, (CONF_PASSWORD, "macAddress", "apBSSID", "stationBSSID"))
+    return async_redact_data(ret, (CONF_PASSWORD, "macAddress", "apBSSID", "stationBSSID", "serialNumber", "unique_id"))
