@@ -26,6 +26,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
+import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -325,9 +326,7 @@ def entity_cleanup(
 ):
     """"""
 
-    import homeassistant.helpers.entity_registry as er
-
-    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+    log_formatter = VelopLogger(unique_id=config_entry.unique_id, prefix=f"{entities[0].__class__.__name__} --> ")
     _LOGGER.debug(log_formatter.message_format("entered"))
 
     entity_registry: er.EntityRegistry = er.async_get(hass=hass)
