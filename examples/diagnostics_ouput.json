@@ -1,7 +1,7 @@
 {
   "home_assistant": {
     "installation_type": "Home Assistant Core",
-    "version": "2022.3.2",
+    "version": "2022.4.0",
     "dev": false,
     "hassio": false,
     "virtualenv": true,
@@ -27,10 +27,6 @@
       ]
     },
     "hdhomerun": {
-      "version": "2022.3.1",
-      "requirements": []
-    },
-    "freedns": {
       "version": "2022.3.1",
       "requirements": []
     }
@@ -62,10 +58,10 @@
   },
   "data": {
     "config_entry": {
-      "entry_id": "5b4dbedf3469df459de2af8ee0e3d66f",
+      "entry_id": "8b6070140e3bd4b84899b81ad6a31cef",
       "version": 1,
       "domain": "linksys_velop",
-      "title": "Linksys Velop Mesh",
+      "title": "192.168.123.254",
       "data": {
         "node": "192.168.123.254"
       },
@@ -80,17 +76,17 @@
       },
       "pref_disable_new_entities": false,
       "pref_disable_polling": false,
-      "source": "user",
-      "unique_id": "38U10M3BA40594",
+      "source": "ssdp",
+      "unique_id": "**REDACTED**",
       "disabled_by": null
     },
     "mesh_details": {
       "raw_devices": {
-        "revision": 39589,
+        "revision": 39922,
         "devices": [
           {
             "deviceID": "614b8c65-c044-ee54-3052-e89f8060c837",
-            "lastChangeRevision": 39335,
+            "lastChangeRevision": 39804,
             "model": {
               "deviceType": "Infrastructure",
               "manufacturer": "Linksys",
@@ -99,7 +95,7 @@
               "description": "Velop AX4200 WiFi 6 System"
             },
             "unit": {
-              "serialNumber": "38U10M3BA40594",
+              "serialNumber": "**REDACTED**",
               "firmwareVersion": "1.0.11.208553",
               "firmwareDate": "2021-09-16T18:21:28Z"
             },
@@ -138,11 +134,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "76a5f29d-00c0-48ff-be05-be99a8fb6061",
-            "lastChangeRevision": 39512,
+            "lastChangeRevision": 39911,
             "model": {
               "deviceType": "Mobile"
             },
@@ -188,11 +184,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "68eaffe2-8f62-4ba9-b37b-b2cc93b7b57d",
-            "lastChangeRevision": 39429,
+            "lastChangeRevision": 39877,
             "model": {
               "deviceType": ""
             },
@@ -224,11 +220,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "b83856e8-e22a-4480-b927-85ecd077059c",
-            "lastChangeRevision": 39431,
+            "lastChangeRevision": 39883,
             "model": {
               "deviceType": ""
             },
@@ -267,11 +263,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "2e2aedaf-c664-4999-bf0d-39e7d3c9e20c",
-            "lastChangeRevision": 39428,
+            "lastChangeRevision": 39879,
             "model": {
               "deviceType": ""
             },
@@ -302,11 +298,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "f785a815-2a41-4ae6-94b2-ec4aefe38aaf",
-            "lastChangeRevision": 39407,
+            "lastChangeRevision": 39878,
             "model": {
               "deviceType": ""
             },
@@ -337,11 +333,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "b2a76d32-32be-42bd-bb22-4034877586fe",
-            "lastChangeRevision": 39401,
+            "lastChangeRevision": 39887,
             "model": {
               "deviceType": ""
             },
@@ -372,11 +368,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "2ddf2f78-d488-4a89-a0ce-c19cdd7edac8",
-            "lastChangeRevision": 39389,
+            "lastChangeRevision": 39858,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Roku, Inc.",
@@ -384,7 +380,7 @@
               "description": "Roku Streaming Player Network Media"
             },
             "unit": {
-              "serialNumber": "YH009T524285"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Streaming Stick+",
@@ -412,11 +408,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "af0d9fa6-081d-44fc-9689-d8fe4096cc35",
-            "lastChangeRevision": 39398,
+            "lastChangeRevision": 39894,
             "model": {
               "deviceType": ""
             },
@@ -448,11 +444,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "513addaa-77aa-4580-9997-57f0a263e64f",
-            "lastChangeRevision": 39424,
+            "lastChangeRevision": 39862,
             "model": {
               "deviceType": ""
             },
@@ -469,7 +465,7 @@
               {
                 "macAddress": "**REDACTED**",
                 "ipAddress": "192.168.123.191",
-                "parentDeviceID": "d6fab79b-cbd1-9ed8-af64-302303a62234"
+                "parentDeviceID": "614b8c65-c044-ee54-3052-e89f8060c837"
               }
             ],
             "properties": [
@@ -483,11 +479,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "6b3c893c-9144-4014-aa47-ac049b6538f9",
-            "lastChangeRevision": 39414,
+            "lastChangeRevision": 39900,
             "model": {
               "deviceType": ""
             },
@@ -518,11 +514,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "eacf19a9-f2e4-47d4-87a8-f38188ce85b2",
-            "lastChangeRevision": 39403,
+            "lastChangeRevision": 39891,
             "model": {
               "deviceType": ""
             },
@@ -553,11 +549,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "e44c7208-211a-4911-af38-8bd500cd9575",
-            "lastChangeRevision": 39406,
+            "lastChangeRevision": 39919,
             "model": {
               "deviceType": ""
             },
@@ -574,7 +570,7 @@
               {
                 "macAddress": "**REDACTED**",
                 "ipAddress": "192.168.123.245",
-                "parentDeviceID": "d6fab79b-cbd1-9ed8-af64-302303a62234"
+                "parentDeviceID": "2041f9d7-07bd-7e3a-c83a-24f5a2a3e870"
               }
             ],
             "properties": [
@@ -588,18 +584,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "058cf556-5c6a-4f9a-9e35-1c17c24dfa65",
-            "lastChangeRevision": 39423,
+            "lastChangeRevision": 39864,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS 1"
             },
             "unit": {
-              "serialNumber": "ACLG9170717839"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Bedroom",
@@ -628,18 +624,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "4fcd5873-940e-4380-a932-5b2ca79e6edc",
-            "lastChangeRevision": 39391,
+            "lastChangeRevision": 39903,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS 1"
             },
             "unit": {
-              "serialNumber": "ACLG9170819787"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Front Bedroom",
@@ -647,7 +643,7 @@
               {
                 "macAddress": "**REDACTED**",
                 "interfaceType": "Wireless",
-                "band": "5GHz"
+                "band": "2.4GHz"
               }
             ],
             "connections": [
@@ -668,18 +664,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "578ac274-1cf1-4a6d-842d-8e9802c18be6",
-            "lastChangeRevision": 39397,
+            "lastChangeRevision": 39886,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS 1"
             },
             "unit": {
-              "serialNumber": "ACLG9170717841"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Back Bedroom",
@@ -708,11 +704,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "30be2507-652c-49ce-88c6-8a5cb11edace",
-            "lastChangeRevision": 39501,
+            "lastChangeRevision": 39921,
             "model": {
               "deviceType": "",
               "manufacturer": "Nest Labs Inc."
@@ -730,7 +726,7 @@
               {
                 "macAddress": "**REDACTED**",
                 "ipAddress": "192.168.123.43",
-                "parentDeviceID": "614b8c65-c044-ee54-3052-e89f8060c837"
+                "parentDeviceID": "29bd9b5f-da9e-f1ad-e1dc-24f5a2a3e814"
               }
             ],
             "properties": [
@@ -744,11 +740,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "2f0c4ab3-ee1b-43cf-858f-43e3cb2c35db",
-            "lastChangeRevision": 39435,
+            "lastChangeRevision": 39888,
             "model": {
               "deviceType": "Printer"
             },
@@ -779,11 +775,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "af58a817-d099-4083-a994-6c6c3b9ba225",
-            "lastChangeRevision": 39419,
+            "lastChangeRevision": 39889,
             "model": {
               "deviceType": ""
             },
@@ -815,11 +811,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "e5956056-76a0-4c98-9724-cc2686d5904b",
-            "lastChangeRevision": 39427,
+            "lastChangeRevision": 39896,
             "model": {
               "deviceType": ""
             },
@@ -851,11 +847,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "1e9e055b-bfe2-454c-8308-2927197ddf13",
-            "lastChangeRevision": 39402,
+            "lastChangeRevision": 39890,
             "model": {
               "deviceType": ""
             },
@@ -887,11 +883,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "df665b96-8fc7-4e7d-8f41-7bfdfc9da277",
-            "lastChangeRevision": 39589,
+            "lastChangeRevision": 39917,
             "model": {
               "deviceType": ""
             },
@@ -921,11 +917,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "6fe03ca5-6412-45b9-bf18-d4cf28dc87b4",
-            "lastChangeRevision": 39392,
+            "lastChangeRevision": 39881,
             "model": {
               "deviceType": ""
             },
@@ -957,11 +953,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "75e5f238-5ecc-4f57-8722-aea622dc7996",
-            "lastChangeRevision": 39432,
+            "lastChangeRevision": 39895,
             "model": {
               "deviceType": ""
             },
@@ -992,11 +988,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "06e4b01a-0b7f-4e3a-9b69-b86e498b5cd9",
-            "lastChangeRevision": 39388,
+            "lastChangeRevision": 39857,
             "model": {
               "deviceType": "Computer",
               "manufacturer": "Roku",
@@ -1004,7 +1000,7 @@
               "description": "Emulated Roku"
             },
             "unit": {
-              "serialNumber": "Bedroom - HASS",
+              "serialNumber": "**REDACTED**",
               "operatingSystem": "Windows 7"
             },
             "isAuthority": false,
@@ -1027,7 +1023,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "b62064f2-1ce0-4fe2-85df-4d99c811eaa7",
@@ -1059,11 +1055,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "24415074-e65a-4c3f-9ba0-146544665a21",
-            "lastChangeRevision": 39409,
+            "lastChangeRevision": 39892,
             "model": {
               "deviceType": "",
               "manufacturer": "XBMC Foundation",
@@ -1097,11 +1093,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "dcef273d-ef80-4220-a43f-12f75d54356a",
-            "lastChangeRevision": 39421,
+            "lastChangeRevision": 39865,
             "model": {
               "deviceType": ""
             },
@@ -1132,11 +1128,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "a960d199-fcbf-4521-86bb-e61c008187de",
-            "lastChangeRevision": 39399,
+            "lastChangeRevision": 39898,
             "model": {
               "deviceType": ""
             },
@@ -1167,11 +1163,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "9c5e7e66-ff21-4eb9-9809-0784fc8bba2e",
-            "lastChangeRevision": 39426,
+            "lastChangeRevision": 39860,
             "model": {
               "deviceType": ""
             },
@@ -1202,11 +1198,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "cf9a4283-5787-4ed2-aa39-736ccff83e9e",
-            "lastChangeRevision": 39433,
+            "lastChangeRevision": 39859,
             "model": {
               "deviceType": ""
             },
@@ -1237,11 +1233,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "26319515-24e1-4b74-b53b-e4faacbc44c3",
-            "lastChangeRevision": 39542,
+            "lastChangeRevision": 39874,
             "model": {
               "deviceType": ""
             },
@@ -1272,11 +1268,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "3d24e810-41bc-4074-8e28-a11afacf4698",
-            "lastChangeRevision": 39395,
+            "lastChangeRevision": 39869,
             "model": {
               "deviceType": "",
               "manufacturer": "American Megatrends Inc",
@@ -1310,11 +1306,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "c958bb18-3fff-4be7-b8a6-db1a079ee607",
-            "lastChangeRevision": 39408,
+            "lastChangeRevision": 39882,
             "model": {
               "deviceType": ""
             },
@@ -1345,11 +1341,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "45a8e7ac-306a-489d-883b-d47800c528ef",
-            "lastChangeRevision": 39420,
+            "lastChangeRevision": 39880,
             "model": {
               "deviceType": ""
             },
@@ -1380,11 +1376,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "e7e33734-b896-47c0-b339-57ddddc8acf5",
-            "lastChangeRevision": 39436,
+            "lastChangeRevision": 39863,
             "model": {
               "deviceType": ""
             },
@@ -1415,11 +1411,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "5a2896eb-5ae4-4d02-9344-a0230517ef17",
-            "lastChangeRevision": 39430,
+            "lastChangeRevision": 39897,
             "model": {
               "deviceType": ""
             },
@@ -1450,11 +1446,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "e2f5aa24-ece6-4033-aa5b-09b3838e614f",
-            "lastChangeRevision": 39425,
+            "lastChangeRevision": 39866,
             "model": {
               "deviceType": ""
             },
@@ -1485,11 +1481,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "da389c2c-3251-4ff3-809c-9d0eefa517eb",
-            "lastChangeRevision": 39393,
+            "lastChangeRevision": 39867,
             "model": {
               "deviceType": "",
               "manufacturer": "Silicondust",
@@ -1497,7 +1493,7 @@
               "description": "HDHR5-4DT HDHomeRun CONNECT QUATRO"
             },
             "unit": {
-              "serialNumber": "1251129F"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "HDHomeRun DMS 1251129F",
@@ -1524,11 +1520,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "0a27cb72-517d-4c9e-9957-4646062f1155",
-            "lastChangeRevision": 39585,
+            "lastChangeRevision": 39901,
             "model": {
               "deviceType": ""
             },
@@ -1558,7 +1554,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "29bd9b5f-da9e-f1ad-e1dc-24f5a2a3e814",
@@ -1571,7 +1567,7 @@
               "description": "Velop"
             },
             "unit": {
-              "serialNumber": "25F10604844966",
+              "serialNumber": "**REDACTED**",
               "firmwareVersion": "1.1.13.202617",
               "firmwareDate": "2020-09-05T12:34:29Z"
             },
@@ -1615,11 +1611,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "e42437a0-81d7-45b1-b658-8a20851aebc4",
-            "lastChangeRevision": 39520,
+            "lastChangeRevision": 39868,
             "model": {
               "deviceType": ""
             },
@@ -1651,11 +1647,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "94526dce-9bfd-4113-88a3-1d886789555c",
-            "lastChangeRevision": 39571,
+            "lastChangeRevision": 39766,
             "model": {
               "deviceType": ""
             },
@@ -1665,17 +1661,10 @@
             "knownInterfaces": [
               {
                 "macAddress": "**REDACTED**",
-                "interfaceType": "Wireless",
-                "band": "5GHz"
+                "interfaceType": "Wired"
               }
             ],
-            "connections": [
-              {
-                "macAddress": "**REDACTED**",
-                "ipAddress": "192.168.123.46",
-                "parentDeviceID": "614b8c65-c044-ee54-3052-e89f8060c837"
-              }
-            ],
+            "connections": [],
             "properties": [
               {
                 "name": "userDeviceName",
@@ -1687,7 +1676,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "0d315c55-601f-4534-bfed-5f26187c43e0",
@@ -1698,7 +1687,7 @@
               "modelNumber": "HEOS Bar"
             },
             "unit": {
-              "serialNumber": "ADAG9161202349"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Lounge",
@@ -1720,11 +1709,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "33e572c0-1f06-4ad1-8f24-56a15f5dbe3b",
-            "lastChangeRevision": 39545,
+            "lastChangeRevision": 39922,
             "model": {
               "deviceType": "Computer"
             },
@@ -1751,11 +1740,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "c7fda7b1-2831-4d37-a726-21c2daf118fe",
-            "lastChangeRevision": 39204,
+            "lastChangeRevision": 39597,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Panasonic",
@@ -1763,7 +1752,7 @@
               "description": ""
             },
             "unit": {
-              "serialNumber": ""
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "TV-Bedroom",
@@ -1785,11 +1774,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "32ffa2da-0581-4a20-88b1-09d5291de4aa",
-            "lastChangeRevision": 39410,
+            "lastChangeRevision": 39893,
             "model": {
               "deviceType": ""
             },
@@ -1820,11 +1809,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "d6fab79b-cbd1-9ed8-af64-302303a62234",
-            "lastChangeRevision": 37840,
+            "lastChangeRevision": 39647,
             "model": {
               "deviceType": "Infrastructure",
               "manufacturer": "Linksys",
@@ -1833,7 +1822,7 @@
               "description": "Velop Plug-In"
             },
             "unit": {
-              "serialNumber": "29A10606900954",
+              "serialNumber": "**REDACTED**",
               "firmwareVersion": "1.1.13.202795",
               "firmwareDate": "2020-09-21T17:45:30Z"
             },
@@ -1848,7 +1837,8 @@
               },
               {
                 "macAddress": "**REDACTED**",
-                "interfaceType": "Unknown"
+                "interfaceType": "Wireless",
+                "band": "5GHz"
               },
               {
                 "macAddress": "**REDACTED**",
@@ -1877,11 +1867,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "4f01942e-3569-488c-abe4-7497a1143eab",
-            "lastChangeRevision": 39583,
+            "lastChangeRevision": 39885,
             "model": {
               "deviceType": "Computer"
             },
@@ -1915,11 +1905,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "6134154e-a3be-4d1c-bbb5-bbcb484822b4",
-            "lastChangeRevision": 39223,
+            "lastChangeRevision": 39609,
             "model": {
               "deviceType": "",
               "manufacturer": "Nest Labs Inc."
@@ -1944,11 +1934,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "03fb3a22-6294-40a7-8449-884a07755297",
-            "lastChangeRevision": 39333,
+            "lastChangeRevision": 39739,
             "model": {
               "deviceType": "",
               "manufacturer": "Nest Labs Inc."
@@ -1973,7 +1963,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "2041f9d7-07bd-7e3a-c83a-24f5a2a3e870",
@@ -1986,7 +1976,7 @@
               "description": "Velop"
             },
             "unit": {
-              "serialNumber": "25F10604844989",
+              "serialNumber": "**REDACTED**",
               "firmwareVersion": "1.1.13.202617",
               "firmwareDate": "2020-09-05T12:34:29Z"
             },
@@ -2022,11 +2012,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "0dad2515-5d5d-4a24-b65c-de3def79e74a",
-            "lastChangeRevision": 39556,
+            "lastChangeRevision": 39694,
             "model": {
               "deviceType": ""
             },
@@ -2050,7 +2040,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "9120d827-c2b6-4867-93c9-b4e732e1e2e0",
@@ -2078,11 +2068,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "72566b66-3d53-43e1-9d13-f1ef1d4b7562",
-            "lastChangeRevision": 39559,
+            "lastChangeRevision": 39695,
             "model": {
               "deviceType": ""
             },
@@ -2106,11 +2096,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "fcc5b2e8-8cbd-4722-bb4f-33793cfc616c",
-            "lastChangeRevision": 38010,
+            "lastChangeRevision": 39743,
             "model": {
               "deviceType": ""
             },
@@ -2134,7 +2124,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "28f0fbcc-7e16-4836-b948-8ded6c1e82b1",
@@ -2165,11 +2155,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "f471f897-aff5-4a9c-9927-cbf0bb54a877",
-            "lastChangeRevision": 39405,
+            "lastChangeRevision": 39904,
             "model": {
               "deviceType": "Printer"
             },
@@ -2200,18 +2190,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "cf4edb8f-96e9-426a-a62d-2259625ddcd8",
-            "lastChangeRevision": 39396,
+            "lastChangeRevision": 39884,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS 1"
             },
             "unit": {
-              "serialNumber": "ACLG9170819649"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Lounge - RL",
@@ -2239,18 +2229,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "954af070-3c32-43b2-b886-c49af8b5abd3",
-            "lastChangeRevision": 39434,
+            "lastChangeRevision": 39902,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS 1"
             },
             "unit": {
-              "serialNumber": "ACLG9170819567"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Lounge - RR",
@@ -2278,7 +2268,7 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "4b9bff09-3c5c-4101-8e27-42e197fe4760",
@@ -2307,11 +2297,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "dc932c51-2cc3-4d99-8b92-5aaff502d33d",
-            "lastChangeRevision": 39412,
+            "lastChangeRevision": 39872,
             "model": {
               "deviceType": ""
             },
@@ -2342,18 +2332,18 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "303fac50-5435-4470-aa78-608ce527422f",
-            "lastChangeRevision": 39422,
+            "lastChangeRevision": 39873,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Denon",
               "modelNumber": "HEOS Bar"
             },
             "unit": {
-              "serialNumber": "ADAG9161202349"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "Lounge",
@@ -2381,11 +2371,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "a70c0794-33e3-4879-a271-dd2eb85c0a07",
-            "lastChangeRevision": 39404,
+            "lastChangeRevision": 39870,
             "model": {
               "deviceType": "MediaPlayer",
               "manufacturer": "Sony Corporation",
@@ -2420,11 +2410,11 @@
               }
             ],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "791c9e1f-317d-4a96-8004-f915622ba7fc",
-            "lastChangeRevision": 39400,
+            "lastChangeRevision": 39899,
             "model": {
               "deviceType": "",
               "manufacturer": "Silicondust",
@@ -2432,7 +2422,7 @@
               "description": "HDHR4-2DT HDHomeRun CONNECT"
             },
             "unit": {
-              "serialNumber": "12303DCE"
+              "serialNumber": "**REDACTED**"
             },
             "isAuthority": false,
             "friendlyName": "HDHomeRun DMS 12303DCE",
@@ -2451,7 +2441,7 @@
             ],
             "properties": [],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "fba6df74-5698-4c0e-8306-c70a204263f2",
@@ -2471,7 +2461,7 @@
             "connections": [],
             "properties": [],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           },
           {
             "deviceID": "812f4647-bf43-49c7-b6eb-84144f74c56c",
@@ -2493,7 +2483,7 @@
             "connections": [],
             "properties": [],
             "maxAllowedProperties": 16,
-            "results_time": 1649364215
+            "results_time": 1649418253
           }
         ]
       },
@@ -2514,13 +2504,13 @@
             "wirelessConnectionInfo": {
               "radioID": "5GL",
               "channel": 44,
-              "apRSSI": -74,
+              "apRSSI": -78,
               "stationRSSI": -67,
               "apBSSID": "**REDACTED**",
               "stationBSSID": "**REDACTED**"
             },
-            "speedMbps": "80.985",
-            "timestamp": "2022-04-07T20:41:21Z"
+            "speedMbps": "62.587",
+            "timestamp": "2022-04-08T11:41:21Z"
           },
           {
             "deviceUUID": "d6fab79b-cbd1-9ed8-af64-302303a62234",
@@ -2530,13 +2520,13 @@
             "wirelessConnectionInfo": {
               "radioID": "5GL",
               "channel": 44,
-              "apRSSI": -56,
-              "stationRSSI": -48,
+              "apRSSI": -53,
+              "stationRSSI": -46,
               "apBSSID": "**REDACTED**",
               "stationBSSID": "**REDACTED**"
             },
-            "speedMbps": "103.727",
-            "timestamp": "2022-04-07T20:41:29Z"
+            "speedMbps": "123.254",
+            "timestamp": "2022-04-08T11:41:28Z"
           },
           {
             "deviceUUID": "2041f9d7-07bd-7e3a-c83a-24f5a2a3e870",
@@ -2544,7 +2534,7 @@
             "parentIPAddress": "192.168.123.254",
             "connectionType": "Wired",
             "speedMbps": "1024",
-            "timestamp": "2022-04-07T20:41:10Z"
+            "timestamp": "2022-04-08T11:41:09Z"
           }
         ]
       },
@@ -2832,7 +2822,7 @@
           "storageNodes": [
             {
               "deviceID": "614b8c65-c044-ee54-3052-e89f8060c837",
-              "timestamp": "2022-04-07T20:43:35Z",
+              "timestamp": "2022-04-08T11:44:13Z",
               "storageDevices": [
                 {
                   "deviceName": "sda",
