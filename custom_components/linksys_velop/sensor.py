@@ -41,6 +41,7 @@ from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     ENTITY_SLUG,
+    CONF_NODE_IMAGES,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     UPDATE_DOMAIN,
 )
@@ -151,6 +152,7 @@ async def async_setup_entry(
     # region #-- node sensors --#
     node: Node
     sensors_versions: List[LinksysVelopNodeSensor] = []
+    sensors_images: List[LinksysVelopNodeSensor] = []
     for node in mesh.nodes:
         # -- build the sensors for showing version numbers for each node --#
         sensors_versions.extend([
@@ -174,6 +176,22 @@ async def async_setup_entry(
                     state_value=lambda n: n.firmware.get("version", None)
                 )
             ),
+        ])
+
+        # -- build sensor for entity pic if needed --#
+        sensors_images.extend([
+            LinksysVelopNodeSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopSensorDescription(
+                    key="",
+                    name="Image",
+                    state_value=lambda n: (
+                        f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
+                    ),
+                )
+            )
         ])
 
         # -- build the additional sensors --#
@@ -242,8 +260,11 @@ async def async_setup_entry(
             ),
         ])
 
-    if UPDATE_DOMAIN is None:  # don't create the version sensors if the update entity is available
+    if UPDATE_DOMAIN is None:  # create the version sensors if the update entity isn't available
         sensors.extend(sensors_versions)
+
+    if config_entry.options.get(CONF_NODE_IMAGES) is not None:  # create the entity pic sensor if a path is configured
+        sensors.extend(sensors_images)
     # endregion
 
     async_add_entities(sensors)
@@ -251,6 +272,9 @@ async def async_setup_entry(
     sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
     if UPDATE_DOMAIN is not None:  # remove the existing version sensors if the update entity is available
         sensors_to_remove.extend(sensors_versions)
+
+    if config_entry.options.get(CONF_NODE_IMAGES) is None:  # remove the entity pic sensor if a path isn't configured
+        sensors_to_remove.extend(sensors_images)
 
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
