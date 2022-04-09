@@ -165,7 +165,7 @@ device and the individual nodes found in the mesh.
 
 It is possible to configure the following options for the integration.
 
-#### Timers
+### Timers
 
 ![Configure Timers](images/config_timers.png)
 
@@ -175,13 +175,24 @@ It is possible to configure the following options for the integration.
 - `Consider Home Period`: the time to wait before considering a device away 
   after it notifies of becoming disconnected, default `180s`
 
-#### Device Trackers
+### Device Trackers
 
 ![Configure Device Trackers](images/config_device_trackers.png)
 
 - `Available devices`: a multi-select list of the devices found on the mesh. 
   This list excludes any device which doesn't have a name - typically 
   displayed in the official interfaces as `Network Device`
+
+## Advanced Options
+
+This section details the options that cannot be configured in the UI but are 
+still available of you configure them in the underlying HASS config files.
+
+* `api_request_timeout`: the number of seconds to wait for a response from 
+  an individual request to the API
+* `node_images`: the path to the folder location containing the images to 
+  use for nodes. This is currently used in the card and also for the 
+  `update` entity. e.g. `/local/velop_nodes`
 
 ## Troubleshooting
 
@@ -634,6 +645,9 @@ filter:
           ID_CONNECTED_DEVICES: >
             "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
             -1).join("_") + "_connected_devices"
+          ID_ENTITY_PICTURE: >
+            "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
+            -1).join("_") + "_image"
           ID_LAST_UPDATE_CHECK: >
             "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
             -1).join("_") + "_last_update_check"
@@ -678,6 +692,14 @@ filter:
               }
               return ret
             }
+          getEntityPicture: |
+            () => {
+              if (states[vars['ID_ENTITY_PICTURE']]) {
+                return states[vars['ID_ENTITY_PICTURE']].state
+              } else {
+                return '/local/velop_nodes/' + states[vars['ID_MODEL']].state + '.png'
+              }
+            }
         entities:
           - this.entity_id
           - ${ID_CONNECTED_DEVICES}
@@ -709,7 +731,7 @@ filter:
               show_state: true
               tap_action:
                 action: none
-              entity_picture: ${'/local/velop_nodes/' + states[ID_MODEL].state + '.png'}
+              entity_picture: ${ getEntityPicture() }
               name: |
                 [[[
                   var ret = entity.attributes.friendly_name
