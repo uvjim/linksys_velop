@@ -30,6 +30,7 @@ from . import (
 )
 from .const import (
     CONF_COORDINATOR,
+    CONF_NODE_IMAGES,
     DOMAIN,
     ENTITY_SLUG,
 )
@@ -136,8 +137,8 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         """Retrieve the entity picture for the node"""
 
         ret = None
-        parent_path = self._config.options.get("node_images")
+        parent_path = self._config.options.get(CONF_NODE_IMAGES)
         if parent_path is not None:
-            ret = f"{parent_path}/{self._node.model}.png"
+            ret = f"{parent_path.rstrip('/ ').strip()}/{self._node.model}.png"
 
         return ret
