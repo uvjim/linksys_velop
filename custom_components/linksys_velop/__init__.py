@@ -341,7 +341,7 @@ def entity_cleanup(
             continue
 
         # remove the entity
-        _LOGGER.debug(VelopLogger().message_format("removing %s"), entity.entity_id)
+        _LOGGER.debug(log_formatter.message_format("removing %s"), entity.entity_id)
         entity_registry.async_remove(entity_id=entity.entity_id)
 
     _LOGGER.debug(log_formatter.message_format("exited"))
