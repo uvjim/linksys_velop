@@ -194,6 +194,20 @@ still available of you configure them in the underlying HASS config files.
   use for nodes. This is currently used in the card and also for the 
   `update` entity. e.g. `/local/velop_nodes`
 
+## Default Notifications
+
+There are instances when the integration will use persistent notifications 
+to display information. These are detailed below.
+
+### New Node Found
+
+When a new node is found on the Mesh an alert is created and the integration 
+is automatically reloaded. The notifications will look like the following.
+
+![new_node_on mesh_basic](images/persistent_notification_basic.png)
+
+![new_node_on mesh_multiple](images/persistent_notification_new_node_multiple_instance.png)
+
 ## Troubleshooting
 
 ### Debug Logging

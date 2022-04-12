@@ -14,6 +14,8 @@ from typing import (
     Set,
 )
 
+import homeassistant.components.persistent_notification as persistent_notification
+import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import (
     ConfigEntry,
     device_registry as dr,
@@ -22,12 +24,14 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import (
+    CoreState,
+    HomeAssistant,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
-import homeassistant.helpers.entity_registry as er
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -49,6 +53,7 @@ from .const import (
     CONF_COORDINATOR,
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
+    CONF_ENTRY_RELOAD,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SERVICES_HANDLER,
@@ -127,46 +132,108 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
         log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
+
+        # -- get the existing devices --#
         device: Device
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
+
+        # -- get the existing nodes --#
+        previous_nodes: Set[str] = {
+            next(iter(dr_device.identifiers))[1]  # serial number of node
+            for dr_id, dr_device in device_registry.devices.items()
+            if all([
+                config_entry.entry_id in dr_device.config_entries,
+                dr_device.manufacturer != PYVELOP_AUTHOR,
+                dr_device.name.lower() != "mesh",
+            ])
+        }
+
         try:
+            # -- gather details from the API --#
             await mesh.async_gather_details()
             if mesh.speedtest_status:
                 async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
         except Exception as err:
             raise UpdateFailed(err)
         else:
+            # region #-- get the mesh device_id --#
+            def _get_mesh() -> Optional[DeviceEntry]:
+
+                dr_device: dr.DeviceEntry
+                m = [
+                    dr_device
+                    for dr_id, dr_device in device_registry.devices.items()
+                    if (
+                            config_entry.entry_id in dr_device.config_entries
+                            and dr_device.manufacturer == PYVELOP_AUTHOR
+                            and dr_device.name.lower() == "mesh"
+                    )
+                ]
+                if m:
+                    return m[0]
+            # endregion
+
+            # region #-- check for new devices --#
             if previous_devices:
                 current_devices: Set[str] = {device.unique_id for device in mesh.devices}
                 new_devices: Set[str] = current_devices.difference(previous_devices)
                 if new_devices:
                     for device in mesh.devices:
-                        # region #-- get the mesh device_id --#
-                        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
-                        dr_device: dr.DeviceEntry
-                        mesh_id = [
-                            dr_device
-                            for dr_id, dr_device in device_registry.devices.items()
-                            if (
-                                config_entry.entry_id in dr_device.config_entries
-                                and dr_device.manufacturer == PYVELOP_AUTHOR
-                                and dr_device.name.lower() == "mesh"
-                            )
-                        ]
-                        # endregion
                         if device.unique_id in new_devices:
                             payload: Dict[str, Any] = {
                                 prop: getattr(device, prop, None)
                                 for prop in EVENT_NEW_DEVICE_ON_MESH_PROPERTIES
                             }
-                            if mesh_id:
-                                payload["mesh_device_id"] = mesh_id[0].id
-                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
-                            hass.bus.async_fire(
-                                event_type=EVENT_NEW_DEVICE_ON_MESH,
-                                event_data=payload,
-                            )
+                            mesh_details: DeviceEntry = _get_mesh()
+                            if mesh_details:
+                                payload["mesh_device_id"] = mesh_details.id
+                                _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
+                                hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
+            # endregion
 
+            # region #-- check for new nodes --#
+            if previous_nodes:
+                node: Node
+                current_nodes: Set[str] = {node.serial for node in mesh.nodes}
+                new_nodes: Set[str] = current_nodes.difference(previous_nodes)
+                is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
+                if new_nodes and not is_reloading:
+                    for node in mesh.nodes:
+                        if node.serial in new_nodes:
+                            _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
+                            _LOGGER.debug(log_formatter.message_format("hass state: %s"), hass.state)
+                            if hass.state == CoreState.running:  # reload the config
+                                if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
+                                    hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
+                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
+                                await hass.config_entries.async_reload(config_entry.entry_id)
+                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
+                            notify_message: str = "|   |   |   |\n" \
+                                                  "|---|---|---|\n" \
+                                                  f"|Name:|&emsp;|{node.name}|\n" \
+                                                  f"|Model:|&emsp;|{node.model}|\n" \
+                                                  f"|Parent:|&emsp;|{node.parent_name}|\n" \
+                                                  f"|IP:|&emsp;|{node.connected_adapters[0].get('ip', 'N/A')}|"
+                            mesh_details: DeviceEntry = _get_mesh()
+                            if mesh_details and mesh_details.name_by_user:
+                                notify_message += f"\n|Mesh:|&emsp;|{mesh_details.name_by_user}|"
+                            all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
+                            instance_name: str = ""
+                            if len(all_config_entries) > 1:
+                                all_same_name = (
+                                        all_config_entries.count(all_config_entries[0]) == len(all_config_entries)
+                                )
+                                if not all_same_name:
+                                    instance_name = f"{config_entry.title} "
+
+                            persistent_notification.async_create(  # raise a notification
+                                hass=hass,
+                                message=notify_message,
+                                title=f"🆕 {instance_name}Node Found",
+                                notification_id=f"{DOMAIN}_new_node_{node.serial}"
+                            )
+            # endregion
         return mesh
 
     coordinator = DataUpdateCoordinator(
