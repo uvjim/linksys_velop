@@ -121,12 +121,17 @@ async def async_remove_config_entry_device(
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Setup a config entry"""
 
+    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+    _LOGGER.debug(log_formatter.message_format("entered"))
+
     # region #-- prepare the memory storage --#
+    _LOGGER.debug(log_formatter.message_format("preparing memory storage"))
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
     # endregion
 
     # region #-- setup the coordinator for data updates --#
+    _LOGGER.debug(log_formatter.message_format("setting up Mesh for the coordinator"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
@@ -141,7 +146,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         """
 
         mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
-        log_formatter = VelopLogger(unique_id=config_entry.unique_id)
         device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
 
         # -- get the existing devices --#
@@ -256,6 +260,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             # endregion
         return mesh
 
+    _LOGGER.debug(log_formatter.message_format("setting up the coordinator"))
     coordinator = DataUpdateCoordinator(
         hass=hass,
         logger=_LOGGER,
@@ -270,16 +275,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- setup the platforms --#
     setup_platforms: List[str] = list(filter(None, PLATFORMS))
+    _LOGGER.debug(log_formatter.message_format("setting up platforms: %s"), setup_platforms)
     hass.config_entries.async_setup_platforms(config_entry, setup_platforms)
     # endregion
 
     # region #-- Service Definition --#
+    _LOGGER.debug(log_formatter.message_format("registering services"))
     services = LinksysVelopServiceHandler(hass=hass)
     services.register_services()
     hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER] = services
     # endregion
 
     # region #-- listen for config changes --#
+    _LOGGER.debug(log_formatter.message_format("listening for config changes"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER] = config_entry.add_update_listener(
         _async_update_listener
     )
@@ -300,6 +308,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- set up the timer for checking device trackers --#
     if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
+        _LOGGER.debug(log_formatter.message_format("setting up device trackers"))
         await device_tracker_update(datetime.datetime.now())  # update before setting the timer
         scan_interval = config_entry.options.get(CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER)
         config_entry.async_on_unload(
@@ -307,6 +316,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
     # endregion
 
+    _LOGGER.debug(log_formatter.message_format("exited"))
     return True
 
 
