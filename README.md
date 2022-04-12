@@ -133,6 +133,52 @@ The event looks as follows: -
 }
 ```
 
+#### `linksys_velop_new_node_on_mesh` 
+
+This event is fired when a new node is found on the Mesh. A node is 
+considered new if it is not currently configured in HASS. It may not be 
+configured for a couple of reasons: the device was deleted from the UI, or 
+you've added a new node to your Mesh.
+
+The event is fired for each new node that is discovered. The payload also 
+includes the ID for the persistent notification that is created, you may use 
+this in an automation to automatically close the notification if you need to.  
+
+The event looks as follows: -
+
+```json
+{
+    "event_type": "linksys_velop_new_node_on_mesh",
+    "data": {
+        "backhaul": {
+            "connection": "Wireless",
+            "last_checked": "2022-04-12T18:11:20Z",
+            "speed_mbps": 64.538
+        },
+        "connected_adapters": [
+            {
+                "mac": "00:11:22:22:44:55",
+                "ip": "192.168.123.31",
+                "guest_network": false
+            }
+        ],
+        "model": "WHW01",
+        "name": "Utility",
+        "parent_name": "Lounge",
+        "serial": "1234567890",
+        "status": true,
+        "persistent_notification_id": "linksys_velop_new_node_1234567890"
+    },
+    "origin": "LOCAL",
+    "time_fired": "2022-04-12T18:15:34.505303+00:00",
+    "context": {
+        "id": "ce6cff08570912843011ec2272579b84",
+        "parent_id": null,
+        "user_id": null
+    }
+}
+```
+
 ### Services
 
 Services are available for the following: -

@@ -73,14 +73,24 @@ from .service_handler import LinksysVelopServiceHandler
 
 _LOGGER = logging.getLogger(__name__)
 
-EVENT_NEW_DEVICE_ON_MESH = f"{DOMAIN}_new_device_on_mesh"
-EVENT_NEW_DEVICE_ON_MESH_PROPERTIES = [
+EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
+EVENT_NEW_DEVICE_ON_MESH_PROPERTIES: List[str] = [
     "connected_adapters",
     "description",
     "manufacturer",
     "model",
     "name",
     "operating_system",
+    "parent_name",
+    "serial",
+    "status",
+]
+EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
+EVENT_NEW_NODE_ON_MESH_PROPERTIES: List[str] = [
+    "backhaul",
+    "connected_adapters",
+    "model",
+    "name",
     "parent_name",
     "serial",
     "status",
@@ -233,6 +243,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 title=f"🆕 {instance_name}Node Found",
                                 notification_id=f"{DOMAIN}_new_node_{node.serial}"
                             )
+
+                            # -- fire the event --#
+                            payload: Dict[str, Any] = {
+                                prop: getattr(node, prop, None)
+                                for prop in EVENT_NEW_NODE_ON_MESH_PROPERTIES
+                            }
+                            payload["persistent_notification_id"] = f"{DOMAIN}_new_node_{node.serial}"
+                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
+                            hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+
             # endregion
         return mesh
 
