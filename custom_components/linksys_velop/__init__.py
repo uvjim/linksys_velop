@@ -53,6 +53,7 @@ from .const import (
     CONF_COORDINATOR,
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
+    CONF_ENTRY_RELOAD,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SERVICES_HANDLER,
@@ -196,18 +197,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 node: Node
                 current_nodes: Set[str] = {node.serial for node in mesh.nodes}
                 new_nodes: Set[str] = current_nodes.difference(previous_nodes)
-                is_reloading = hass.data[DOMAIN].get("reloading", {}).get(config_entry.entry_id)
+                is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
                 if new_nodes and not is_reloading:
                     for node in mesh.nodes:
                         if node.serial in new_nodes:
                             _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
                             _LOGGER.debug(log_formatter.message_format("hass state: %s"), hass.state)
                             if hass.state == CoreState.running:  # reload the config
-                                if "reloading" not in hass.data[DOMAIN]:
-                                    hass.data[DOMAIN]["reloading"] = {}
-                                hass.data[DOMAIN]["reloading"][config_entry.entry_id] = True
+                                if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
+                                    hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
+                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
                                 await hass.config_entries.async_reload(config_entry.entry_id)
-                                hass.data[DOMAIN].get("reloading").pop(config_entry.entry_id, None)
+                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
                             notify_message: str = "|   |   |   |\n" \
                                                   "|---|---|---|\n" \
                                                   f"|Name:|&emsp;|{node.name}|\n" \
