@@ -24,6 +24,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 import homeassistant.helpers.entity_registry as er
@@ -79,6 +80,27 @@ EVENT_NEW_DEVICE_ON_MESH_PROPERTIES = [
     "serial",
     "status",
 ]
+
+
+# noinspection PyUnusedLocal
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    device_entry: DeviceEntry
+) -> bool:
+    """"""
+
+    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+
+    if all([  # check for Mesh device
+        device_entry.name == "Mesh",
+        device_entry.manufacturer == PYVELOP_AUTHOR,
+        device_entry.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})"
+    ]):
+        _LOGGER.error(log_formatter.message_format("Attempt to remove the Mesh device rejected"))
+        return False
+
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
