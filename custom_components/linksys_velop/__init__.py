@@ -313,24 +313,35 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Cleanup when unloading a config entry"""
 
+    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+    _LOGGER.debug(log_formatter.message_format("entered"))
+
     # region #-- unsubscribe from listening for updates --#
+    _LOGGER.debug(log_formatter.message_format("stop listening for updates"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
     # endregion
 
-    # region #-- remove services --#
-    services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER]
-    services.unregister_services()
+    # region #-- remove services but only if there are no other instances --#
+    all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
+    _LOGGER.debug(log_formatter.message_format("%i instances"), len(all_config_entries))
+    if len(all_config_entries) == 1:
+        _LOGGER.debug(log_formatter.message_format("unregistering services"))
+        services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER]
+        services.unregister_services()
     # endregion
 
     # region #-- clean up the platforms --#
+    _LOGGER.debug(log_formatter.message_format("cleaning up platforms"))
     ret = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
     if ret:
+        _LOGGER.debug(log_formatter.message_format("removing data from memory"))
         hass.data[DOMAIN].pop(config_entry.entry_id)
         ret = True
     else:
         ret = False
     # endregion
 
+    _LOGGER.debug(log_formatter.message_format("exited"))
     return ret
 
 
