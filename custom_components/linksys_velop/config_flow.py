@@ -53,6 +53,7 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
+    EVENT_NEW_PARENT_NODE,
     ST_IGD,
     STEP_DEVICE_TRACKERS,
     STEP_TIMERS,
@@ -311,17 +312,29 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="not_velop")
         # endregion
 
-        # TODO: should be able to remove this region in the future because it works around the lack of unique_id
         # region #-- try and update the config entry if it exists and doesn't have a unique_id --#
         # This region assumes that the host is unique for the Mesh (it should be but isn't guaranteed)
-        # It will match on host and then update the config entry with the serial number then abort
-        # It is possible that SSDP isn't enabled in HASS so this part won't fix up the config entry in that case
+        # It will match on host and then update the config entry with the serial number, then abort
+        update_unique_id: bool = False
         matching_entry = _is_mesh_by_host(hass=self.hass, host=_host)
         if matching_entry:
-            if not matching_entry.unique_id:
-                _LOGGER.debug(self._log_formatter.message_format("updating unique_id"))
-                if self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=_serial):
-                    return self.async_abort(reason="already_configured")
+            if not matching_entry.unique_id:  # no unique_id even though the host exists
+                _LOGGER.debug(self._log_formatter.message_format("no unique_id in the config entry"))
+                update_unique_id = True
+            elif matching_entry.unique_id != _serial:  # parent node changed?
+                _LOGGER.debug(self._log_formatter.message_format("assuming the primary node has changed"))
+                self.hass.bus.async_fire(event_type=EVENT_NEW_PARENT_NODE, event_data={
+                    "host": _host,
+                    "model": _model,
+                    "serial": _serial,
+                })
+                update_unique_id = True
+
+        if update_unique_id:
+            _LOGGER.debug(self._log_formatter.message_format("updating unique_id"))
+            if self.hass.config_entries.async_update_entry(entry=matching_entry, unique_id=_serial):
+                return self.async_abort(reason="already_configured")
+
         # endregion
 
         # region #-- set a unique_id, update details if device has changed IP --#

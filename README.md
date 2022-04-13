@@ -179,6 +179,34 @@ The event looks as follows: -
 }
 ```
 
+#### `linksys_velop_new_primary_node`
+
+This event is fired when a new primary node is detected. The check for this 
+is based on the serial number and is currently only found as part of SSDP 
+discovery. If the serial numbers do not match, this event is fired and the 
+unique_id of the integration instance is update.
+
+This should stop the mesh being discovered again by SSDP when the primary 
+node is changed. 
+
+```json
+{
+    "event_type": "linksys_velop_new_primary_node",
+    "data": {
+        "host": "192.168.123.254",
+        "model": "velop ax4200 wifi 6 system",
+        "serial": "1234567890"
+    },
+    "origin": "LOCAL",
+    "time_fired": "2022-04-13T12:29:28.749528+00:00",
+    "context": {
+        "id": "d0cb4b018867b3311f2edb24e156d541",
+        "parent_id": null,
+        "user_id": null
+    }
+}
+```
+
 ### Services
 
 Services are available for the following: -
