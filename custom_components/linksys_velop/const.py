@@ -39,6 +39,8 @@ DEF_FLOW_NAME: str = "Linksys Velop Mesh"
 DEF_SCAN_INTERVAL: int = 30
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 
+EVENT_NEW_PARENT_NODE: str = f"{DOMAIN}_new_primary_node"
+
 PLATFORMS: List[Optional[str]] = [
     BINARY_SENSOR_DOMAIN,
     BUTTON_DOMAIN,
