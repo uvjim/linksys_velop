@@ -296,14 +296,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug(self._log_formatter.message_format("entered, discovery_info: %s"), discovery_info)
 
         # region #-- get the important info --#
-        if isinstance(discovery_info, dict):
-            _host = discovery_info.get("_host", "")
-            _model = discovery_info.get("modelDescription", "").lower()
-            _serial = discovery_info.get("serialNumber", "")
-        else:
-            _host = discovery_info.ssdp_headers.get("_host", "")
-            _model = discovery_info.upnp.get("modelDescription", "").lower()
-            _serial = discovery_info.upnp.get("serialNumber", "")
+        _host = discovery_info.ssdp_headers.get("_host", "")
+        _model = discovery_info.upnp.get("modelDescription", "").lower()
+        _serial = discovery_info.upnp.get("serialNumber", "")
         # endregion
 
         # region #-- check for a valid Velop device --#
