@@ -95,6 +95,7 @@ def _build_event_payload(
             "parent_name",
             "serial",
             "status",
+            "unique_id",
         ]
     elif event == EVENT_NEW_DEVICE_ON_MESH:
         event_properties = [
@@ -107,6 +108,7 @@ def _build_event_payload(
             "parent_name",
             "serial",
             "status",
+            "unique_id",
         ]
 
     ret: Dict[str, Any] = {
