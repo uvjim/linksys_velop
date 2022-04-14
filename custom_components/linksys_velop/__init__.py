@@ -258,7 +258,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     coordinator = DataUpdateCoordinator(
         hass=hass,
         logger=_LOGGER,
-        name=DOMAIN,
+        name=f"{DOMAIN} ({getattr(log_formatter, '_unique_id')})",
         update_interval=timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL]),
         update_method=_async_get_mesh_data
     )
