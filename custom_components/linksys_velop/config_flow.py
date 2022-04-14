@@ -297,12 +297,14 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- get the important info --#
         _host = discovery_info.ssdp_headers.get("_host", "")
-        _model = discovery_info.upnp.get("modelDescription", "").lower()
+        _manufacturer = discovery_info.upnp.get("manufacturer", "")
+        _model = discovery_info.upnp.get("modelNumber", "")
+        _model_description = discovery_info.upnp.get("modelDescription", "")
         _serial = discovery_info.upnp.get("serialNumber", "")
         # endregion
 
         # region #-- check for a valid Velop device --#
-        if "velop" not in _model:
+        if "velop" not in _model_description.lower():
             _LOGGER.debug(self._log_formatter.message_format("not a Velop model"))
             return self.async_abort(reason="not_velop")
         # endregion
@@ -320,7 +322,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug(self._log_formatter.message_format("assuming the primary node has changed"))
                 self.hass.bus.async_fire(event_type=EVENT_NEW_PARENT_NODE, event_data={
                     "host": _host,
+                    "manufacturer": _manufacturer,
                     "model": _model,
+                    "description": _model_description,
                     "serial": _serial,
                 })
                 update_unique_id = True
