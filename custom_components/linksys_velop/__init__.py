@@ -73,27 +73,65 @@ from .service_handler import LinksysVelopServiceHandler
 _LOGGER = logging.getLogger(__name__)
 
 EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
-EVENT_NEW_DEVICE_ON_MESH_PROPERTIES: List[str] = [
-    "connected_adapters",
-    "description",
-    "manufacturer",
-    "model",
-    "name",
-    "operating_system",
-    "parent_name",
-    "serial",
-    "status",
-]
 EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
-EVENT_NEW_NODE_ON_MESH_PROPERTIES: List[str] = [
-    "backhaul",
-    "connected_adapters",
-    "model",
-    "name",
-    "parent_name",
-    "serial",
-    "status",
-]
+
+
+def _build_event_payload(
+    config_entry: ConfigEntry,
+    device: Device | Node,
+    event: str,
+    hass: HomeAssistant
+) -> Dict[str, Any]:
+    """"""
+
+    event_properties: List[str] = []
+
+    if event == EVENT_NEW_NODE_ON_MESH:
+        event_properties = [
+            "backhaul",
+            "connected_adapters",
+            "model",
+            "name",
+            "parent_name",
+            "serial",
+            "status",
+        ]
+    elif event == EVENT_NEW_DEVICE_ON_MESH:
+        event_properties = [
+            "connected_adapters",
+            "description",
+            "manufacturer",
+            "model",
+            "name",
+            "operating_system",
+            "parent_name",
+            "serial",
+            "status",
+        ]
+
+    ret: Dict[str, Any] = {
+        prop: getattr(device, prop, None)
+        for prop in event_properties
+    }
+    if ret:
+        # region #-- get the mesh device_id --#
+        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
+        dr_device: dr.DeviceEntry
+        mesh_details: List[DeviceEntry] = [
+            dr_device
+            for dr_id, dr_device in device_registry.devices.items()
+            if (
+                    config_entry.entry_id in dr_device.config_entries
+                    and dr_device.manufacturer == PYVELOP_AUTHOR
+                    and dr_device.name.lower() == "mesh"
+            )
+        ]
+        # endregion
+
+        if mesh_details:
+            ret["mesh_device_id"] = mesh_details[0].id
+
+    return ret
 
 
 # noinspection PyUnusedLocal
@@ -170,23 +208,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         except Exception as err:
             raise UpdateFailed(err)
         else:
-            # region #-- get the mesh device_id --#
-            def _get_mesh() -> Optional[DeviceEntry]:
-
-                dr_device: dr.DeviceEntry
-                m = [
-                    dr_device
-                    for dr_id, dr_device in device_registry.devices.items()
-                    if (
-                            config_entry.entry_id in dr_device.config_entries
-                            and dr_device.manufacturer == PYVELOP_AUTHOR
-                            and dr_device.name.lower() == "mesh"
-                    )
-                ]
-                if m:
-                    return m[0]
-            # endregion
-
             # region #-- check for new devices --#
             if previous_devices:
                 current_devices: Set[str] = {device.unique_id for device in mesh.devices}
@@ -194,45 +215,42 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 if new_devices:
                     for device in mesh.devices:
                         if device.unique_id in new_devices:
-                            payload: Dict[str, Any] = {
-                                prop: getattr(device, prop, None)
-                                for prop in EVENT_NEW_DEVICE_ON_MESH_PROPERTIES
-                            }
-                            mesh_details: DeviceEntry = _get_mesh()
-                            if mesh_details:
-                                payload["mesh_device_id"] = mesh_details.id
+                            # -- fire the event --#
+                            payload = _build_event_payload(
+                                config_entry=config_entry,
+                                device=device,
+                                event=EVENT_NEW_DEVICE_ON_MESH,
+                                hass=hass
+                            )
                             _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
             # endregion
 
             # region #-- check for new nodes --#
-            if previous_nodes:
-                node: Node
-                current_nodes: Set[str] = {node.serial for node in mesh.nodes}
-                new_nodes: Set[str] = current_nodes.difference(previous_nodes)
-                is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
-                if new_nodes and not is_reloading:
-                    for node in mesh.nodes:
-                        if node.serial in new_nodes:
-                            _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
-                            _LOGGER.debug(log_formatter.message_format("hass state: %s"), hass.state)
-                            if hass.state == CoreState.running:  # reload the config
-                                if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
-                                    hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
-                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
-                                await hass.config_entries.async_reload(config_entry.entry_id)
-                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
+            node: Node
+            current_nodes: Set[str] = {node.serial for node in mesh.nodes}
+            new_nodes: Set[str] = current_nodes.difference(previous_nodes)
+            is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
+            if new_nodes and not is_reloading:
+                for node in mesh.nodes:
+                    if node.serial in new_nodes:
+                        _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
+                        if hass.state == CoreState.running:  # reload the config
+                            if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
+                                hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
+                            hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
+                            await hass.config_entries.async_reload(config_entry.entry_id)
+                            hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
 
-                            # -- fire the event --#
-                            payload: Dict[str, Any] = {
-                                prop: getattr(node, prop, None)
-                                for prop in EVENT_NEW_NODE_ON_MESH_PROPERTIES
-                            }
-                            mesh_details: DeviceEntry = _get_mesh()
-                            if mesh_details:
-                                payload["mesh_id"] = mesh_details.id
-                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
-                            hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+                        # -- fire the event --#
+                        payload = _build_event_payload(
+                            config_entry=config_entry,
+                            device=node,
+                            event=EVENT_NEW_DEVICE_ON_MESH,
+                            hass=hass
+                        )
+                        _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
+                        hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
             # endregion
         return mesh
 
