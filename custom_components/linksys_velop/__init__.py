@@ -76,7 +76,7 @@ EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
 EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
 
 
-def _build_event_payload(
+def build_event_payload(
     config_entry: ConfigEntry,
     device: Device | Node,
     event: str,
@@ -218,7 +218,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     for device in mesh.devices:
                         if device.unique_id in new_devices:
                             # -- fire the event --#
-                            payload = _build_event_payload(
+                            payload = build_event_payload(
                                 config_entry=config_entry,
                                 device=device,
                                 event=EVENT_NEW_DEVICE_ON_MESH,
@@ -245,7 +245,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                             hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
 
                         # -- fire the event --#
-                        payload = _build_event_payload(
+                        payload = build_event_payload(
                             config_entry=config_entry,
                             device=node,
                             event=EVENT_NEW_DEVICE_ON_MESH,
