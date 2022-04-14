@@ -1311,4 +1311,8 @@ action:
         or device_attr(trigger.event.data.mesh_id, 'name') }}|
 mode: single
 ```
+
+This will create a notification that looks like this: -
+
+![new node on mesh](images/linksys_velop_new_node_on_mesh.png)
 </details>
