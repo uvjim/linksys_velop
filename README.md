@@ -165,7 +165,7 @@ The event looks as follows: -
         "parent_name": "Front Bedroom",
         "serial": "1234567890",
         "status": true,
-        "mesh_id": "1ca89cc86d79dff3f3bf91cfc5f6973f"
+        "mesh_device_id": "1ca89cc86d79dff3f3bf91cfc5f6973f"
     },
     "origin": "LOCAL",
     "time_fired": "2022-04-14T12:15:10.150604+00:00",
@@ -1307,8 +1307,9 @@ action:
         |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
         }}|
 
-        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_id, 'name_by_user')
-        or device_attr(trigger.event.data.mesh_id, 'name') }}|
+        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id, 
+        'name_by_user')
+        or device_attr(trigger.event.data.mesh_device_id, 'name') }}|
 mode: single
 ```
 
