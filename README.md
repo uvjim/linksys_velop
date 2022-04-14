@@ -140,9 +140,7 @@ considered new if it is not currently configured in HASS. It may not be
 configured for a couple of reasons: the device was deleted from the UI, or 
 you've added a new node to your Mesh.
 
-The event is fired for each new node that is discovered. The payload also 
-includes the ID for the persistent notification that is created, you may use 
-this in an automation to automatically close the notification if you need to.  
+The event is fired for each new node that is discovered.
 
 The event looks as follows: -
 
@@ -152,27 +150,27 @@ The event looks as follows: -
     "data": {
         "backhaul": {
             "connection": "Wireless",
-            "last_checked": "2022-04-12T18:11:20Z",
-            "speed_mbps": 64.538
+            "last_checked": "2022-04-14T12:11:23Z",
+            "speed_mbps": 115.037
         },
         "connected_adapters": [
             {
-                "mac": "00:11:22:22:44:55",
+                "mac": "11:22:33:44:55:66",
                 "ip": "192.168.123.31",
                 "guest_network": false
             }
         ],
         "model": "WHW01",
         "name": "Utility",
-        "parent_name": "Lounge",
+        "parent_name": "Front Bedroom",
         "serial": "1234567890",
         "status": true,
-        "persistent_notification_id": "linksys_velop_new_node_1234567890"
+        "mesh_id": "1ca89cc86d79dff3f3bf91cfc5f6973f"
     },
     "origin": "LOCAL",
-    "time_fired": "2022-04-12T18:15:34.505303+00:00",
+    "time_fired": "2022-04-14T12:15:10.150604+00:00",
     "context": {
-        "id": "ce6cff08570912843011ec2272579b84",
+        "id": "7510f408cfc36511b0c6372542fbfdc0",
         "parent_id": null,
         "user_id": null
     }
@@ -267,20 +265,6 @@ still available of you configure them in the underlying HASS config files.
 * `node_images`: the path to the folder location containing the images to 
   use for nodes. This is currently used in the card and also for the 
   `update` entity. e.g. `/local/velop_nodes`
-
-## Default Notifications
-
-There are instances when the integration will use persistent notifications 
-to display information. These are detailed below.
-
-### New Node Found
-
-When a new node is found on the Mesh an alert is created and the integration 
-is automatically reloaded. The notifications will look like the following.
-
-![new_node_on mesh_basic](images/persistent_notification_basic.png)
-
-![new_node_on mesh_multiple](images/persistent_notification_new_node_multiple_instance.png)
 
 ## Troubleshooting
 
