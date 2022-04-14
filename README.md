@@ -1277,3 +1277,38 @@ This will create a notification that looks like the following screenshot.
 
 ![new device on mesh](images/linksys_velop_new_device_on_mesh.png)
 </details>
+
+<details>
+  <summary>Notify when a new node comes onto the Mesh</summary>
+
+```yaml
+alias: New Automation
+description: ''
+trigger:
+  - platform: event
+    event_type: linksys_velop_new_node_on_mesh
+condition: []
+action:
+  - service: persistent_notification.create
+    data:
+      notification_id: linksys_velop_new_node_{{ trigger.event.data.serial }}
+      title: 🆕 Node Found
+      message: >-
+        |   |   |   |
+
+        |---|---|---|
+
+        |Name:|&emsp;|{{ trigger.event.data.name }}|
+
+        |Model:|&emsp;|{{ trigger.event.data.model }}|
+
+        |Parent:|&emsp;|{{ trigger.event.data.parent_name }}|
+
+        |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
+        }}|
+
+        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_id, 'name_by_user')
+        or device_attr(trigger.event.data.mesh_id, 'name') }}|
+mode: single
+```
+</details>
