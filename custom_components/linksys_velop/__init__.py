@@ -14,7 +14,6 @@ from typing import (
     Set,
 )
 
-import homeassistant.components.persistent_notification as persistent_notification
 import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -202,8 +201,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                             mesh_details: DeviceEntry = _get_mesh()
                             if mesh_details:
                                 payload["mesh_device_id"] = mesh_details.id
-                                _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
-                                hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
+                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
+                            hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
             # endregion
 
             # region #-- check for new nodes --#
@@ -223,40 +222,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
                                 await hass.config_entries.async_reload(config_entry.entry_id)
                                 hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
-                            notify_message: str = "|   |   |   |\n" \
-                                                  "|---|---|---|\n" \
-                                                  f"|Name:|&emsp;|{node.name}|\n" \
-                                                  f"|Model:|&emsp;|{node.model}|\n" \
-                                                  f"|Parent:|&emsp;|{node.parent_name}|\n" \
-                                                  f"|IP:|&emsp;|{node.connected_adapters[0].get('ip', 'N/A')}|"
-                            mesh_details: DeviceEntry = _get_mesh()
-                            if mesh_details and mesh_details.name_by_user:
-                                notify_message += f"\n|Mesh:|&emsp;|{mesh_details.name_by_user}|"
-                            all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
-                            instance_name: str = ""
-                            if len(all_config_entries) > 1:
-                                all_same_name = (
-                                        all_config_entries.count(all_config_entries[0]) == len(all_config_entries)
-                                )
-                                if not all_same_name:
-                                    instance_name = f"{config_entry.title} "
-
-                            persistent_notification.async_create(  # raise a notification
-                                hass=hass,
-                                message=notify_message,
-                                title=f"🆕 {instance_name}Node Found",
-                                notification_id=f"{DOMAIN}_new_node_{node.serial}"
-                            )
 
                             # -- fire the event --#
                             payload: Dict[str, Any] = {
                                 prop: getattr(node, prop, None)
                                 for prop in EVENT_NEW_NODE_ON_MESH_PROPERTIES
                             }
-                            payload["persistent_notification_id"] = f"{DOMAIN}_new_node_{node.serial}"
+                            mesh_details: DeviceEntry = _get_mesh()
+                            if mesh_details:
+                                payload["mesh_id"] = mesh_details.id
                             _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
-
             # endregion
         return mesh
 
