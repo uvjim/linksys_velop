@@ -1248,28 +1248,50 @@ condition: []
 action:
   - service: persistent_notification.create
     data:
-      title: 'Linksys Velop: New Device'
+      notification_id: >-
+        linksys_velop_new_device_{{
+        trigger.event.data.connected_adapters[0].get('mac', 'N/A') }}
+      title: 🆕 Device Found
       message: >-
-        {% set device_id = trigger.event.data.mesh_device_id %} {% set mesh_name
-        = device_attr(device_id, 'name_by_user') %} {% if mesh_name is none %}
-          {% set mesh_name = device_attr(device_id, 'name') %}
-        {% endif %} <b>{{ trigger.event.data.name }}</b><br />Mesh: {{ mesh_name
-        }}<br /> Status: {{ "Online" if trigger.event.data.status is eq true
-        else "Offline" }}<br /> IP: {{
-        trigger.event.data.connected_adapters[0].ip }}<br /> MAC: {{
-        trigger.event.data.connected_adapters[0].mac }}<br /> Guest network: {{
-        "Yes" if trigger.event.data.connected_adapters[0].guest_network is eq
-        true else "No" }}<br /> {{"Parent Node: " ~
-        trigger.event.data.parent_name if trigger.event.data.parent_name is not
-        none else ""}}<br /> {{"Manufacturer: " ~
-        trigger.event.data.manufacturer if trigger.event.data.manufacturer is
-        not none else ""}}<br /> {{"Model: " ~ trigger.event.data.model if
-        trigger.event.data.model is not none else ""}}<br /> {{"Serial: " ~
-        trigger.event.data.serial if trigger.event.data.serial is not none else
-        ""}}<br /> {{"Description: " ~ trigger.event.data.description if
-        trigger.event.data.description is not none else ""}}<br /> {{"Operating
-        System: " ~ trigger.event.data.operating_system if
-        trigger.event.data.operating_system is not none else ""}}
+        <b>{{ trigger.event.data.name }}</b>
+
+        |   |   |   |
+
+        |---|---|---| {% if trigger.event.data.mesh_device_id is not none %}
+
+        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
+        'name_by_user') or device_attr(trigger.event.data.mesh_device_id,
+        'name') }}| {% endif %} {% if trigger.event.data.parent_name is not none
+        %}
+
+        |Parent:|&emsp;|{{ trigger.event.data.parent_name }}| {% endif %} {% if
+        trigger.event.data.connected_adapters is not none %}
+
+        |Guest:|&emsp;|{{ 'Yes' if
+        trigger.event.data.connected_adapters[0].get('guest_network', False) is
+        eq true else 'No' }}|
+
+        |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
+        }}|
+
+        |MAC:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('mac',
+        'N/A') }}| {% endif %} {% if trigger.event.data.description is not none
+        %}
+
+        |Description:|&emsp;|{{ trigger.event.data.description }}| {% endif %}
+        {% if trigger.event.data.manufacturer is not none %}
+
+        |Manufacturer:|&emsp;|{{ trigger.event.data.manufacturer }}| {% endif %}
+        {% if trigger.event.data.model is not none %}
+
+        |Model:|&emsp;|{{ trigger.event.data.model }}| {% endif %} {% if
+        trigger.event.data.serial is not none %}
+
+        |Serial:|&emsp;|{{ trigger.event.data.serial }}| {% endif %} {% if
+        trigger.event.data.operating_system is not none %}
+
+        |Operating System:|&emsp;|{{ trigger.event.data.operating_system }}| {%
+        endif %}
 mode: parallel
 ````
 
