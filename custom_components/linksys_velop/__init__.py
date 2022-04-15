@@ -61,6 +61,7 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
+    EVENT_NEW_PARENT_NODE,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
@@ -108,6 +109,14 @@ def build_event_payload(
             "parent_name",
             "serial",
             "status",
+            "unique_id",
+        ]
+    elif event == EVENT_NEW_PARENT_NODE:
+        event_properties = [
+            "connected_adapters",
+            "model",
+            "name",
+            "serial",
             "unique_id",
         ]
 
@@ -253,6 +262,27 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         )
                         _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
                         hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+            # endregion
+
+            # region #-- check for a primary node change --#
+            primary_node: List[Node] = [
+                node
+                for node in mesh.nodes
+                if node.type == "primary"
+            ]
+            if primary_node and primary_node[0].serial != config_entry.unique_id:
+                _LOGGER.debug(log_formatter.message_format("assuming the primary node has changed"))
+                if hass.state == CoreState.running:
+                    if hass.config_entries.async_update_entry(entry=config_entry, unique_id=primary_node[0].serial):
+                        payload: Dict[str, Any] = build_event_payload(
+                            config_entry=config_entry,
+                            device=primary_node[0],
+                            event=EVENT_NEW_PARENT_NODE,
+                            hass=hass,
+                        )
+                        hass.bus.async_fire(event_type=EVENT_NEW_PARENT_NODE, event_data=payload)
+                else:
+                    _LOGGER.debug(log_formatter.message_format("backing off updates until HASS is fully running"))
             # endregion
         return mesh
 
