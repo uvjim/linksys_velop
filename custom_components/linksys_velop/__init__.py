@@ -127,14 +127,17 @@ def build_event_payload(
     if ret:
         # region #-- get the mesh device_id --#
         device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
+        my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
+            registry=device_registry,
+            config_entry_id=config_entry.entry_id
+        )
         dr_device: dr.DeviceEntry
         mesh_details: List[DeviceEntry] = [
             dr_device
-            for dr_id, dr_device in device_registry.devices.items()
+            for dr_device in my_devices
             if (
-                    config_entry.entry_id in dr_device.config_entries
-                    and dr_device.manufacturer == PYVELOP_AUTHOR
-                    and dr_device.name.lower() == "mesh"
+                dr_device.manufacturer == PYVELOP_AUTHOR
+                and dr_device.name.lower() == "mesh"
             )
         ]
         # endregion
@@ -201,11 +204,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
 
         # -- get the existing nodes --#
+        my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
+            registry=device_registry,
+            config_entry_id=config_entry.entry_id
+        )
+        dr_device: dr.DeviceEntry
         previous_nodes: Set[str] = {
             next(iter(dr_device.identifiers))[1]  # serial number of node
-            for dr_id, dr_device in device_registry.devices.items()
+            for dr_device in my_devices
             if all([
-                config_entry.entry_id in dr_device.config_entries,
                 dr_device.manufacturer != PYVELOP_AUTHOR,
                 dr_device.name.lower() != "mesh",
             ])
