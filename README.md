@@ -1339,3 +1339,79 @@ This will create a notification that looks like this: -
 
 ![new node on mesh](images/linksys_velop_new_node_on_mesh.png)
 </details>
+
+<details>
+  <summary>Notify on events</summary>
+
+```yaml
+alias: 'Notify: Velop Information'
+description: ''
+trigger:
+  - platform: event
+    event_type: linksys_velop_new_device_on_mesh
+    id: Device Found
+  - platform: event
+    event_type: linksys_velop_new_node_on_mesh
+    id: Node Found
+  - platform: event
+    event_type: linksys_velop_new_primary_node
+    event_data: {}
+    id: Primary Node Changed
+condition: []
+action:
+  - service: persistent_notification.create
+    data:
+      notification_id: >-
+        {{ trigger.event.event_type }}_{{ trigger.event.data.get('unique_id') or
+        trigger.event.data.get('serial') }}
+      title: Linksys Velop - {{ trigger.id }}
+      message: >-
+        {% if trigger.event.data.get('name') is not none %}
+          ## {{ trigger.event.data.name }}
+        {% endif %}
+
+        |   |   |   |
+
+        |---|---|---| {% if trigger.event.data.get('mesh_device_id') is not none
+        %}
+
+        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
+        'name_by_user') or device_attr(trigger.event.data.mesh_device_id,
+        'name') }}| {% endif %} {% if trigger.event.data.get('parent_name') is
+        not none %}
+
+        |Parent:|&emsp;|{{ trigger.event.data.parent_name }}| {% endif %} {% if
+        trigger.event.data.get('host') is not none %}
+
+        |Host:|&emsp;|{{ trigger.event.data.host }}| {% endif %} {% if
+        trigger.event.data.get('connected_adapters') is not none and
+        trigger.event.data.get('connected_adapters') | count > 0 %}
+
+        |Guest:|&emsp;|{{ 'Yes' if
+        trigger.event.data.connected_adapters[0].get('guest_network', False) is
+        eq true else 'No' }}|
+
+        |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
+        }}|
+
+        |MAC:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('mac',
+        'N/A') }}| {% endif %} {% if trigger.event.data.get('description') is
+        not none %}
+
+        |Description:|&emsp;|{{ trigger.event.data.description }}| {% endif %}
+        {% if trigger.event.data.get('manufacturer') is not none %}
+
+        |Manufacturer:|&emsp;|{{ trigger.event.data.manufacturer }}| {% endif %}
+        {% if trigger.event.data.get('model') is not none %}
+
+        |Model:|&emsp;|{{ trigger.event.data.model }}| {% endif %} {% if
+        trigger.event.data.get('serial') is not none %}
+
+        |Serial:|&emsp;|{{ trigger.event.data.serial }}| {% endif %} {% if
+        trigger.event.data.get('operating_system') is not none %}
+
+        |Operating System:|&emsp;|{{ trigger.event.data.operating_system }}| {%
+        endif %}
+mode: parallel
+```
+</details>
