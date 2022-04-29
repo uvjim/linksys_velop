@@ -245,30 +245,31 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             # endregion
 
             # region #-- check for new nodes --#
-            node: Node
-            current_nodes: Set[str] = {node.serial for node in mesh.nodes}
-            new_nodes: Set[str] = current_nodes.difference(previous_nodes)
-            is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
-            if new_nodes and not is_reloading:
-                for node in mesh.nodes:
-                    if node.serial in new_nodes:
-                        _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
-                        if hass.state == CoreState.running:  # reload the config
-                            if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
-                                hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
-                            hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
-                            await hass.config_entries.async_reload(config_entry.entry_id)
-                            hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
+            if previous_nodes:
+                node: Node
+                current_nodes: Set[str] = {node.serial for node in mesh.nodes}
+                new_nodes: Set[str] = current_nodes.difference(previous_nodes)
+                is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
+                if new_nodes and not is_reloading:
+                    for node in mesh.nodes:
+                        if node.serial in new_nodes:
+                            _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
+                            if hass.state == CoreState.running:  # reload the config
+                                if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
+                                    hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
+                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
+                                await hass.config_entries.async_reload(config_entry.entry_id)
+                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
 
-                        # -- fire the event --#
-                        payload = build_event_payload(
-                            config_entry=config_entry,
-                            device=node,
-                            event=EVENT_NEW_DEVICE_ON_MESH,
-                            hass=hass
-                        )
-                        _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
-                        hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+                            # -- fire the event --#
+                            payload = build_event_payload(
+                                config_entry=config_entry,
+                                device=node,
+                                event=EVENT_NEW_DEVICE_ON_MESH,
+                                hass=hass
+                            )
+                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
+                            hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
             # endregion
 
             # region #-- check for a primary node change --#
