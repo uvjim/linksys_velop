@@ -75,30 +75,38 @@ class LinksysVelopSensorDescription(
 # endregion
 
 
+# region #-- general functions for nodes and the mesh --#
+def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
+    """"""
+
+    ret: List[Dict[str, Any]] = []
+    for device in mesh.devices:
+        if device.status is state:
+            ret.append({"name": device.name})
+            for adapter in device.network:
+                if adapter.get("ip"):
+                    ret[-1] = dict(
+                        **ret[-1],
+                        ip=adapter.get("ip"),
+                        connection=adapter.get("type"),
+                        guest_network=adapter.get("guest_network"),
+                    )
+
+    _LOGGER.debug("online_devices, %s", ret)
+    return ret
+
+# endregion
+
+
 SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
     LinksysVelopSensorDescription(
-        extra_attributes=lambda m: {"devices": [device.name for device in m.devices if device.status is False]},
+        extra_attributes=lambda m: {"devices": [d.get("name", "") for d in get_devices(mesh=m, state=False)]},
         key="offline_devices",
         name="Offline Devices",
         state_value=lambda m: len([d for d in m.devices if d.status is False])
     ),
     LinksysVelopSensorDescription(
-        extra_attributes=lambda m: (
-            {
-                "devices": [
-                    {
-                        d.name: {
-                            "ip": a.get("ip"),
-                            "connection": a.get("type"),
-                            "guest_network": a.get("guest_network"),
-                        }
-                        for a in d.network
-                        if a.get("ip")
-                    }
-                    for d in m.devices if d.status is True
-                ]
-            }
-        ),
+        extra_attributes=lambda m: {"devices": get_devices(mesh=m, state=True)},
         key="online_devices",
         name="Online Devices",
         state_value=lambda m: len([d for d in m.devices if d.status is True])
@@ -110,7 +118,7 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
         key="available_storage",
         name="Available Storage",
         state_value=lambda m: len(m.storage_available)
-    )
+    ),
 )
 
 

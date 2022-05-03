@@ -549,26 +549,23 @@ entities:
           'devices') %} | # | Name | IP | Type |
 
           |:---:|:---|---:|:---:| {%- for device in devices -%}
-            {% set idx = loop.index %}
-            {%- for device_name, device_details in device.items() -%}
-              {%- set device_ip = device_details.ip -%}
-              {%- set connection_type = device_details.connection | lower -%}
-              {%- set guest_network = device_details.guest_network -%}
-              {%- if connection_type == "wired" -%}
-                {%- set connection_icon = "ethernet" -%}
-              {% elif connection_type == "wireless" -%}
-                {%- set connection_icon = "wifi" -%}
-              {% elif connection_type == "unknown" -%}
-                {%- set connection_icon = "help" -%}
-              {% else -%}
-                {%- set connection_icon = "" -%}
-              {%- endif %}
-          {{ "| {} | {}{} | {} | {} |".format(idx, device_name, '&nbsp;<ha-icon
-          icon="hass:account-multiple"></ha-icon>' if guest_network else '',
-          device_ip, '<ha-icon icon="hass:' ~ connection_icon ~ '"></ha-icon>')
-          }}
+            {%- set device_ip = device.ip -%}
+            {%- set connection_type = device.connection | lower -%}
+            {%- set guest_network = device.guest_network -%}
+            {%- if connection_type == "wired" -%}
+              {%- set connection_icon = "ethernet" -%}
+            {% elif connection_type == "wireless" -%}
+              {%- set connection_icon = "wifi" -%}
+            {% elif connection_type == "unknown" -%}
+              {%- set connection_icon = "help" -%}
+            {% else -%}
+              {%- set connection_icon = "" -%}
+            {%- endif %}
+          {{ "| {} | {}{} | {} | {} |".format(loop.index, device.name,
+          '&nbsp;<ha-icon icon="hass:account-multiple"></ha-icon>' if
+          guest_network else '', device_ip, '<ha-icon icon="hass:' ~
+          connection_icon ~ '"></ha-icon>') }}
             {%- endfor %}
-          {%- endfor %}
   - type: custom:fold-entity-row
     padding: 0
     head:
