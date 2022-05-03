@@ -103,13 +103,13 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
         extra_attributes=lambda m: {"devices": [d.get("name", "") for d in get_devices(mesh=m, state=False)]},
         key="offline_devices",
         name="Offline Devices",
-        state_value=lambda m: len([d for d in m.devices if d.status is False])
+        state_value=lambda m: len(get_devices(mesh=m, state=False))
     ),
     LinksysVelopSensorDescription(
-        extra_attributes=lambda m: {"devices": get_devices(mesh=m, state=True)},
+        extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
         key="online_devices",
         name="Online Devices",
-        state_value=lambda m: len([d for d in m.devices if d.status is True])
+        state_value=lambda m: len(get_devices(mesh=m))
     ),
     LinksysVelopSensorDescription(
         entity_registry_enabled_default=False,
