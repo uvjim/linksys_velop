@@ -119,6 +119,13 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
         name="Available Storage",
         state_value=lambda m: len(m.storage_available)
     ),
+    LinksysVelopSensorDescription(
+        entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {"devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]},
+        key="guest_devices",
+        name="Guest Devices",
+        state_value=lambda m: len([d for d in get_devices(mesh=m) if d.get("guest_network")])
+    ),
 )
 
 
