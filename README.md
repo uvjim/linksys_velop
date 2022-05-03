@@ -54,6 +54,8 @@ install time and from reconfiguring the integration.
 - Mesh: Number of Online Devices
   - list of device names, IP addresses, adapter types and guest network 
     state for the online devices
+- Mesh: Number of Guest Devices *(disabled by default)*
+  - list of device names, IP addresses, adapter types etc
 - Mesh: Date of Latest Speedtest
   - Exit code, Latency, Download/Upload bandwidth, Result ID
 - Mesh: Number of Available Storage Partitions *(disabled by default)*
