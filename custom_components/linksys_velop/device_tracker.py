@@ -135,7 +135,6 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity, ABC):
         ]
         if device:
             self._device = device[0]
-            _LOGGER.warning(self._device.__dict__)
         # endregion
 
         if self._is_connected != self._device.status:
