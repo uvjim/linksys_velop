@@ -447,6 +447,16 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         })
         return ret
 
+    @property
+    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+        """"""
+
+        if (
+            hasattr(self.entity_description, "extra_attributes")
+            and isinstance(self.entity_description.extra_attributes, Callable)
+        ):
+            return self.entity_description.extra_attributes(self._mesh)
+
 
 class LinksysVelopNodeEntity(CoordinatorEntity):
     """"""
@@ -507,7 +517,6 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 
         return ret
 
-    # noinspection PyUnresolvedReferences
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """Additional attributes for the entity"""
