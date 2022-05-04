@@ -20,7 +20,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -32,7 +31,6 @@ from .const import (
     CONF_COORDINATOR,
     CONF_NODE_IMAGES,
     DOMAIN,
-    ENTITY_SLUG,
 )
 
 # endregion
@@ -100,6 +98,8 @@ async def async_setup_entry(
 class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
     """Representation of an update entity for a node"""
 
+    entity_description: LinksysVelopUpdateDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -109,15 +109,8 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        self._node_id: str = node.unique_id
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
-        self.entity_description: LinksysVelopUpdateDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-        self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
     def auto_update(self) -> bool:

@@ -8,8 +8,10 @@ import logging
 from datetime import timedelta
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
+    Mapping,
     Optional,
     Set,
 )
@@ -30,7 +32,9 @@ from homeassistant.core import (
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import (
+    DeviceInfo,
+)
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -38,7 +42,6 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed
 )
 from homeassistant.util import slugify
-
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 # noinspection PyProtectedMember
@@ -448,19 +451,30 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 class LinksysVelopNodeEntity(CoordinatorEntity):
     """"""
 
-    _node_id: str
+    ENTITY_DOMAIN: str
 
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry
+        config_entry: ConfigEntry,
+        description,
+        node: Node,
     ) -> None:
         """"""
 
         super().__init__(coordinator=coordinator)
+
+        self.entity_description = description
+
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
+        self._node_id: str = node.unique_id
         self._node: Node = self._get_node()
+
+        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+        self._attr_unique_id = f"{self._node.unique_id}::" \
+                               f"{self.ENTITY_DOMAIN.lower()}::" \
+                               f"{slugify(self.entity_description.name)}"
 
     def _get_node(self) -> Optional[Node]:
         """Get the current node"""
@@ -492,6 +506,17 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         })
 
         return ret
+
+    # noinspection PyUnresolvedReferences
+    @property
+    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+        """Additional attributes for the entity"""
+
+        if (
+            hasattr(self.entity_description, "extra_attributes")
+            and isinstance(self.entity_description.extra_attributes, Callable)
+        ):
+            return self.entity_description.extra_attributes(self._node)
 # endregion
 
 

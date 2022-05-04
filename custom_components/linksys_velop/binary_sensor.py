@@ -31,7 +31,6 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -43,7 +42,6 @@ from . import (
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
     UPDATE_DOMAIN,
@@ -216,6 +214,8 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
 class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
     """Representaion of a binary sensor related to a node"""
 
+    entity_description: LinksysVelopBinarySensorDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -225,27 +225,9 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
     ) -> None:
         """Constructor"""
 
-        self._node_id: str = node.unique_id
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
-        self.entity_description: LinksysVelopBinarySensorDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-        self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
-
-    @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """Additional attributes for the binary sensor"""
-
-        if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
-        ):
-            return self.entity_description.extra_attributes(self._node)
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
     def is_on(self) -> Optional[bool]:
