@@ -139,6 +139,8 @@ async def async_setup_entry(
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     """Representation for a button in the Mesh"""
 
+    entity_description: LinksysVelopButtonDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -147,14 +149,8 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
-        self.entity_description: LinksysVelopButtonDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-        self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     async def async_press(self) -> None:
         """Handle the button being pressed"""

@@ -22,7 +22,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 
 from . import (
     entity_cleanup,
@@ -31,7 +30,6 @@ from . import (
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    ENTITY_SLUG,
 )
 
 # endregion
@@ -139,6 +137,8 @@ async def async_setup_entry(
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     """"""
 
+    entity_description: LinksysVelopSwitchDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -147,17 +147,11 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_entity_category = EntityCategory.CONFIG
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
 
-        self.entity_description: LinksysVelopSwitchDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-        self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
         self._value = self._get_value()
 

@@ -179,6 +179,8 @@ async def async_setup_entry(
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     """Representation of a binary sensor for the mesh"""
 
+    entity_description: LinksysVelopBinarySensorDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -187,16 +189,9 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
-        self.entity_description: LinksysVelopBinarySensorDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-        self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:

@@ -37,6 +37,8 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed
 )
+from homeassistant.util import slugify
+
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 # noinspection PyProtectedMember
@@ -61,6 +63,7 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
+    ENTITY_SLUG,
     EVENT_NEW_PARENT_NODE,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
@@ -399,16 +402,26 @@ async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry)
 class LinksysVelopMeshEntity(CoordinatorEntity):
     """"""
 
+    ENTITY_DOMAIN: str
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry
+        config_entry: ConfigEntry,
+        description,
     ) -> None:
         """"""
 
         super().__init__(coordinator=coordinator)
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
+
+        self.entity_description = description
+
+        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
+        self._attr_unique_id = f"{config_entry.entry_id}::" \
+                               f"{self.ENTITY_DOMAIN.lower()}::" \
+                               f"{slugify(self.entity_description.name)}"
 
     def _handle_coordinator_update(self) -> None:
         """Update the information when the coordinator updates"""
