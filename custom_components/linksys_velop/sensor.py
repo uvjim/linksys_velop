@@ -312,16 +312,6 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """Additional attributes for the sensor"""
-
-        if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
-        ):
-            return self.entity_description.extra_attributes(self._mesh)
-
-    @property
     def native_value(self) -> StateType:
         """Get the state of the sensor"""
 

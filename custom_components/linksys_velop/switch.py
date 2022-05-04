@@ -185,16 +185,6 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
             await self.async_update_ha_state()
 
     @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """"""
-
-        if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
-        ):
-            return self.entity_description.extra_attributes(self._mesh)
-
-    @property
     def icon(self) -> Optional[str]:
         """Get the icon"""
 
