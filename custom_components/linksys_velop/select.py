@@ -24,7 +24,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
@@ -32,8 +31,8 @@ from . import LinksysVelopMeshEntity
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    ENTITY_SLUG,
 )
+
 # endregion
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,6 +126,8 @@ async def async_setup_entry(
 class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     """Representation for a button in the Mesh"""
 
+    entity_description: LinksysVelopSelectDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -135,17 +136,12 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
-        self.entity_description: LinksysVelopSelectDescription = description
-
         self._attr_current_option = None
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False
-        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-        self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     async def async_select_option(self, option: str) -> None:
         """Select the option"""
