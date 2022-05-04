@@ -17,17 +17,22 @@ from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
+# noinspection PyProtectedMember
+from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
 from pyvelop.exceptions import MeshDeviceNotFoundResponse
 from pyvelop.mesh import Mesh
 
-from . import LinksysVelopMeshEntity
 from .const import (
-    CONF_COORDINATOR,
+    CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
     DEF_CONSIDER_HOME,
     DOMAIN,
@@ -44,8 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
     device_trackers: List[str] = config.options.get(CONF_DEVICE_TRACKERS, [])
 
-    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR]
-    mesh: Mesh = coordinator.data
+    mesh: Mesh = hass.data[DOMAIN][config.entry_id][CONF_COORDINATOR_MESH]
     entities: list = []
 
     # region #-- get the mesh device from the registry --#
@@ -88,34 +92,34 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
             entities.append(
                 LinksysVelopMeshDeviceTracker(
-                    coordinator=coordinator,
                     device=device,
                     config_entry=config,
+                    hass=hass,
                 )
             )
 
     async_add_entities(entities)
 
 
-class LinksysVelopMeshDeviceTracker(LinksysVelopMeshEntity, ScannerEntity, ABC):
+class LinksysVelopMeshDeviceTracker(ScannerEntity, ABC):
     """Representation of a device tracker"""
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        device: Device
+        device: Device,
+        hass: HomeAssistant,
     ) -> None:
         """Constructor"""
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
+        super().__init__()
 
         self._config: ConfigEntry = config_entry
         self._consider_home_listener: Optional[Callable] = None
         self._device: Device = device
         self._is_connected: bool = device.status
         self._log_formatter: VelopLogger = VelopLogger(unique_id=self._config.unique_id)
-        self._mesh: Mesh = coordinator.data
+        self._mesh: Mesh = hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
 
         self._attr_name = f"{ENTITY_SLUG} Mesh: {self._device.name}"
 
@@ -131,6 +135,7 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopMeshEntity, ScannerEntity, ABC):
         ]
         if device:
             self._device = device[0]
+            _LOGGER.warning(self._device.__dict__)
         # endregion
 
         if self._is_connected != self._device.status:
@@ -177,6 +182,21 @@ class LinksysVelopMeshDeviceTracker(LinksysVelopMeshEntity, ScannerEntity, ABC):
                 target=self._async_get_current_device_status,
             )
         )
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+
+        # noinspection HttpUrlsUsage
+        ret = DeviceInfo(**{
+            "configuration_url": f"http://{self._mesh.connected_node}",
+            "identifiers": {(DOMAIN, self._config.entry_id)},
+            "manufacturer": PYVELOP_AUTHOR,
+            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            "name": "Mesh",
+            "sw_version": "",
+        })
+        return ret
 
     @property
     def is_connected(self) -> bool:
