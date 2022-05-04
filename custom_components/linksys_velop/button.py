@@ -23,7 +23,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -35,7 +34,6 @@ from . import (
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    ENTITY_SLUG,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 
@@ -136,6 +134,19 @@ async def async_setup_entry(
         entity_cleanup(config_entry=config_entry, entities=buttons_to_remove, hass=hass)
 
 
+async def _async_button_pressed(action: str, hass: HomeAssistant, mesh: Mesh, action_arguments: Optional[dict] = None):
+    """"""
+
+    action: Optional[Callable] = getattr(mesh, action, None)
+    signal: str = action_arguments.pop("signal", None)
+    if action and isinstance(action, Callable):
+        if action_arguments is None:
+            action_arguments = {}
+        await action(**action_arguments)
+        if signal:
+            async_dispatcher_send(hass, signal)
+
+
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     """Representation for a button in the Mesh"""
 
@@ -155,17 +166,18 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
     async def async_press(self) -> None:
         """Handle the button being pressed"""
 
-        action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
-        action_arguments = self.entity_description.press_action_arguments.copy()
-        signal: str = action_arguments.pop("signal", None)
-        if action and isinstance(action, Callable):
-            await action(**action_arguments)
-            if signal:
-                async_dispatcher_send(self.hass, signal)
+        await _async_button_pressed(
+            action=self.entity_description.press_action,
+            action_arguments=self.entity_description.press_action_arguments.copy(),
+            hass=self.hass,
+            mesh=self._mesh,
+        )
 
 
 class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
     """Representation for a button related to a node"""
+
+    entity_description: LinksysVelopButtonDescription
 
     def __init__(
         self,
@@ -176,23 +188,15 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
     ) -> None:
         """Constructor"""
 
-        self._node_id: str = node.unique_id
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
-        self.entity_description: LinksysVelopButtonDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-        self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     async def async_press(self) -> None:
         """Handle the button being pressed"""
 
-        action: Optional[Callable] = getattr(self._mesh, self.entity_description.press_action, None)
-        action_arguments = self.entity_description.press_action_arguments.copy()
-        signal: str = action_arguments.pop("signal", None)
-        if action and isinstance(action, Callable):
-            await action(**action_arguments)
-            if signal:
-                async_dispatcher_send(self.hass, signal)
+        await _async_button_pressed(
+            action=self.entity_description.press_action,
+            action_arguments=self.entity_description.press_action_arguments.copy(),
+            hass=self.hass,
+            mesh=self._mesh,
+        )

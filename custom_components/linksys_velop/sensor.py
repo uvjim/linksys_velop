@@ -28,7 +28,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
-from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -40,7 +39,6 @@ from . import (
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
-    ENTITY_SLUG,
     CONF_NODE_IMAGES,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     UPDATE_DOMAIN,
@@ -336,6 +334,8 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
     """Representation of a sensor for a node"""
 
+    entity_description: LinksysVelopSensorDescription
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -345,27 +345,9 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
     ) -> None:
         """Constructor"""
 
-        self._node_id: str = node.unique_id
-        super().__init__(config_entry=config_entry, coordinator=coordinator)
-
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
-        self.entity_description: LinksysVelopSensorDescription = description
-
-        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-        self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{ENTITY_DOMAIN.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
-
-    @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """Additional attributes for the sensor"""
-
-        if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
-        ):
-            return self.entity_description.extra_attributes(self._node)
+        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
     def native_value(self) -> StateType:
