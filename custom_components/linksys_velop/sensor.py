@@ -90,7 +90,6 @@ def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
                         guest_network=adapter.get("guest_network"),
                     )
 
-    _LOGGER.debug("online_devices, %s", ret)
     return ret
 
 # endregion
