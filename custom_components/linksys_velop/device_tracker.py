@@ -67,10 +67,10 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
 
 class LinksysVelopMeshDeviceTracker(ScannerEntity):
-    """"""
+    """Representation of a device tracker"""
 
     def __init__(self, config_entry: ConfigEntry, device_id: str, hass: HomeAssistant) -> None:
-        """"""
+        """Constructor"""
 
         self._attr_should_poll = False
 
@@ -97,7 +97,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         # endregion
 
     def _get_device_adapter_info(self) -> None:
-        """"""
+        """Gather the network details about the device tracker"""
 
         adapter: List[Dict] = [a for a in self._device.connected_adapters]
         if adapter:
@@ -105,7 +105,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             self._ip = adapter[0].get("ip", "")
 
     def _get_mesh_from_registry(self) -> Optional[DeviceEntry]:
-        """"""
+        """Retrieve the Mesh device from the registry"""
 
         dev_reg: DeviceRegistry = dr.async_get(hass=self._hass)
         dev_entries: List[DeviceEntry] = dr.async_entries_for_config_entry(
@@ -126,7 +126,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         return dr_mesh[0]
 
     def _update_mesh_device_connections(self) -> None:
-        """"""
+        """Update the `connections` property for the Mesh
+
+        N.B.  HASS versions prior to 2022.2 do not have the `merge_connections` parameter
+        so fall back to using `_attr_device_info` (should do this in HASS 2022.2 and later)
+        """
 
         if not self._mac:
             return
@@ -139,20 +143,20 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                     device_id=dr_mesh.id,
                     merge_connections={(dr.CONNECTION_NETWORK_MAC, self._mac)}
                 )
-            except TypeError:
+            except TypeError:  # TODO: remove when bumping min HASS version to 2022.2
                 self._attr_device_info: DeviceInfo = DeviceInfo(
                     connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
                     identifiers={(DOMAIN, self._config.entry_id)},
                 )
-                dev_reg.async_load()
+                dev_reg.async_load()  # reload the device registry so the entity is immediately available
 
     async def _async_get_device_info(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
-        """"""
+        """Retrieve the current status of the device and update the status if need be"""
 
         mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
         self._device: Device = await mesh.async_get_device_from_id(device_id=self._device.unique_id, force_refresh=True)
 
-        if evt is not None:  # we're here because the listener fired
+        if evt is not None:  # here because the listener fired
             _LOGGER.debug(self._log_formatter.message_format("%s is now being marked offline"), self._device.name)
             self._is_connected = False
             self._listener_consider_home = None
@@ -192,7 +196,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 await self.async_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """"""
+        """Setup listeners"""
 
         self.async_on_remove(
             async_dispatcher_connect(
@@ -203,7 +207,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """"""
+        """Cancel listeners"""
 
         # region #-- cancel the listeners --#
         if self._listener_consider_home is not None:
