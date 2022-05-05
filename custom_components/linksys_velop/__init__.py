@@ -296,6 +296,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 else:
                     _LOGGER.debug(log_formatter.message_format("backing off updates until HASS is fully running"))
             # endregion
+
+            hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
+
         return mesh
 
     _LOGGER.debug(log_formatter.message_format("setting up the coordinator"))

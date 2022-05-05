@@ -146,7 +146,6 @@ async def _async_get_devices(mesh: Mesh) -> dict:
     ret: dict = {}
 
     devices: List[Device] = await mesh.async_get_devices()
-    devices = [device for device in devices if device.name != "Network Device"]
     for device in devices:
         for adapter in device.network:
             ret[device.unique_id] = f"{device.name} --> {adapter.get('mac')}"
