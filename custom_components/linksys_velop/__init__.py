@@ -70,7 +70,7 @@ from .const import (
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
-from .logger import VelopLogger
+from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
 
 # endregion
@@ -160,14 +160,14 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """"""
 
-    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
+    log_formatter = Logger(unique_id=config_entry.unique_id)
 
     if all([  # check for Mesh device
         device_entry.name == "Mesh",
         device_entry.manufacturer == PYVELOP_AUTHOR,
         device_entry.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})"
     ]):
-        _LOGGER.error(log_formatter.message_format("Attempt to remove the Mesh device rejected"))
+        _LOGGER.error(log_formatter.format("Attempt to remove the Mesh device rejected"))
         return False
 
     return True
@@ -176,17 +176,17 @@ async def async_remove_config_entry_device(
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Setup a config entry"""
 
-    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
-    _LOGGER.debug(log_formatter.message_format("entered"))
+    log_formatter = Logger(unique_id=config_entry.unique_id)
+    _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- prepare the memory storage --#
-    _LOGGER.debug(log_formatter.message_format("preparing memory storage"))
+    _LOGGER.debug(log_formatter.format("preparing memory storage"))
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
     # endregion
 
     # region #-- setup the coordinator for data updates --#
-    _LOGGER.debug(log_formatter.message_format("setting up Mesh for the coordinator"))
+    _LOGGER.debug(log_formatter.format("setting up Mesh for the coordinator"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
@@ -244,7 +244,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 event=EVENT_NEW_DEVICE_ON_MESH,
                                 hass=hass
                             )
-                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
+                            _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
             # endregion
 
@@ -257,7 +257,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 if new_nodes and not is_reloading:
                     for node in mesh.nodes:
                         if node.serial in new_nodes:
-                            _LOGGER.debug(log_formatter.message_format("new node found: %s"), node.serial)
+                            _LOGGER.debug(log_formatter.format("new node found: %s"), node.serial)
                             if hass.state == CoreState.running:  # reload the config
                                 if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
                                     hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
@@ -272,7 +272,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 event=EVENT_NEW_DEVICE_ON_MESH,
                                 hass=hass
                             )
-                            _LOGGER.debug(log_formatter.message_format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
+                            _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
             # endregion
 
@@ -283,7 +283,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 if node.type == "primary"
             ]
             if primary_node and primary_node[0].serial != config_entry.unique_id:
-                _LOGGER.debug(log_formatter.message_format("assuming the primary node has changed"))
+                _LOGGER.debug(log_formatter.format("assuming the primary node has changed"))
                 if hass.state == CoreState.running:
                     if hass.config_entries.async_update_entry(entry=config_entry, unique_id=primary_node[0].serial):
                         payload: Dict[str, Any] = build_event_payload(
@@ -294,14 +294,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         )
                         hass.bus.async_fire(event_type=EVENT_NEW_PARENT_NODE, event_data=payload)
                 else:
-                    _LOGGER.debug(log_formatter.message_format("backing off updates until HASS is fully running"))
+                    _LOGGER.debug(log_formatter.format("backing off updates until HASS is fully running"))
             # endregion
 
             hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
 
         return mesh
 
-    _LOGGER.debug(log_formatter.message_format("setting up the coordinator"))
+    _LOGGER.debug(log_formatter.format("setting up the coordinator"))
     coordinator = DataUpdateCoordinator(
         hass=hass,
         logger=_LOGGER,
@@ -316,19 +316,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- setup the platforms --#
     setup_platforms: List[str] = list(filter(None, PLATFORMS))
-    _LOGGER.debug(log_formatter.message_format("setting up platforms: %s"), setup_platforms)
+    _LOGGER.debug(log_formatter.format("setting up platforms: %s"), setup_platforms)
     hass.config_entries.async_setup_platforms(config_entry, setup_platforms)
     # endregion
 
     # region #-- Service Definition --#
-    _LOGGER.debug(log_formatter.message_format("registering services"))
+    _LOGGER.debug(log_formatter.format("registering services"))
     services = LinksysVelopServiceHandler(hass=hass)
     services.register_services()
     hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER] = services
     # endregion
 
     # region #-- listen for config changes --#
-    _LOGGER.debug(log_formatter.message_format("listening for config changes"))
+    _LOGGER.debug(log_formatter.format("listening for config changes"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER] = config_entry.add_update_listener(
         _async_update_listener
     )
@@ -349,7 +349,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- set up the timer for checking device trackers --#
     if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
-        _LOGGER.debug(log_formatter.message_format("setting up device trackers"))
+        _LOGGER.debug(log_formatter.format("setting up device trackers"))
         await device_tracker_update(datetime.datetime.now())  # update before setting the timer
         scan_interval = config_entry.options.get(CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER)
         config_entry.async_on_unload(
@@ -357,42 +357,42 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         )
     # endregion
 
-    _LOGGER.debug(log_formatter.message_format("exited"))
+    _LOGGER.debug(log_formatter.format("exited"))
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Cleanup when unloading a config entry"""
 
-    log_formatter = VelopLogger(unique_id=config_entry.unique_id)
-    _LOGGER.debug(log_formatter.message_format("entered"))
+    log_formatter = Logger(unique_id=config_entry.unique_id)
+    _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- unsubscribe from listening for updates --#
-    _LOGGER.debug(log_formatter.message_format("stop listening for updates"))
+    _LOGGER.debug(log_formatter.format("stop listening for updates"))
     hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
     # endregion
 
     # region #-- remove services but only if there are no other instances --#
     all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
-    _LOGGER.debug(log_formatter.message_format("%i instances"), len(all_config_entries))
+    _LOGGER.debug(log_formatter.format("%i instances"), len(all_config_entries))
     if len(all_config_entries) == 1:
-        _LOGGER.debug(log_formatter.message_format("unregistering services"))
+        _LOGGER.debug(log_formatter.format("unregistering services"))
         services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER]
         services.unregister_services()
     # endregion
 
     # region #-- clean up the platforms --#
-    _LOGGER.debug(log_formatter.message_format("cleaning up platforms"))
+    _LOGGER.debug(log_formatter.format("cleaning up platforms"))
     ret = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
     if ret:
-        _LOGGER.debug(log_formatter.message_format("removing data from memory"))
+        _LOGGER.debug(log_formatter.format("removing data from memory"))
         hass.data[DOMAIN].pop(config_entry.entry_id)
         ret = True
     else:
         ret = False
     # endregion
 
-    _LOGGER.debug(log_formatter.message_format("exited"))
+    _LOGGER.debug(log_formatter.format("exited"))
     return ret
 
 
@@ -538,8 +538,8 @@ def entity_cleanup(
 ):
     """"""
 
-    log_formatter = VelopLogger(unique_id=config_entry.unique_id, prefix=f"{entities[0].__class__.__name__} --> ")
-    _LOGGER.debug(log_formatter.message_format("entered"))
+    log_formatter = Logger(unique_id=config_entry.unique_id, prefix=f"{entities[0].__class__.__name__} --> ")
+    _LOGGER.debug(log_formatter.format("entered"))
 
     entity_registry: er.EntityRegistry = er.async_get(hass=hass)
     er_entries: List[er.RegistryEntry] = er.async_entries_for_config_entry(
@@ -553,8 +553,8 @@ def entity_cleanup(
             continue
 
         # remove the entity
-        _LOGGER.debug(log_formatter.message_format("removing %s"), entity.entity_id)
+        _LOGGER.debug(log_formatter.format("removing %s"), entity.entity_id)
         entity_registry.async_remove(entity_id=entity.entity_id)
 
-    _LOGGER.debug(log_formatter.message_format("exited"))
+    _LOGGER.debug(log_formatter.format("exited"))
 # endregion
