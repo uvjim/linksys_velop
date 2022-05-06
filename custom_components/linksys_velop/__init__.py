@@ -396,10 +396,10 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     return ret
 
 
-async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
+async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Reload the config entry"""
 
-    return await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 # region #-- base entities --#
