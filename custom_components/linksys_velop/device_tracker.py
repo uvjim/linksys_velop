@@ -44,7 +44,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .logger import VelopLogger
+from .logger import Logger
 
 # endregion
 
@@ -76,7 +76,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
         self._config: ConfigEntry = config_entry
         self._listener_consider_home: Optional[Callable] = None
-        self._log_formatter: VelopLogger = VelopLogger(unique_id=self._config.unique_id)
+        self._log_formatter: Logger = Logger(unique_id=self._config.unique_id)
         self._device: Optional[Device] = None
         self._hass: HomeAssistant = hass
         self._ip: str = ""
@@ -157,7 +157,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._device: Device = await mesh.async_get_device_from_id(device_id=self._device.unique_id, force_refresh=True)
 
         if evt is not None:  # here because the listener fired
-            _LOGGER.debug(self._log_formatter.message_format("%s is now being marked offline"), self._device.name)
+            _LOGGER.debug(self._log_formatter.format("%s is now being marked offline"), self._device.name)
             self._is_connected = False
             self._listener_consider_home = None
             await self.async_update_ha_state()
@@ -171,7 +171,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                         self._config.options.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME)
                     )
                     _LOGGER.debug(
-                        self._log_formatter.message_format("%s: setting consider home listener for %s"),
+                        self._log_formatter.format("%s: setting consider home listener for %s"),
                         self._device.name,
                         fire_at,
                     )
@@ -182,11 +182,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                         point_in_time=fire_at
                     )
             else:  # just connected so cancel the listener
-                _LOGGER.debug(self._log_formatter.message_format("%s is online"), self._device.name)
+                _LOGGER.debug(self._log_formatter.format("%s is online"), self._device.name)
                 self._is_connected = True
                 if self._listener_consider_home is not None:
                     _LOGGER.debug(
-                        self._log_formatter.message_format("%s: cancelling consider home listener"), self._device.name
+                        self._log_formatter.format("%s: cancelling consider home listener"), self._device.name
                     )
                     self._listener_consider_home()
                     self._listener_consider_home = None
