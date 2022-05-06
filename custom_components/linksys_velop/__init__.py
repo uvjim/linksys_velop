@@ -438,14 +438,14 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         """Return the device information of the entity."""
 
         # noinspection HttpUrlsUsage
-        ret = DeviceInfo(**{
-            "configuration_url": f"http://{self._mesh.connected_node}",
-            "identifiers": {(DOMAIN, self._config.entry_id)},
-            "manufacturer": PYVELOP_AUTHOR,
-            "model": f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            "name": "Mesh",
-            "sw_version": "",
-        })
+        ret = DeviceInfo(
+            configuration_url=f"http://{self._mesh.connected_node}",
+            identifiers={(DOMAIN, self._config.entry_id)},
+            manufacturer=PYVELOP_AUTHOR,
+            model=f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            name="Mesh",
+            sw_version="",
+        )
         return ret
 
     @property
@@ -507,14 +507,14 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
 
-        ret = DeviceInfo(**{
-            "hw_version": self._node.hardware_version,
-            "identifiers": {(DOMAIN, self._node.serial)},
-            "model": self._node.model,
-            "name": self._node.name,
-            "manufacturer": self._node.manufacturer,
-            "sw_version": self._node.firmware.get("version", ""),
-        })
+        ret = DeviceInfo(
+            hw_version=self._node.hardware_version,
+            identifiers={(DOMAIN, self._node.serial)},
+            model=self._node.model,
+            name=self._node.name,
+            manufacturer=self._node.manufacturer,
+            sw_version=self._node.firmware.get("version", ""),
+        )
 
         return ret
 
