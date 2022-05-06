@@ -368,8 +368,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- unsubscribe from listening for updates --#
-    _LOGGER.debug(log_formatter.format("stop listening for updates"))
-    hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
+    if hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]:
+        _LOGGER.debug(log_formatter.format("stop listening for updates"))
+        hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
     # endregion
 
     # region #-- remove services but only if there are no other instances --#
