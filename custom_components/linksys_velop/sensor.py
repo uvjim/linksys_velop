@@ -28,6 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
+from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -78,9 +79,15 @@ def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
     """"""
 
     ret: List[Dict[str, Any]] = []
+    device: Device
     for device in mesh.devices:
         if device.status is state:
-            ret.append({"name": device.name})
+            ret.append(
+                {
+                    "name": device.name,
+                    "id": device.unique_id
+                }
+            )
             for adapter in device.network:
                 if adapter.get("ip"):
                     ret[-1] = dict(
@@ -97,7 +104,17 @@ def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
 
 SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
     LinksysVelopSensorDescription(
-        extra_attributes=lambda m: {"devices": [d.get("name", "") for d in get_devices(mesh=m, state=False)]},
+        extra_attributes=(
+            lambda m: {
+                "devices": [
+                    {
+                        "name": d.get("name", ""),
+                        "id": d.get("id", "")
+                    }
+                    for d in get_devices(mesh=m, state=False)
+                ]
+            }
+        ),
         key="offline_devices",
         name="Offline Devices",
         state_value=lambda m: len(get_devices(mesh=m, state=False))
