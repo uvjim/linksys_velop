@@ -50,10 +50,11 @@ install time and from reconfiguring the integration.
 #### Sensors
 
 - Mesh: Number of Offline Devices
-  - list of device names that are offline
+  - list of device objects containing names and unique ID of devices that are 
+    offline
 - Mesh: Number of Online Devices
-  - list of device names, IP addresses, adapter types and guest network 
-    state for the online devices
+  - list of device objects containing names, unique IDs, IP addresses, adapter 
+    types and guest network state for the online devices
 - Mesh: Number of Guest Devices *(disabled by default)*
   - list of device names, IP addresses, adapter types etc
 - Mesh: Date of Latest Speedtest
