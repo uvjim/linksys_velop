@@ -610,7 +610,7 @@ entities:
           |:---:|:---|
 
           {% for device in devices %} {{ "| {} | {} |".format(loop.index,
-          device) }}
+          device.name) }}
 
           {% endfor %}
   - type: conditional
