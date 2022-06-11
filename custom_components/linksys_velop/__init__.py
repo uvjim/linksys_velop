@@ -3,8 +3,10 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import asyncio
 import datetime
 import logging
+import time
 from datetime import timedelta
 from typing import (
     Any,
@@ -47,6 +49,7 @@ from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 # noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
+from pyvelop.exceptions import MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -224,10 +227,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         try:
             # -- gather details from the API --#
+            start = time.monotonic()
             await mesh.async_gather_details()
             if mesh.speedtest_status:
                 async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
+        except MeshTimeoutError as err:
+            _LOGGER.warning(
+                log_formatter.format(
+                    "timeout gathering data from the mesh (current timeout: %.2f) - consider increasing the timeout"
+                ),
+                config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
+            )
+            raise UpdateFailed(err)
         except Exception as err:
+            _LOGGER.debug(log_formatter.format("error type: %s"), type(err))
             raise UpdateFailed(err)
         else:
             # region #-- check for new devices --#
@@ -298,6 +311,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             # endregion
 
             hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
+        finally:
+            end = time.monotonic()
+            _LOGGER.debug(log_formatter.format("details gathered in %.3fs"), end-start)
 
         return mesh
 
