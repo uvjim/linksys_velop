@@ -117,6 +117,10 @@ async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwa
                 CONF_CONSIDER_HOME,
                 default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME)
             ): cv.positive_int,
+            vol.Required(
+                CONF_API_REQUEST_TIMEOUT,
+                default=user_input.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
+            ): cv.positive_float,
         }
     elif step == STEP_DEVICE_TRACKERS:
         valid_trackers = [
