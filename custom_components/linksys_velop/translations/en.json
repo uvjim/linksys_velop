@@ -48,9 +48,10 @@
         "step": {
             "timers": {
                 "data": {
+                    "api_request_timeout": "Time in seconds to wait for a response from the Mesh",
+                    "consider_home": "Time to wait before switching to not_home (in seconds)",
                     "scan_interval": "Scan interval (in seconds)",
-                    "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)",
-                    "consider_home": "Time to wait before switching to not_home (in seconds)"
+                    "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "title": "Linksys Velop",
                 "description": "Set the various timers for the integration"
