@@ -3,10 +3,8 @@
 # region #-- imports --#
 from __future__ import annotations
 
-import asyncio
 import datetime
 import logging
-import time
 from datetime import timedelta
 from typing import (
     Any,
@@ -203,14 +201,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         Will signal relevant sensors that have a state that needs updating more frequently
         """
 
+        _LOGGER.debug(log_formatter.format("entered"))
+
         mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
         device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
 
         # -- get the existing devices --#
+        _LOGGER.debug(log_formatter.format("retrieving existing devices for comparison"))
         device: Device
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
 
         # -- get the existing nodes --#
+        _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
         my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
             registry=device_registry,
             config_entry_id=config_entry.entry_id
@@ -227,9 +229,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         try:
             # -- gather details from the API --#
-            start = time.monotonic()
+            _LOGGER.debug(log_formatter.format("gathering details"))
             await mesh.async_gather_details()
             if mesh.speedtest_status:
+                _LOGGER.debug(log_formatter.format("dispatching speedtest signal"))
                 async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
         except MeshTimeoutError as err:
             _LOGGER.warning(
@@ -244,7 +247,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             raise UpdateFailed(err)
         else:
             # region #-- check for new devices --#
-            if previous_devices:
+            if not previous_devices:
+                _LOGGER.debug(log_formatter.format("no previous devices - ignoring comparison"))
+            else:
+                _LOGGER.debug(log_formatter.format("comparing devices"))
                 current_devices: Set[str] = {device.unique_id for device in mesh.devices}
                 new_devices: Set[str] = current_devices.difference(previous_devices)
                 if new_devices:
@@ -259,10 +265,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                             )
                             _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
+                _LOGGER.debug(log_formatter.format("devices compared"))
             # endregion
 
             # region #-- check for new nodes --#
-            if previous_nodes:
+            if not previous_nodes:
+                _LOGGER.debug(log_formatter.format("no previous nodes - ignoring comparison"))
+            else:
+                _LOGGER.debug(log_formatter.format("comparing nodes"))
                 node: Node
                 current_nodes: Set[str] = {node.serial for node in mesh.nodes}
                 new_nodes: Set[str] = current_nodes.difference(previous_nodes)
@@ -287,6 +297,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                             )
                             _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+                _LOGGER.debug(log_formatter.format("nodes compared"))
             # endregion
 
             # region #-- check for a primary node change --#
@@ -311,10 +322,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             # endregion
 
             hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
-        finally:
-            end = time.monotonic()
-            _LOGGER.debug(log_formatter.format("details gathered in %.3fs"), end-start)
 
+        _LOGGER.debug(log_formatter.format("exited"))
         return mesh
 
     _LOGGER.debug(log_formatter.format("setting up the coordinator"))
