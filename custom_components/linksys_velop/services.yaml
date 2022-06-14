@@ -15,7 +15,9 @@ check_updates:
 
 delete_device:
     name: Delete Device
-    description: Delete a device from the mesh Device List (only a single device can be deleted at a time)
+    description:
+      Delete a device from the mesh Device List (only a single device can be deleted at a time).
+      The mesh will reject the request if the device is not marked as offline.
     fields:
       mesh:
         name: Mesh
@@ -58,7 +60,9 @@ reboot_node:
         text:
     is_primary:
       name: "Is Primary"
-      description: Rebooting the primary need will force a reboot on all secondary nodes. If you're sure you want to do this then turn this on
+      description:
+        Rebooting the primary node will force a reboot on all secondary nodes.
+        If you are sure you want to do this, enable this setting and turn it on.
       required: false
       selector:
         boolean:
