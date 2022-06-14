@@ -210,11 +210,13 @@ node is changed.
 
 ### Services
 
-Services are available for the following: -
+The following services are available.  Each service is described in metadata 
+so paramters are described in the Home Assistant Services page. 
 
-- Start a Speedtest &ast;
-- Initiate a check for firmware updates for the nodes &ast;
-- Delete a machine from the device list
+- Check for Updates
+- Delete Device
+- Execute Speedtest &ast;
+- Reboot Node
 
 > &ast; these are considered long-running tasks. When the binary sensors spot 
   these tasks are running an additional timer is set up that polls every 
@@ -249,6 +251,8 @@ It is possible to configure the following options for the integration.
   trackers, default `10s`
 - `Consider Home Period`: the time to wait before considering a device away 
   after it notifies of becoming disconnected, default `180s`
+- `Response Timeout`: the number of seconds to wait for a response from 
+  an individual request to the API
 
 ### Device Trackers
 
@@ -263,8 +267,6 @@ It is possible to configure the following options for the integration.
 This section details the options that cannot be configured in the UI but are 
 still available of you configure them in the underlying HASS config files.
 
-* `api_request_timeout`: the number of seconds to wait for a response from 
-  an individual request to the API
 * `node_images`: the path to the folder location containing the images to 
   use for nodes. This is currently used in the card and also for the 
   `update` entity. e.g. `/local/velop_nodes`
