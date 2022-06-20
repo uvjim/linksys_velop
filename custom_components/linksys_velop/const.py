@@ -36,7 +36,7 @@ CONF_UNSUB_UPDATE_LISTENER: str = "unsub_update_listener"
 DEF_API_REQUEST_TIMEOUT: int = 10
 DEF_CONSIDER_HOME: int = 180
 DEF_FLOW_NAME: str = "Linksys Velop Mesh"
-DEF_SCAN_INTERVAL: int = 30
+DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 
 EVENT_NEW_PARENT_NODE: str = f"{DOMAIN}_new_primary_node"
