@@ -95,6 +95,12 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._update_mesh_device_connections()
                 self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
                 break
+        else:  # got to the end and didn't find it
+            _LOGGER.warning(
+                self._log_formatter.format("%s not found on the mesh. Removing it from being tracked."),
+                device_id
+            )
+            self._stop_tracking(unique_id=device_id)
         # endregion
 
     def _get_device_adapter_info(self) -> None:
@@ -117,6 +123,16 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             return
 
         return dr_mesh[0]
+
+    def _stop_tracking(self, unique_id: str) -> None:
+        """Stop monitoring the tracker"""
+
+        new_options = copy.deepcopy(dict(**self._config.options))  # deepcopy a dict copy so we get all the options
+        trackers: List[str]
+        if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
+            trackers.remove(unique_id)
+            new_options[CONF_DEVICE_TRACKERS] = trackers
+            self._hass.config_entries.async_update_entry(entry=self._config, options=new_options)
 
     def _update_mesh_device_connections(self) -> None:
         """Update the `connections` property for the Mesh
@@ -146,6 +162,9 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     async def _async_get_device_info(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
         """Retrieve the current status of the device and update the status if need be"""
 
+        if self._device is None:
+            return
+
         mark_online: bool = False
         mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
         try:
@@ -158,13 +177,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                self._log_formatter.format("%s is no longer on the mesh. Removing it from being tracked."),
                self._device.name,
             )
-
-            new_options = copy.deepcopy(dict(**self._config.options))  # deepcopy a dict copy so we get all the options
-            trackers: List[str]
-            if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
-                trackers.remove(self._device.unique_id)
-                new_options[CONF_DEVICE_TRACKERS] = trackers
-                self.hass.config_entries.async_update_entry(entry=self._config, options=new_options)
+            self._stop_tracking(unique_id=self._device.unique_id)
             return
 
         self._device = tracker_details
@@ -266,6 +279,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     def unique_id(self) -> Optional[str]:
         """"""
 
-        return f"{self._config.entry_id}::" \
-               f"{ENTITY_DOMAIN.lower()}::" \
-               f"{self._device.unique_id}"
+        if self._device is not None:
+            return f"{self._config.entry_id}::" \
+                   f"{ENTITY_DOMAIN.lower()}::" \
+                   f"{self._device.unique_id}"
