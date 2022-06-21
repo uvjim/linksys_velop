@@ -82,6 +82,41 @@ EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
 EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
 
 
+def _get_device_registry_entry(
+    config_entry_id: str,
+    device_registry: dr.DeviceRegistry,
+    entry_type: str = "node"
+) -> List[DeviceEntry]:
+    """"""
+
+    ret = []
+    my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
+        registry=device_registry,
+        config_entry_id=config_entry_id
+    )
+    dr_device: dr.DeviceEntry
+    if entry_type.lower() == "node":
+        ret: List[DeviceEntry] = [
+            dr_device
+            for dr_device in my_devices
+            if all([
+                dr_device.manufacturer != PYVELOP_AUTHOR,
+                dr_device.name.lower() != "mesh",
+            ])
+        ]
+    elif entry_type.lower() == "mesh":
+        ret: List[DeviceEntry] = [
+            dr_device
+            for dr_device in my_devices
+            if (
+                dr_device.manufacturer == PYVELOP_AUTHOR
+                and dr_device.name.lower() == "mesh"
+            )
+        ]
+
+    return ret
+
+
 def build_event_payload(
     config_entry: ConfigEntry,
     device: Device | Node,
@@ -213,18 +248,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         # -- get the existing nodes --#
         _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
-        my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
-            registry=device_registry,
-            config_entry_id=config_entry.entry_id
+        previous_nodes = _get_device_registry_entry(
+            config_entry_id=config_entry.entry_id,
+            device_registry=device_registry,
+            entry_type="node"
         )
-        dr_device: dr.DeviceEntry
-        previous_nodes: Set[str] = {
-            next(iter(dr_device.identifiers))[1]  # serial number of node
-            for dr_device in my_devices
-            if all([
-                dr_device.manufacturer != PYVELOP_AUTHOR,
-                dr_device.name.lower() != "mesh",
-            ])
+        previous_nodes_serials: Set[str] = {
+            next(iter(prev_node.identifiers))[1]  # serial number of node
+            for prev_node in previous_nodes
         }
 
         try:
@@ -268,14 +299,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 _LOGGER.debug(log_formatter.format("devices compared"))
             # endregion
 
-            # region #-- check for new nodes --#
+            # region #-- check for new or update nodes --#
             if not previous_nodes:
                 _LOGGER.debug(log_formatter.format("no previous nodes - ignoring comparison"))
             else:
                 _LOGGER.debug(log_formatter.format("comparing nodes"))
                 node: Node
                 current_nodes: Set[str] = {node.serial for node in mesh.nodes}
-                new_nodes: Set[str] = current_nodes.difference(previous_nodes)
+                # region #-- process new nodes --#
+                new_nodes: Set[str] = current_nodes.difference(previous_nodes_serials)
                 is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
                 if new_nodes and not is_reloading:
                     for node in mesh.nodes:
@@ -297,6 +329,30 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                             )
                             _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
                             hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+                # endregion
+                # region #-- look for updates to nodes --#
+                update_properties = ["name"]
+                for node in mesh.nodes:
+                    previous_node: List[DeviceEntry] = [  # get the node from the device registry based on serial
+                        prev_node
+                        for prev_node in previous_nodes
+                        if next(iter(prev_node.identifiers))[1].lower() == node.serial.lower()
+                    ]
+                    if not previous_node:
+                        continue
+
+                    for prop in update_properties:
+                        if getattr(previous_node[0], prop, None) != getattr(node, prop, None):
+                            _LOGGER.debug(
+                                log_formatter.format("updating %s for %s (%s --> %s)"),
+                                prop,
+                                node.serial,
+                                getattr(previous_node[0], prop, None),
+                                getattr(node, prop),
+                            )
+                            device_registry.async_update_device(device_id=previous_node[0].id, name=getattr(node, prop))
+
+                # endregion
                 _LOGGER.debug(log_formatter.format("nodes compared"))
             # endregion
 
