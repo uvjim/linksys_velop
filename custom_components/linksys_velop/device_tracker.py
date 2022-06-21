@@ -3,6 +3,7 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import copy
 import logging
 from typing import (
     Callable,
@@ -32,6 +33,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
+from pyvelop.exceptions import MeshDeviceNotFoundResponse
 from pyvelop.mesh import Mesh
 
 from . import _get_device_registry_entry
@@ -146,8 +148,26 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
         mark_online: bool = False
         mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
-        self._device: Device = await mesh.async_get_device_from_id(device_id=self._device.unique_id, force_refresh=True)
+        try:
+            tracker_details: Device = await mesh.async_get_device_from_id(
+                device_id=self._device.unique_id,
+                force_refresh=True,
+            )
+        except MeshDeviceNotFoundResponse:
+            _LOGGER.warning(
+               self._log_formatter.format("%s is no longer on the mesh. Removing it from being tracked."),
+               self._device.name,
+            )
 
+            new_options = copy.deepcopy(dict(**self._config.options))  # deepcopy a dict copy so we get all the options
+            trackers: List[str]
+            if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
+                trackers.remove(self._device.unique_id)
+                new_options[CONF_DEVICE_TRACKERS] = trackers
+                self.hass.config_entries.async_update_entry(entry=self._config, options=new_options)
+            return
+
+        self._device = tracker_details
         if evt is not None:  # here because the listener fired
             _LOGGER.debug(self._log_formatter.format("%s is now being marked offline"), self._device.name)
             self._is_connected = False
