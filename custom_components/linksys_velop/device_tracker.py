@@ -31,11 +31,10 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
-# noinspection PyProtectedMember
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
+from . import _get_device_registry_entry
 from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
@@ -107,19 +106,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     def _get_mesh_from_registry(self) -> Optional[DeviceEntry]:
         """Retrieve the Mesh device from the registry"""
 
-        dev_reg: DeviceRegistry = dr.async_get(hass=self._hass)
-        dev_entries: List[DeviceEntry] = dr.async_entries_for_config_entry(
-            registry=dev_reg,
-            config_entry_id=self._config.entry_id
+        dr_mesh: List[DeviceEntry] = _get_device_registry_entry(
+            config_entry_id=self._config.entry_id,
+            device_registry=dr.async_get(hass=self._hass),
+            entry_type="mesh",
         )
-        dr_mesh: List[DeviceEntry] | DeviceEntry = [
-            dr_dev
-            for dr_dev in dev_entries
-            if all([
-                dr_dev.manufacturer == PYVELOP_AUTHOR,
-                dr_dev.name.lower() == "mesh",
-            ])
-        ]
         if not dr_mesh:
             return
 
