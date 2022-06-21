@@ -144,6 +144,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     async def _async_get_device_info(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
         """Retrieve the current status of the device and update the status if need be"""
 
+        mark_online: bool = False
         mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
         self._device: Device = await mesh.async_get_device_from_id(device_id=self._device.unique_id, force_refresh=True)
 
@@ -172,19 +173,31 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                         action=self._async_get_device_info,
                         point_in_time=fire_at
                     )
-            else:  # just connected so cancel the listener
-                _LOGGER.debug(self._log_formatter.format("%s is online"), self._device.name)
+            else:
+                _LOGGER.debug(
+                    self._log_formatter.format("%s: back online"), self._device.name
+                )
                 self._is_connected = True
-                if self._listener_consider_home is not None:
-                    _LOGGER.debug(
-                        self._log_formatter.format("%s: cancelling consider home listener"), self._device.name
-                    )
-                    self._listener_consider_home()
-                    self._listener_consider_home = None
+                mark_online = True
+        else:
+            self._is_connected = self._device.status
+            if self._is_connected and self._listener_consider_home is not None:
+                _LOGGER.debug(
+                    self._log_formatter.format("%s: back online in consider_home period"), self._device.name
+                )
+                mark_online = True
 
-                self._get_device_adapter_info()
-                self._update_mesh_device_connections()
-                await self.async_update_ha_state()
+        if mark_online:
+            if self._listener_consider_home is not None:  # just connected so cancel the listener
+                _LOGGER.debug(
+                    self._log_formatter.format("%s: cancelling consider home listener"), self._device.name
+                )
+                self._listener_consider_home()
+                self._listener_consider_home = None
+
+            self._get_device_adapter_info()
+            self._update_mesh_device_connections()
+            await self.async_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Setup listeners"""
