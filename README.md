@@ -708,9 +708,9 @@ filter:
                     'name': entity_action,
                     'tap_action': {
                         'action': 'call-service',
-                        'service': 'linksys_velop.' + entity_action.toLowerCase() + '_node',
+                        'service': 'button.press',
                         'service_data': {
-                          'node_name': entity_name,
+                          'entity_id': entity_id,
                         },
                         'confirmation': {
                           'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
