@@ -376,9 +376,13 @@ entities:
       attr_public_ip: '[[[ return entity.attributes.ip ]]]'
       attr_speedtest_latest: |
         [[[
-          var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']          
-          var d = new Date(entity_speedtest.state)
-          return d.toLocaleString()
+          var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']
+          if (entity_speedtest.state != 'unknown') {
+            var d = new Date(entity_speedtest.state)
+            return "As at: " + d.toLocaleString()
+          } else {
+            return "No Speedtest results"
+          }
         ]]]
       attr_speedtest_details: |
         [[[
@@ -387,23 +391,25 @@ entities:
           var spacing_external = 30
           var icon_size = 22
           var entity_speedtest = states['sensor.velop_mesh_speedtest_latest']
-          var latency = entity_speedtest.attributes.latency
-          var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
-          var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
+          if (entity_speedtest.state != 'unknown') {
+            var latency = entity_speedtest.attributes.latency
+            var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
+            var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
 
-          return `<span style="margin-right: ${spacing_external}px;">
-                    <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
-                    <span>${latency}ms</span>
-                  </span>
-                  <span style="margin-right: ${spacing_external}px;">
-                    <ha-icon icon="hass:cloud-download-outline" style="width: ${icon_size}px;"></ha-icon>
-                    <span>${download_bandwidth} Mbps</span>
-                  </span>
-                  <span>
-                    <ha-icon icon="hass:cloud-upload-outline" style="width: ${icon_size}px;"></ha-icon>
-                    <span>${upload_bandwidth} Mbps</span>
-                  </span>
-                  `
+            return `<span style="margin-right: ${spacing_external}px;">
+                      <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
+                      <span>${latency}ms</span>
+                    </span>
+                    <span style="margin-right: ${spacing_external}px;">
+                      <ha-icon icon="hass:cloud-download-outline" style="width: ${icon_size}px;"></ha-icon>
+                      <span>${download_bandwidth} Mbps</span>
+                    </span>
+                    <span>
+                      <ha-icon icon="hass:cloud-upload-outline" style="width: ${icon_size}px;"></ha-icon>
+                      <span>${upload_bandwidth} Mbps</span>
+                    </span>
+                    `
+          }
         ]]]
     state:
       - value: 'on'
@@ -430,7 +436,6 @@ entities:
       div[id^="attr_"] { font-size: smaller; color: var(--disabled-text-color);
       }
       div[id^="attr_speedtest_"] { margin-top: 10px; }
-      #attr_speedtest_latest::before { content: 'As at:' }
       #attr_public_ip::before { content: 'Public IP: ' }
       #attr_dns_servers::before { content: 'DNS: ' }
   - type: conditional
