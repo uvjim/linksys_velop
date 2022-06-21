@@ -108,10 +108,11 @@ def _get_device_registry_entry(
         ret: List[DeviceEntry] = [
             dr_device
             for dr_device in my_devices
-            if (
-                dr_device.manufacturer == PYVELOP_AUTHOR
-                and dr_device.name.lower() == "mesh"
-            )
+            if all([
+                dr_device.manufacturer == PYVELOP_AUTHOR,
+                dr_device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+                dr_device.name.lower() == "mesh",
+            ])
         ]
 
     return ret
@@ -166,24 +167,14 @@ def build_event_payload(
     }
     if ret:
         # region #-- get the mesh device_id --#
-        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
-        my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
-            registry=device_registry,
-            config_entry_id=config_entry.entry_id
+        mesh_details: List[DeviceEntry] = _get_device_registry_entry(
+            config_entry_id=config_entry.entry_id,
+            device_registry=dr.async_get(hass=hass),
+            entry_type="mesh",
         )
-        dr_device: dr.DeviceEntry
-        mesh_details: List[DeviceEntry] = [
-            dr_device
-            for dr_device in my_devices
-            if (
-                dr_device.manufacturer == PYVELOP_AUTHOR
-                and dr_device.name.lower() == "mesh"
-            )
-        ]
-        # endregion
-
         if mesh_details:
             ret["mesh_device_id"] = mesh_details[0].id
+        # endregion
 
     return ret
 
