@@ -403,7 +403,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # endregion
 
         # region #-- discover the necessary devices --#
-        devices = await ssdp.async_get_discovery_info_by_st(
+        devices: List[SsdpServiceInfo] = await ssdp.async_get_discovery_info_by_st(
             self.hass,
             ST_IGD,
         )
@@ -413,7 +413,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         device_info = [
             device
             for device in devices
-            if device.get("serialNumber") == unique_id
+            if device.upnp.get("serialNumber", "") == unique_id
         ]
 
         if not device_info:
