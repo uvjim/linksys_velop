@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import (
-    List,
-)
+from typing import List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -24,7 +22,7 @@ from homeassistant.core import (
     callback,
     HomeAssistant,
 )
-from homeassistant.helpers import entity_registry
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pyvelop.device import Device
 from pyvelop.exceptions import (
@@ -462,24 +460,26 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
-            current_device_trackers: List = self._options.get(CONF_DEVICE_TRACKERS)
-
             # region #-- remove any device trackers that are no longer needed --#
-            remove_device_trackers: set = set(current_device_trackers) - set(user_input.get(CONF_DEVICE_TRACKERS))
-            if remove_device_trackers:
-                er: entity_registry.EntityRegistry = await entity_registry.async_get_registry(self.hass)
-                entities = entity_registry.async_entries_for_config_entry(er, self._config_entry.entry_id)
-                remove_device_tracker_entities: List[entity_registry.RegistryEntry] = []
-                for tracker in remove_device_trackers:
-                    rdte = [
-                        e
-                        for e in entities
-                        if e.unique_id == f"{self._config_entry.entry_id}::device_tracker::{tracker}"
-                    ]
-                    if rdte:
-                        remove_device_tracker_entities.append(rdte[0])
-                for entity in remove_device_tracker_entities:
-                    er.async_remove(entity_id=entity.entity_id)
+            entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
+            config_entry_entities: List[er.RegistryEntry] = er.async_entries_for_config_entry(
+                registry=entity_registry,
+                config_entry_id=self._config_entry.entry_id
+            )
+            device_tracker_entities: List[er.RegistryEntry] = [
+                dt
+                for dt in config_entry_entities
+                if dt.unique_id.startswith(f"{self._config_entry.entry_id}::device_tracker::")
+            ]
+
+            for dt in device_tracker_entities:
+                uid: str = dt.unique_id.split("::")[-1]
+                if uid not in user_input.get(CONF_DEVICE_TRACKERS):
+                    _LOGGER.debug(
+                        self._log_formatter.format("removing the device tracker entity for %s"),
+                        dt.name or dt.original_name
+                    )
+                    entity_registry.async_remove(entity_id=dt.entity_id)
             # endregion
 
             self._options.update(user_input)
