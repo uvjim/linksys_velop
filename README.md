@@ -686,139 +686,47 @@ type: custom:auto-entities
 card:
   type: vertical-stack
 card_param: cards
-sort:
-  method: friendly_name
-  reverse: false
 filter:
   include:
-    - entity_id: /^binary_sensor\.velop_(?!(mesh)).*_status/
+    - integration: linksys_velop
+      device_manufacturer: Linksys
+      attributes:
+        device_class: connectivity
       options:
-        type: custom:config-template-card
-        variables:
-          BUTTONS: |
-            () => {
-              var ret = []
-              var entity_prefix = "button." + "this.entity_id".split(".")[1].split("_").slice(0, -1).join("_")
-              for (var entity_id in states) {
-                if (entity_id.startsWith(entity_prefix)) {
-                  var entity_action = states[entity_id].attributes.friendly_name.split(':')[1].trim()
-                  var entity_name = states[entity_id].attributes.friendly_name.split(':')[0].replace('Velop', '').trim()
-                  ret.push({
-                    'entity': entity_id,
-                    'name': entity_action,
-                    'tap_action': {
-                        'action': 'call-service',
-                        'service': 'button.press',
-                        'service_data': {
-                          'entity_id': entity_id,
-                        },
-                        'confirmation': {
-                          'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
-                      }
-                    }
-                  })
-                }
-              }
-              return ret
-            }
-          ID_CONNECTED_DEVICES: >
-            "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
-            -1).join("_") + "_connected_devices"
-          ID_ENTITY_PICTURE: >
-            "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
-            -1).join("_") + "_image"
-          ID_LAST_UPDATE_CHECK: >
-            "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
-            -1).join("_") + "_last_update_check"
-          ID_MODEL: >
-            "sensor." +
-            "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
-            "_model"
-          ID_PARENT: >
-            "sensor." +
-            "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
-            "_parent"
-          ID_SERIAL: >
-            "sensor." +
-            "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
-            "_serial"
-          ID_UPDATE_AVAILABLE: >
-            "update." +
-            "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_") +
-            "_update"
-          CONNECTED_DEVICES_TEXT: |
-            (entity_id) => {
-              var ret = `
-            | # | Name | IP | Type |
-            |:---:|:---|---:|:---:|
-            `
-              if (states[entity_id].attributes.devices) {
-                states[entity_id].attributes.devices.forEach((device, idx) => {
-                  var connection_icon
-                  switch (device.type.toLowerCase()) {
-                    case "wireless":
-                      connection_icon = "wifi"
-                      break
-                    case "wired":
-                      connection_icon = "ethernet"
-                      break
-                    case "unknown":
-                      connection_icon = "help"
-                      break
-                  }
-                  ret += "| " + (idx + 1) + " | " + device.name + ((device.guest_network) ? "&nbsp;<ha-icon icon='hass:account-multiple'></ha-icon>" : "") + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
-                })
-              }
-              return ret
-            }
-          getEntityPicture: |
-            () => {
-              if (states[vars['ID_ENTITY_PICTURE']]) {
-                return states[vars['ID_ENTITY_PICTURE']].state
-              } else {
-                return '/local/velop_nodes/' + states[vars['ID_MODEL']].state + '.png'
-              }
-            }
+        type: entities
         entities:
-          - this.entity_id
-          - ${ID_CONNECTED_DEVICES}
-          - ${ID_LAST_UPDATE_CHECK}
-          - ${ID_MODEL}
-          - ${ID_PARENT}
-          - ${ID_SERIAL}
-          - ${ID_UPDATE_AVAILABLE}
-        card:
-          type: entities
-          card_mod:
-            style:
-              .: |
-                #states { padding-top: 0px; }
-              fold-entity-row:
-                $:
-                  template-entity-row:
-                    $: |
-                      state-badge { display: none; }
-                      state-badge + div { margin-left: 8px !important; }
-                      .info.pointer { font-weight: 500; }
-                      .state { margin-right: 10px; }
-          entities:
-            - type: custom:button-card
+          - type: custom:config-template-card
+            variables:
+              ID_ENTITY_PART: |
+                "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
+              ID_MODEL: |
+                "sensor." + vars["ID_ENTITY_PART"] + "_model"
+              ID_PARENT: |
+                "sensor." + vars["ID_ENTITY_PART"] + "_parent"
+              ID_SERIAL: |
+                "sensor." + vars["ID_ENTITY_PART"] + "_serial"
+              ID_UPDATE: |
+                "update." + vars["ID_ENTITY_PART"] + "_update"
+            entities:
+              - this.entity_id
+              - ${ID_MODEL}
+              - ${ID_PARENT}
+              - ${ID_SERIAL}
+              - ${ID_UPDATE}
+            card:
+              type: custom:button-card
               entity: this.entity_id
-              size: 100%
+              entity_picture: >-
+                ${'/local/velop_nodes/' + states[vars['ID_MODEL']].state +
+                '.png'}
+              name: >-
+                [[[ return
+                entity.attributes.friendly_name.split(":")[0].replace(/velop/i,
+                "").trim() ]]]
               show_entity_picture: true
               show_last_changed: true
               show_state: true
-              tap_action:
-                action: none
-              entity_picture: ${ getEntityPicture() }
-              name: |
-                [[[
-                  var ret = entity.attributes.friendly_name
-                  if (ret) {
-                    ret = ret.replace("Velop", "").split(":")[0].trim()
-                  }
-                  return ret || "N/A"
-                ]]]
+              size: 100%
               state_display: |
                 [[[
                   return `<ha-icon 
@@ -826,31 +734,23 @@ filter:
                     style="width: 24px; height: 24px;">
                     </ha-icon>`
                 ]]]
+              tap_action:
+                action: none
               custom_fields:
                 attr_label_model: Model
-                attr_model: ${states[ID_MODEL].state}
+                attr_model: ${states[vars["ID_MODEL"]].state}
                 attr_label_serial: Serial
-                attr_serial: ${states[ID_SERIAL].state}
-                attr_parent: >-
-                  ${(states[ID_PARENT].state && states[ID_PARENT].state !=
-                  'unknown') ? 'Connected to ' + states[ID_PARENT].state :
-                  'N/A'}
-                attr_label_ip: IP Address
+                attr_serial: ${states[vars["ID_SERIAL"]].state}
+                attr_label_ip: IP
                 attr_ip: '[[[ return entity.attributes.ip || ''N/A'' ]]]'
-                attr_update: |
-                  [[[
-                    var ret
-                    var entity_update = 'update.' + entity.entity_id.split('.')[1].split('_').slice(0, -1).join('_') + '_update'
-                    var update_available = states[entity_update].state
-                    if (update_available == 'on') {
-                      ret = `<ha-icon
-                          icon="hass:package-up"
-                          style="width: 24px; height: 24px;"
-                        >
-                        </ha-icon>`
-                    }
-                    return ret
-                  ]]]
+                attr_parent: >-
+                  ${(states[vars["ID_PARENT"]].state != 'unknown') ?
+                  states[vars["ID_PARENT"]].state : 'N/A'}
+                attr_update: |-
+                  ${(states[vars["ID_UPDATE"]].state == 'on')
+                    ? `<ha-icon icon="hass:package-up" style="width: 24px; height: 24px;"></ha-icon>`
+                    : ''
+                  }
               extra_styles: >
                 div[id^="attr_"] { justify-self: end; } div[id^="attr_label_"] {
                 justify-self: start; margin-left: 20px; } #label, #attr_parent {
@@ -858,101 +758,188 @@ filter:
               styles:
                 card:
                   - box-shadow: none
-                  - padding: 16px 8px
-                grid:
-                  - grid-template-areas: >-
-                      "n n attr_update s" "i attr_label_model attr_label_model
-                      attr_model" "i attr_label_serial attr_label_serial
-                      attr_serial" "i attr_label_ip attr_label_ip attr_ip" "l l
-                      l attr_parent"
-                  - grid-template-columns: 15% 1fr 30px 30px
-                name:
-                  - font-size: larger
-                  - justify-self: start
-                  - padding-bottom: 20px
-                label:
-                  - justify-self: start
+                  - padding: 0px 8px 8px
                 custom_fields:
-                  attr_label_last_update_check:
-                    - margin-left: 0px
-                  attr_last_update_check:
-                    - justify-self: end
-                  attr_parent:
-                    - justify-self: end
                   attr_update:
                     - color: darkred
                     - justify-self: end
-                    - padding-bottom: 20px
+                    - padding-bottom: 25px
+                grid:
+                  - grid-template-areas: |
+                      "n n attr_update s"
+                      "i attr_label_model attr_label_model attr_model"
+                      "i attr_label_serial attr_label_serial attr_serial"
+                      "i attr_label_ip attr_label_ip attr_ip"
+                      "l l l attr_parent"
+                  - grid-template-columns: 15% 1fr 30px 30px
+                label:
+                  - justify-self: start
+                name:
+                  - font-size: larger
+                  - justify-self: start
+                  - padding-bottom: 25px
                 state:
                   - justify-self: end
-                  - padding-bottom: 20px
+                  - padding-bottom: 25px
                   - color: |-
                       [[[
                         return (entity.state == 'on' ? 'darkcyan' : 'darkred')
                       ]]]
-            - type: custom:auto-entities
+          - type: custom:config-template-card
+            entities:
+              - this.entity_id
+              - ${ID_LAST_UPDATE_CHECK}
+              - ${ID_PARENT}
+            variables:
+              ID_ENTITY_PART: >
+                "this.entity_id".split(".")[1].split("_").slice(0, -1).join("_")
+              ID_LAST_UPDATE_CHECK: >
+                "sensor." + vars["ID_ENTITY_PART"] + "_last_update_check"
+              ID_PARENT: >
+                "sensor." + vars["ID_ENTITY_PART"] + "_parent"
+            card:
+              type: entity-filter
               show_empty: false
+              entities:
+                - entity: ${ID_LAST_UPDATE_CHECK}
+                  name: Last update check
+                  state_filter:
+                    - operator: '!='
+                      value: unavailable
+                  card_mod:
+                    style:
+                      hui-generic-entity-row$: |
+                        state-badge { display: none; }
+                        state-badge + div.info.pointer { margin-left: 8px; }
+                - entity: ${ID_PARENT}
+                  type: custom:template-entity-row
+                  name: Backhaul
+                  state: >
+                    {% set backhaul_info = state_attr(config.entity, 'backhaul')
+                    %} {% set backhaul_speed = backhaul_info.speed_mbps |
+                    round(2) %} {% if (backhaul_speed | string).split('.')[1] ==
+                    '0' %}
+                      {% set backhaul_speed = backhaul_speed | int %}
+                    {% endif %} {{ backhaul_info.connection }} ({{
+                    backhaul_speed }} Mbps)
+                  state_filter:
+                    - operator: '!='
+                      value: unknown
+                  card_mod:
+                    style: >
+                      #wrapper { min-height: unset !important; } #wrapper
+                      state-badge { display: none; }
+
+                      #wrapper state-badge + div.info.pointer { margin-left:
+                      8px; }
               card:
                 type: custom:fold-entity-row
                 head:
                   type: section
                   label: Additional Information
                 padding: 0
-              filter:
-                include:
-                  - entity_id: ${ID_LAST_UPDATE_CHECK}
-                    options:
-                      name: Last update check
-                  - entity_id: ${ID_PARENT}
-                    not:
-                      state: unknown
-                    options:
-                      type: custom:template-entity-row
-                      name: Backhaul
-                      state: >-
-                        {% set backhaul_info = state_attr(config.entity,
-                        'backhaul') %} {% set backhaul_speed =
-                        backhaul_info.speed_mbps | round(2) %} {% if
-                        (backhaul_speed | string).split('.')[1] == '0' %}
-                          {% set backhaul_speed = backhaul_speed | int %}
-                        {% endif %} {{ backhaul_info.connection }} ({{
-                        backhaul_speed }} Mbps)
-            - type: custom:auto-entities
+          - type: custom:config-template-card
+            entities:
+              - this.entity_id
+            variables:
+              ID_ENTITY_PART: |
+                "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
+              BUTTONS: |
+                () => {
+                  var ret = []
+                  var entity_prefix = "button." + vars['ID_ENTITY_PART']
+                  for (var entity_id in states) {
+                    if (entity_id.startsWith(entity_prefix)) {
+                      var entity_action = states[entity_id].attributes.friendly_name.split(':')[1].trim()
+                      var entity_name = states[entity_id].attributes.friendly_name.split(':')[0].replace('Velop', '').trim()
+                      ret.push({
+                        'entity': entity_id,
+                        'name': entity_action,
+                        'tap_action': {
+                            'action': 'call-service',
+                            'service': 'button.press',
+                            'service_data': {
+                              'entity_id': entity_id,
+                            },
+                            'confirmation': {
+                              'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
+                          }
+                        }
+                      })
+                    }
+                  }
+                  return ret
+                }
+            card:
+              type: custom:auto-entities
               show_empty: false
               filter:
                 include:
                   - domain: button
-                    entity_id: >-
-                      ${"/" +
-                      "this.entity_id".split(".")[1].split("_").slice(0,-1).join("_")
-                      + "/"}
+                    entity_id: ${"/" + vars['ID_ENTITY_PART'] + "/"}
               card:
                 type: custom:fold-entity-row
-                padding: 0
                 head:
                   type: section
                   label: Actions
+                padding: 0
                 entities:
                   - type: buttons
                     entities: ${BUTTONS()}
-            - type: section
-            - type: custom:fold-entity-row
-              padding: 0
+          - type: section
+          - type: custom:config-template-card
+            entities:
+              - this.entity_id
+              - ${ID_CONNECTED_DEVICES}
+            variables:
+              ID_CONNECTED_DEVICES: >
+                "sensor." + "this.entity_id".split(".")[1].split("_").slice(0,
+                -1).join("_") + "_connected_devices"
+              CONNECTED_DEVICES_CONTENT: |
+                () => {
+                  var ret = `
+                | # | Name | IP | Type |
+                |:---:|:---|---:|:---:|
+                `
+                  if (states[vars['ID_CONNECTED_DEVICES']].attributes.devices) {
+                    states[vars['ID_CONNECTED_DEVICES']].attributes.devices.forEach((device, idx) => {
+                      var connection_icon
+                      switch (device.type.toLowerCase()) {
+                        case "wireless":
+                          connection_icon = "wifi"
+                          break
+                        case "wired":
+                          connection_icon = "ethernet"
+                          break
+                        case "unknown":
+                          connection_icon = "help"
+                          break
+                      }
+                      ret += "| " + (idx + 1) + " | " + device.name + ((device.guest_network) ? "&nbsp;<ha-icon icon='hass:account-multiple'></ha-icon>" : "") + " | " + device.ip + " | <ha-icon icon='hass:" + connection_icon + "'></ha-icon> |\n"
+                    })
+                  }
+                  return ret
+                }
+            card:
+              type: custom:fold-entity-row
               head:
                 type: custom:template-entity-row
+                entity: ${ID_CONNECTED_DEVICES}
+                name: Connected Devices
                 tap_action:
                   action: fire-dom-event
                   fold_row: true
-                entity: ${ID_CONNECTED_DEVICES}
-                name: >-
-                  {% set name = state_attr(config.entity, 'friendly_name') %} {%
-                  if name %}
-                    {{ name.split(':')[1].strip() }}
-                  {% endif %}
+                card_mod:
+                  style: |
+                    state-badge { display: none; }
+                    state-badge + div { margin-left: 8px !important; }
+                    .info.pointer { font-weight: 500; }
+                    .state { margin-right: 10px; }
+              padding: 0
               entities:
                 - type: custom:hui-element
                   card_type: markdown
-                  content: ${CONNECTED_DEVICES_TEXT(ID_CONNECTED_DEVICES)}
+                  content: ${ CONNECTED_DEVICES_CONTENT() }
                   card_mod:
                     style:
                       .: |
@@ -965,6 +952,8 @@ filter:
                         var(--table-row-background-color); }
 
                         thead tr th, tbody tr td { padding: 4px 10px; }
+sort:
+  method: friendly_name
 ```
 </details>
 
