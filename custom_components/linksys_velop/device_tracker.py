@@ -92,6 +92,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._device = device
                 self._is_connected = device.status
                 self._get_device_adapter_info()
+                _LOGGER.debug(self._log_formatter.format("mac: %s"), self._mac)
                 self._update_mesh_device_connections()
                 self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
                 break
@@ -106,7 +107,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     def _get_device_adapter_info(self) -> None:
         """Gather the network details about the device tracker"""
 
-        adapter: List[Dict] = [a for a in self._device.connected_adapters]
+        adapter: List[Dict] = [a for a in self._device.network]
         if adapter:
             self._mac = dr.format_mac(adapter[0].get("mac", ""))
             self._ip = adapter[0].get("ip", "")
