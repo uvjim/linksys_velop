@@ -10,6 +10,9 @@
   "documentation": "https://github.com/uvjim/linksys_velop",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
+  "loggers": [
+    "pyvelop"
+  ],
   "name": "Linksys Velop",
   "requirements": [
     "pyvelop==2022.5.2"
