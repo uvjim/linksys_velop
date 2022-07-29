@@ -1,25 +1,15 @@
-"""Sensors for the mesh, nodes and devices"""
+"""Sensors for the mesh, nodes and devices."""
 
 # region #-- imports --#
 from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-)
+from typing import Any, Callable, Dict, List, Mapping, Optional
 
-from homeassistant.components.sensor import (
-    DOMAIN as ENTITY_DOMAIN,
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-)
+from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity,
+                                             SensorEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -32,18 +22,9 @@ from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from . import (
-    entity_cleanup,
-    LinksysVelopMeshEntity,
-    LinksysVelopNodeEntity,
-)
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-    CONF_NODE_IMAGES,
-    SIGNAL_UPDATE_SPEEDTEST_RESULTS,
-    UPDATE_DOMAIN,
-)
+from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from .const import (CONF_COORDINATOR, CONF_NODE_IMAGES, DOMAIN,
+                    SIGNAL_UPDATE_SPEEDTEST_RESULTS, UPDATE_DOMAIN)
 
 # endregion
 
@@ -70,14 +51,13 @@ class LinksysVelopSensorDescription(
     SensorEntityDescription,
     RequiredLinksysVelopDescription
 ):
-    """Describes sensor entity"""
+    """Describes sensor entity."""
 # endregion
 
 
 # region #-- general functions for nodes and the mesh --#
 def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
-    """"""
-
+    """Get the matching devices from the Mesh."""
     ret: List[Dict[str, Any]] = []
     device: Device
     for device in mesh.devices:
@@ -148,8 +128,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the sensors from a config entry"""
-
+    """Set up the sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
@@ -310,7 +289,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
-    """Representation of a sensor related to the Mesh"""
+    """Representation of a sensor related to the Mesh."""
 
     entity_description: LinksysVelopSensorDescription
 
@@ -320,8 +299,7 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
         config_entry: ConfigEntry,
         description: LinksysVelopSensorDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise Mesh sensor."""
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -329,16 +307,15 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 
     @property
     def native_value(self) -> StateType:
-        """Get the state of the sensor"""
-
+        """Get the state of the sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._mesh)
-        else:
-            return getattr(self._mesh, self.entity_description.key, None)
+
+        return getattr(self._mesh, self.entity_description.key, None)
 
 
 class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
-    """Representation of a sensor for a node"""
+    """Representation of a sensor for a node."""
 
     entity_description: LinksysVelopSensorDescription
 
@@ -349,30 +326,27 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
         config_entry: ConfigEntry,
         description: LinksysVelopSensorDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise Node sensor."""
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
     def native_value(self) -> StateType:
-        """Get the state of the sensor"""
-
+        """Get the state of the sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._node)
-        else:
-            return getattr(self._node, self.entity_description.key, None)
+
+        return getattr(self._node, self.entity_description.key, None)
 
 
 class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
-    """Representation of the sensor the latest Speedtest results"""
+    """Representation of the sensor the latest Speedtest results."""
 
     _value: Dict = {}
 
     async def _get_results(self):
-        """Refresh the Speedtest details from the API"""
-
+        """Refresh the Speedtest details from the API."""
         results: List = await self._mesh.async_get_speedtest_results(only_completed=True, only_latest=True)
         if results:
             self._value = results[0]
@@ -380,14 +354,12 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
         self.async_schedule_update_ha_state()
 
     def _handle_coordinator_update(self) -> None:
-        """Update the status information when the coordinator updates"""
-
+        """Update the status information when the coordinator updates."""
         self._value = self._mesh.latest_speedtest_result
         super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
-        """Register for callbacks and set initial value"""
-
+        """Register for callbacks and set initial value."""
         await super().async_added_to_hass()
         self._value = self._mesh.latest_speedtest_result
         self.async_on_remove(
@@ -400,8 +372,7 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set the additional attributes for the sensor"""
-
+        """Set the additional attributes for the sensor."""
         ret = None
         if self._value:
             ret = self._value.copy()
@@ -411,8 +382,7 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
 
     @property
     def native_value(self) -> dt_util.dt.datetime:
-        """Set the value of the sensor to the time the results were generated"""
-
+        """Set the value of the sensor to the time the results were generated."""
         ret = None
 
         if self._value:
