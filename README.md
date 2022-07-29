@@ -5,19 +5,19 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 
 ## Description
 
-This custom component has been designed to for Home Assistant and enables 
+This custom component has been designed to for Home Assistant and enables
 access to the functions that would be useful in the Home Assistant environment.
 
 ### Definitions
- 
-- _Mesh_: the mesh is the network itself and refers to anything that is not 
+
+- _Mesh_: the mesh is the network itself and refers to anything that is not
   attributed to a single node or device in  the network.
 - _Node_: a node is a device that helps to form the mesh.
-- _Device_: a device is an endpoint that connects to the mesh network. Think 
-  of these as the endpoint devices, such as a laptop, phone or tablet. 
+- _Device_: a device is an endpoint that connects to the mesh network. Think
+  of these as the endpoint devices, such as a laptop, phone or tablet.
 
 ### Entities Provided
-Where applicable the sub-items in the list detail the additional attributes 
+Where applicable the sub-items in the list detail the additional attributes
 available.
 
 #### Binary Sensors
@@ -37,41 +37,42 @@ available.
 
 #### Device Trackers
 
-These are selectable and are presented as part of the configuration at both 
+These are selectable and are presented as part of the configuration at both
 install time and from reconfiguring the integration.
 
 #### Select
 
 - Mesh: Devices *(disabled by default)*
-  - Once a device is selected the attributes will be updated to reflect the 
-    following: connected adapters, description, manufacturer, model, name, 
+  - Once a device is selected the attributes will be updated to reflect the
+    following: connected adapters, description, manufacturer, model, name,
     operating_system, parent name, serial, status and unique_id
 
 #### Sensors
 
 - Mesh: Number of Offline Devices
-  - list of device objects containing names and unique ID of devices that are 
+  - list of device objects containing names and unique ID of devices that are
     offline
 - Mesh: Number of Online Devices
-  - list of device objects containing names, unique IDs, IP addresses, adapter 
+  - list of device objects containing names, unique IDs, IP addresses, adapter
     types and guest network state for the online devices
 - Mesh: Number of Guest Devices *(disabled by default)*
   - list of device names, IP addresses, adapter types etc
 - Mesh: Date of Latest Speedtest
   - Exit code, Latency, Download/Upload bandwidth, Result ID
 - Mesh: Number of Available Storage Partitions *(disabled by default)*
-  - list of the available partitions including the following information: IP, 
+  - list of the available partitions including the following information: IP,
     label, available Kb, used Kb, used %age and last checked time
 - Node: Number of Connected Devices
-  - list of names, IP addresses, type of connection and guest network state for 
+  - list of names, IP addresses, type of connection and guest network state for
     the connected devices
+- Node: Backhaul (RSSI value in dBm)
+  - backhaul information (connection type, speed in Mbps, last checked time and textual representation of RSSI)
 - Node: Current Firmware Version (only if HASS < 2022.4.0)
 - Node: Last Update Check *(disabled by default)*
 - Node: Model Number
 - Node: Newest Firmware Version (only if HASS < 2022.4.0)
 - Node: Parent Name
-  - IP address of the parent, backhaul information (connection type, speed 
-    in Mbps and last checked time)
+  - IP address of the parent
 - Node: Serial Number
 - Node: Type of Node, e.g. Primary Secondary
 
@@ -85,22 +86,22 @@ install time and from reconfiguring the integration.
 #### Update (only if HASS > 2022.4.0)
 
 - Node: Firmware update available.
-  - includes current and latest firmware versions 
+  - includes current and latest firmware versions
 
 ### Events Fired
 
 #### `linksys_velop_new_device_on_mesh`
 
-This event is fired when a brand-new device appears on the Mesh. A device is 
-considered new if it presents a device ID (determined by the Velop) that was 
-not seen at the last poll period. This means that it will not fire for 
+This event is fired when a brand-new device appears on the Mesh. A device is
+considered new if it presents a device ID (determined by the Velop) that was
+not seen at the last poll period. This means that it will not fire for
 devices that change from online to offline and vice-versa.
 
-The event is fired for each new device that is discovered. The data is as 
-the Velop mesh sees it, i.e. there is no magic by the integration to 
+The event is fired for each new device that is discovered. The data is as
+the Velop mesh sees it, i.e. there is no magic by the integration to
 establish the manufacturer, model, operating system or serial.
 
-> **N.B.** The name will default to `Network Device` if there is no name 
+> **N.B.** The name will default to `Network Device` if there is no name
 established by the Velop or assigned by the user.
 
 The event looks as follows: -
@@ -136,11 +137,11 @@ The event looks as follows: -
 }
 ```
 
-#### `linksys_velop_new_node_on_mesh` 
+#### `linksys_velop_new_node_on_mesh`
 
-This event is fired when a new node is found on the Mesh. A node is 
-considered new if it is not currently configured in HASS. It may not be 
-configured for a couple of reasons: the device was deleted from the UI, or 
+This event is fired when a new node is found on the Mesh. A node is
+considered new if it is not currently configured in HASS. It may not be
+configured for a couple of reasons: the device was deleted from the UI, or
 you've added a new node to your Mesh.
 
 The event is fired for each new node that is discovered.
@@ -182,13 +183,13 @@ The event looks as follows: -
 
 #### `linksys_velop_new_primary_node`
 
-This event is fired when a new primary node is detected. The check for this 
-is based on the serial number and is currently only found as part of SSDP 
-discovery. If the serial numbers do not match, this event is fired and the 
+This event is fired when a new primary node is detected. The check for this
+is based on the serial number and is currently only found as part of SSDP
+discovery. If the serial numbers do not match, this event is fired and the
 unique_id of the integration instance is update.
 
-This should stop the mesh being discovered again by SSDP when the primary 
-node is changed. 
+This should stop the mesh being discovered again by SSDP when the primary
+node is changed.
 
 ```json
 {
@@ -210,17 +211,17 @@ node is changed.
 
 ### Services
 
-The following services are available.  Each service is described in metadata 
-so paramters are described in the Home Assistant Services page. 
+The following services are available.  Each service is described in metadata
+so paramters are described in the Home Assistant Services page.
 
 - Check for Updates
 - Delete Device
 - Execute Speedtest &ast;
 - Reboot Node
 
-> &ast; these are considered long-running tasks. When the binary sensors spot 
-  these tasks are running an additional timer is set up that polls every 
-  second to get updates and updates the relevant attributes for that sensor.    
+> &ast; these are considered long-running tasks. When the binary sensors spot
+  these tasks are running an additional timer is set up that polls every
+  second to get updates and updates the relevant attributes for that sensor.
 
 ## Setup
 
@@ -229,11 +230,11 @@ When setting up the integration you will be asked for the following information.
 ![Initial Setup Screen](images/setup_user.png)
 
 - `Primary node address`: must be the node classed as the primary node
-- `Password`: the password you would use to log in to the router. This may 
-  not be the same as the password for the application or web UI if you use 
+- `Password`: the password you would use to log in to the router. This may
+  not be the same as the password for the application or web UI if you use
   the Linksys cloud service.
 
-On successful set up the following screen will be seen detailing the Mesh 
+On successful set up the following screen will be seen detailing the Mesh
 device and the individual nodes found in the mesh.
 
 ![Final Setup Screen](images/setup_final.png)
@@ -247,35 +248,35 @@ It is possible to configure the following options for the integration.
 ![Configure Timers](images/config_timers.png)
 
 - `Scan Interval`: the frequency of updates for the sensors, default `30s`
-- `Device Tracker Interval`: the frequency of updates for the device 
+- `Device Tracker Interval`: the frequency of updates for the device
   trackers, default `10s`
-- `Consider Home Period`: the time to wait before considering a device away 
+- `Consider Home Period`: the time to wait before considering a device away
   after it notifies of becoming disconnected, default `180s`
-- `Response Timeout`: the number of seconds to wait for a response from 
+- `Response Timeout`: the number of seconds to wait for a response from
   an individual request to the API
 
 ### Device Trackers
 
 ![Configure Device Trackers](images/config_device_trackers.png)
 
-- `Available devices`: a multi-select list of the devices found on the mesh. 
-  This list excludes any device which doesn't have a name - typically 
+- `Available devices`: a multi-select list of the devices found on the mesh.
+  This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
 
 ## Advanced Options
 
-This section details the options that cannot be configured in the UI but are 
+This section details the options that cannot be configured in the UI but are
 still available of you configure them in the underlying HASS config files.
 
-* `node_images`: the path to the folder location containing the images to 
-  use for nodes. This is currently used in the card and also for the 
+* `node_images`: the path to the folder location containing the images to
+  use for nodes. This is currently used in the card and also for the
   `update` entity. e.g. `/local/velop_nodes`
 
 ## Troubleshooting
 
 ### Debug Logging
 
-Debug logging can be enabled in Home Assistant using the `logger` 
+Debug logging can be enabled in Home Assistant using the `logger`
 integration see [here](https://www.home-assistant.io/integrations/logger/).
 
 ```yaml
@@ -288,11 +289,11 @@ logger:
 
 ### Diagnostics Integration
 
-Starting with Home Assistant 2022.2 a new diagnostics integration can be 
-used to provide troubleshooting for integrations. This integration supports 
+Starting with Home Assistant 2022.2 a new diagnostics integration can be
+used to provide troubleshooting for integrations. This integration supports
 that as of version `2021.1.3`.
 
-The highlighted area in the image below shows where the link for downloading 
+The highlighted area in the image below shows where the link for downloading
 diagnostics can be found.
 
 ![Diagnostics link](images/diagnostics.png)
@@ -394,7 +395,7 @@ entities:
           if (entity_speedtest.state != 'unknown') {
             var latency = entity_speedtest.attributes.latency
             var download_bandwidth = round2(entity_speedtest.attributes.download_bandwidth / 1000)
-            var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)        
+            var upload_bandwidth = round2(entity_speedtest.attributes.upload_bandwidth / 1000)
 
             return `<span style="margin-right: ${spacing_external}px;">
                       <ha-icon icon="hass:swap-horizontal" style="width: ${icon_size}px;"></ha-icon>
@@ -497,7 +498,7 @@ entities:
                       return ret
                     ]]]
                 - color: |-
-                    [[[ 
+                    [[[
                       var ret
                       var col_on = "darkcyan"
                       var col_off = "var(--primary-text-color)"
@@ -643,7 +644,7 @@ entities:
                 ha-markdown { padding: 16px 0px 0px !important; }
               ha-markdown$: >
                 table { width: 100%; border-collapse: separate; border-spacing:
-                0px; }        
+                0px; }
 
                 tbody tr:nth-child(2n+1) { background-color:
                 var(--table-row-background-color); }
@@ -729,7 +730,7 @@ filter:
               size: 100%
               state_display: |
                 [[[
-                  return `<ha-icon 
+                  return `<ha-icon
                     icon="hass:checkbox-blank-circle"
                     style="width: 24px; height: 24px;">
                     </ha-icon>`
@@ -1189,7 +1190,7 @@ card_mod:
 
 # Example Automations
 
-Below are some example automations. I'm aware some of these could be more 
+Below are some example automations. I'm aware some of these could be more
 generic or even done in a better way but these are for example purposes only.
 
 <details>
@@ -1325,7 +1326,7 @@ action:
         |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
         }}|
 
-        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id, 
+        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
         'name_by_user')
         or device_attr(trigger.event.data.mesh_device_id, 'name') }}|
 mode: single
