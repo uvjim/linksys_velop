@@ -276,10 +276,10 @@ async def async_setup_entry(
                     node=node,
                     description=LinksysVelopSensorDescription(
                         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                        extra_attributes=lambda n: {k: v for k, v in n.backhaul.items() if k != "rrsi_dbm"},
+                        extra_attributes=lambda n: {k: v for k, v in n.backhaul.items() if k != "rssi_dbm"},
                         key="",
                         name="Backhaul",
-                        state_value=lambda n: n.backhaul.get("rrsi_dbm"),
+                        state_value=lambda n: n.backhaul.get("rssi_dbm"),
                     )
                 )
             )
