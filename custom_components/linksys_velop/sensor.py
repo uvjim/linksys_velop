@@ -268,6 +268,22 @@ async def async_setup_entry(
             ),
         ])
 
+        if node.backhaul:
+            sensors.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                        extra_attributes=lambda n: {k: v for k, v in n.backhaul.items() if k != "rrsi_dbm"},
+                        key="",
+                        name="Backhaul",
+                        state_value=lambda n: n.backhaul.get("rrsi_dbm"),
+                    )
+                )
+            )
+
     if UPDATE_DOMAIN is None:  # create the version sensors if the update entity isn't available
         sensors.extend(sensors_versions)
 
