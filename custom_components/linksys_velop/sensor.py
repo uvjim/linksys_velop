@@ -241,7 +241,7 @@ async def async_setup_entry(
                 coordinator=coordinator,
                 node=node,
                 description=LinksysVelopSensorDescription(
-                    extra_attributes=lambda n: {"parent_ip": n.parent_ip, "backhaul": n.backhaul or None},
+                    extra_attributes=lambda n: {"parent_ip": n.parent_ip},
                     icon="hass:family-tree",
                     key="parent_name",
                     name="Parent"
