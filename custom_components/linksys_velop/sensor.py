@@ -11,6 +11,7 @@ from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity,
                                              SensorEntityDescription)
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
@@ -280,6 +281,7 @@ async def async_setup_entry(
                         key="",
                         name="Backhaul",
                         state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                     )
                 )
             )
