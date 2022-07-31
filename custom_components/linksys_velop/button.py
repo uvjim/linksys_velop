@@ -1,4 +1,4 @@
-""""""
+"""Buttons for the mesh, nodes and devices."""
 
 # region #-- imports --#
 from __future__ import annotations
@@ -6,18 +6,11 @@ from __future__ import annotations
 import dataclasses
 import logging
 from abc import ABC
-from typing import (
-    Callable,
-    List,
-    Optional,
-)
+from typing import Callable, List, Optional
 
-from homeassistant.components.button import (
-    ButtonDeviceClass,
-    ButtonEntity,
-    ButtonEntityDescription,
-    DOMAIN as ENTITY_DOMAIN,
-)
+from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.button import (ButtonDeviceClass, ButtonEntity,
+                                             ButtonEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -26,16 +19,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from . import (
-    entity_cleanup,
-    LinksysVelopMeshEntity,
-    LinksysVelopNodeEntity,
-)
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
-)
+from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
 
 # endregion
 
@@ -63,7 +48,8 @@ class LinksysVelopButtonDescription(
     ButtonEntityDescription,
     RequiredLinksysVelopDescription
 ):
-    """Describes button entity"""
+    """Describes button entity."""
+
 # endregion
 
 
@@ -91,8 +77,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """"""
-
+    """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
@@ -135,8 +120,7 @@ async def async_setup_entry(
 
 
 async def _async_button_pressed(action: str, hass: HomeAssistant, mesh: Mesh, action_arguments: Optional[dict] = None):
-    """"""
-
+    """Carry out the button press action."""
     action: Optional[Callable] = getattr(mesh, action, None)
     signal: str = action_arguments.pop("signal", None)
     if action and isinstance(action, Callable):
@@ -148,7 +132,7 @@ async def _async_button_pressed(action: str, hass: HomeAssistant, mesh: Mesh, ac
 
 
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
-    """Representation for a button in the Mesh"""
+    """Representation for a button in the Mesh."""
 
     entity_description: LinksysVelopButtonDescription
 
@@ -158,14 +142,12 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     async def async_press(self) -> None:
-        """Handle the button being pressed"""
-
+        """Handle the button being pressed."""
         await _async_button_pressed(
             action=self.entity_description.press_action,
             action_arguments=self.entity_description.press_action_arguments.copy(),
@@ -175,7 +157,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
 
 
 class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
-    """Representation for a button related to a node"""
+    """Representation for a button related to a node."""
 
     entity_description: LinksysVelopButtonDescription
 
@@ -186,14 +168,12 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
         config_entry: ConfigEntry,
         description: LinksysVelopButtonDescription
     ) -> None:
-        """Constructor"""
-
+        """Intialise."""
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     async def async_press(self) -> None:
-        """Handle the button being pressed"""
-
+        """Handle the button being pressed."""
         await _async_button_pressed(
             action=self.entity_description.press_action,
             action_arguments=self.entity_description.press_action_arguments.copy(),

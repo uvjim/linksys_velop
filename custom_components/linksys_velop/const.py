@@ -1,13 +1,13 @@
-"""Constants for Linksys Velop"""
+"""Constants for Linksys Velop."""
 
-from typing import (
-    List,
-    Optional,
-)
+# region #-- imports --#
+from typing import List, Optional
 
-from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
+from homeassistant.components.binary_sensor import \
+    DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
-from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
+from homeassistant.components.device_tracker import \
+    DOMAIN as DEVICE_TRACKER_DOMAIN
 from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -16,6 +16,8 @@ try:
     from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
 except ImportError:
     UPDATE_DOMAIN = None
+
+# endregion
 
 DOMAIN: str = "linksys_velop"
 ENTITY_SLUG: str = "Velop"

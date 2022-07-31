@@ -1,36 +1,22 @@
-"""Switches for the mesh"""
+"""Switches for the mesh."""
+
 # region #-- imports --#
 import dataclasses
 import logging
 from abc import ABC
-from typing import (
-    Any,
-    Callable,
-    List,
-    Mapping,
-    Optional,
-)
+from typing import Any, Callable, List, Optional
 
-from homeassistant.components.switch import (
-    DOMAIN as ENTITY_DOMAIN,
-    SwitchDeviceClass,
-    SwitchEntity,
-    SwitchEntityDescription,
-)
+from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.switch import (SwitchDeviceClass, SwitchEntity,
+                                             SwitchEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import (
-    entity_cleanup,
-    LinksysVelopMeshEntity
-)
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-)
+from . import LinksysVelopMeshEntity, entity_cleanup
+from .const import CONF_COORDINATOR, DOMAIN
 
 # endregion
 
@@ -63,7 +49,8 @@ class LinksysVelopSwitchDescription(
     SwitchEntityDescription,
     RequiredLinksysVelopDescription
 ):
-    """Describes switch entity"""
+    """Describes switch entity."""
+
 # endregion
 
 
@@ -114,8 +101,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the switches from a config entry"""
-
+    """Set up the switches from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
     switches: List[LinksysVelopMeshSwitch] = [
@@ -135,7 +121,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
-    """"""
+    """Representation of Mesh switch."""
 
     entity_description: LinksysVelopSwitchDescription
 
@@ -145,8 +131,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         config_entry: ConfigEntry,
         description: LinksysVelopSwitchDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_entity_category = EntityCategory.CONFIG
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
@@ -156,19 +141,16 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         self._value = self._get_value()
 
     def _get_value(self) -> bool:
-        """Get the value from the coordinator"""
-
+        """Get the value from the coordinator."""
         return getattr(self._mesh, self.entity_description.key, False)
 
     def _handle_coordinator_update(self) -> None:
-        """Update the switch value information when the coordinator updates"""
-
+        """Update the switch value information when the coordinator updates."""
         self._value = self._get_value()
         super()._handle_coordinator_update()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the switch off"""
-
+        """Turn the switch off."""
         action = getattr(self._mesh, self.entity_description.turn_off)
         if isinstance(action, Callable):
             await action(**self.entity_description.turn_off_args)
@@ -176,8 +158,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
             await self.async_update_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the switch on"""
-
+        """Turn the switch on."""
         action = getattr(self._mesh, self.entity_description.turn_on)
         if isinstance(action, Callable):
             await action(**self.entity_description.turn_on_args)
@@ -186,15 +167,13 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
 
     @property
     def icon(self) -> Optional[str]:
-        """Get the icon"""
-
+        """Get the icon."""
         if self.entity_description.icon_on and self.is_on:
             return self.entity_description.icon_on
-        elif self.entity_description.icon_off and not self.is_on:
-            return self.entity_description.icon_off
+
+        return self.entity_description.icon_off
 
     @property
     def is_on(self) -> Optional[bool]:
-        """Get the current state of the switch"""
-
+        """Get the current state of the switch."""
         return self._value

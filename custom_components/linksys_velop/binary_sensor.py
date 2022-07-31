@@ -1,4 +1,4 @@
-"""Binary sensors for the mesh, nodes and devices"""
+"""Binary sensors for the mesh, nodes and devices."""
 
 # region #-- imports --#
 from __future__ import annotations
@@ -6,27 +6,16 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import logging
-from datetime import timedelta, datetime
-from typing import (
-    Any,
-    Callable,
-    List,
-    Mapping,
-    Optional,
-)
+from datetime import datetime, timedelta
+from typing import Any, Callable, List, Mapping, Optional
 
+from homeassistant.components.binary_sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.binary_sensor import (
-    DOMAIN as ENTITY_DOMAIN,
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-    BinarySensorEntityDescription,
-)
+    BinarySensorDeviceClass, BinarySensorEntity, BinarySensorEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
+from homeassistant.helpers.dispatcher import (async_dispatcher_connect,
+                                              async_dispatcher_send)
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
@@ -34,18 +23,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from . import (
-    entity_cleanup,
-    LinksysVelopMeshEntity,
-    LinksysVelopNodeEntity,
-)
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-    SIGNAL_UPDATE_SPEEDTEST_RESULTS,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
-    UPDATE_DOMAIN,
-)
+from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from .const import (CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_RESULTS,
+                    SIGNAL_UPDATE_SPEEDTEST_STATUS, UPDATE_DOMAIN)
 
 # endregion
 
@@ -72,7 +52,7 @@ class LinksysVelopBinarySensorDescription(
     BinarySensorEntityDescription,
     RequiredLinksysVelopDescription
 ):
-    """Describes binary sensor entity"""
+    """Describe binary sensor entity."""
 # endregion
 
 
@@ -91,8 +71,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the binary sensors from a config entry"""
-
+    """Set up the binary sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
@@ -175,7 +154,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
-    """Representation of a binary sensor for the mesh"""
+    """Representation of a binary sensor for the mesh."""
 
     entity_description: LinksysVelopBinarySensorDescription
 
@@ -185,16 +164,14 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
         config_entry: ConfigEntry,
         description: LinksysVelopBinarySensorDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     @property
     def is_on(self) -> Optional[bool]:
-        """Get the state of the binary sensor"""
-
+        """Get the state of the binary sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._mesh)
         else:
@@ -202,7 +179,7 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
 
 
 class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
-    """Representaion of a binary sensor related to a node"""
+    """Representaion of a binary sensor related to a node."""
 
     entity_description: LinksysVelopBinarySensorDescription
 
@@ -213,16 +190,14 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
         config_entry: ConfigEntry,
         description: LinksysVelopBinarySensorDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self.ENTITY_DOMAIN = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
     def is_on(self) -> Optional[bool]:
-        """Get the state of the binary sensor"""
-
+        """Get the state of the binary sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._node)
         else:
@@ -230,19 +205,18 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
 
 
 class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
-    """Representation of the Speedtest status binary sensor"""
+    """Representation of the Speedtest status binary sensor."""
 
     _status_text: str = ""
     _status_update_interval: int = 1
     _remove_time_interval: Optional[Callable] = None
 
     async def _async_get_speedtest_state(self, _: datetime | None = None):
-        """Update the state of the binary sensor
+        """Update the state of the binary sensor.
 
         Triggers a time interval to ensure that data is checked for more regularly when the state
         is on.
         """
-
         self._status_text = await self._mesh.async_get_speedtest_state()
         if self._status_text:
             if not self._remove_time_interval:
@@ -260,14 +234,12 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         self.async_schedule_update_ha_state()
 
     def _handle_coordinator_update(self) -> None:
-        """Update the speedtest status information when the coordinator updates"""
-
+        """Update the speedtest status information when the coordinator updates."""
         asyncio.run_coroutine_threadsafe(coro=self._async_get_speedtest_state(), loop=self.hass.loop)
         super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
-        """Do stuff when entity is added to registry"""
-
+        """Do stuff when entity is added to registry."""
         self.async_on_remove(
             async_dispatcher_connect(
                 hass=self.hass,
@@ -277,21 +249,18 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """Tidy up when removed"""
-
+        """Tidy up when removed."""
         if self._remove_time_interval:
             self._remove_time_interval()
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set the current stage of the test as an attribute"""
-
+        """Set the current stage of the test as an attribute."""
         return {
             "status": self._status_text
         }
 
     @property
     def is_on(self) -> bool:
-        """Return True if the mesh is currently running a Speedtest, False otherwise"""
-
+        """Return True if the mesh is currently running a Speedtest, False otherwise."""
         return self._status_text != ""
