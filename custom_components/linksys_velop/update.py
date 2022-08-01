@@ -96,7 +96,7 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         description: LinksysVelopUpdateDescription
     ) -> None:
         """Initialise."""
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property

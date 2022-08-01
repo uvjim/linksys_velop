@@ -143,7 +143,7 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
         description: LinksysVelopButtonDescription
     ) -> None:
         """Initialise."""
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     async def async_press(self) -> None:
@@ -169,7 +169,7 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
         description: LinksysVelopButtonDescription
     ) -> None:
         """Intialise."""
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     async def async_press(self) -> None:

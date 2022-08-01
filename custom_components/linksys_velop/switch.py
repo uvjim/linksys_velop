@@ -134,7 +134,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         """Initialise."""
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_entity_category = EntityCategory.CONFIG
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
 
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
