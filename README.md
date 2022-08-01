@@ -1050,6 +1050,23 @@ entities:
       action: none
   - type: custom:template-entity-row
     entity: select.velop_mesh_devices
+    name: Signal Strength
+    state: >-
+      {% set signal_strength = state_attr('select.velop_mesh_devices',
+      'connected_adapters') | first %} {% if 'signal_strength' in
+      signal_strength %}
+        {% if signal_strength.signal_strength %}
+          {{ signal_strength.signal_strength }} ({{ signal_strength.rssi}}dBm)
+        {% else %}
+          —
+        {% endif %}
+      {% else %}
+        —
+      {% endif %}
+    tap_action:
+      action: none
+  - type: custom:template-entity-row
+    entity: select.velop_mesh_devices
     name: IP
     state: |-
       {% if states('select.velop_mesh_devices') == 'unknown' %}
