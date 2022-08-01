@@ -278,6 +278,7 @@ async def async_setup_entry(
                     description=LinksysVelopSensorDescription(
                         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                         extra_attributes=lambda n: {k: v for k, v in n.backhaul.items() if k != "rssi_dbm"},
+                        icon="mdi:lan-connect" if node.backhaul.get("connection", "").lower() == "wired" else None,
                         key="",
                         name="Backhaul",
                         state_value=lambda n: n.backhaul.get("rssi_dbm"),
