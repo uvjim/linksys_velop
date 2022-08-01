@@ -441,8 +441,6 @@ async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry)
 class LinksysVelopMeshEntity(CoordinatorEntity):
     """Representation of a Mesh entity."""
 
-    ENTITY_DOMAIN: str
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -456,9 +454,12 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 
         self.entity_description = description
 
+        if not getattr(self, "entity_domain", None):
+            self.entity_domain: str = ""
+
         self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
         self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{self.ENTITY_DOMAIN.lower()}::" \
+                               f"{self.entity_domain.lower()}::" \
                                f"{slugify(self.entity_description.name)}"
 
     def _handle_coordinator_update(self) -> None:
@@ -493,8 +494,6 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 class LinksysVelopNodeEntity(CoordinatorEntity):
     """Representation of a Node entity."""
 
-    ENTITY_DOMAIN: str
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -506,6 +505,8 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         super().__init__(coordinator=coordinator)
 
         self.entity_description = description
+        if not getattr(self, "entity_description", None):
+            self.entity_domain: str = ""
 
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
@@ -514,7 +515,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 
         self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
         self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{self.ENTITY_DOMAIN.lower()}::" \
+                               f"{self.entity_domain.lower()}::" \
                                f"{slugify(self.entity_description.name)}"
 
     def _get_node(self) -> Optional[Node]:

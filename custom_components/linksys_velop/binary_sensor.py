@@ -165,7 +165,7 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
         description: LinksysVelopBinarySensorDescription
     ) -> None:
         """Initialise."""
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
@@ -192,7 +192,7 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
     ) -> None:
         """Initialise."""
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self.ENTITY_DOMAIN = ENTITY_DOMAIN
+        self.entity_domain = ENTITY_DOMAIN
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
 
     @property
