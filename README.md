@@ -689,7 +689,6 @@ card:
 card_param: cards
 sort:
   method: friendly_name
-  reverse: false
 filter:
   include:
     - entity_id: /^binary_sensor\.velop_(?!(mesh)).*_status/
@@ -912,13 +911,19 @@ filter:
                     options:
                       type: custom:template-entity-row
                       name: Backhaul
-                      state: >-
+                      secondary: >-
                         {% set backhaul_speed = state_attr(config.entity,
                         "speed_mbps") | round(2) %} {% if (backhaul_speed |
                         string).split('.')[1] == '0' %}
                           {% set backhaul_speed = backhaul_speed | int %}
                         {% endif %} {{ state_attr(config.entity, "connection")
                         }} ({{ backhaul_speed }} Mbps)
+                      state: |-
+                        {% if is_state(config.entity, 'unknown') %}
+                          N/A
+                        {% else %}
+                          {{ state_attr(config.entity, 'signal_strength') }} ({{ states(config.entity) }} {{ state_attr(config.entity, 'unit_of_measurement') }})
+                        {% endif %}
             - type: custom:auto-entities
               show_empty: false
               filter:
