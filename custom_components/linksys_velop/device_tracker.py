@@ -1,32 +1,20 @@
-"""Device trackers"""
+"""Device trackers."""
 
 # region #-- imports --#
 from __future__ import annotations
 
 import copy
 import logging
-from typing import (
-    Callable,
-    Dict,
-    List,
-    Optional,
-)
+from typing import Callable, Dict, List, Optional
 
-from homeassistant.components.device_tracker import (
-    CONF_CONSIDER_HOME,
-    DOMAIN as ENTITY_DOMAIN,
-    SOURCE_TYPE_ROUTER,
-)
+from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
+from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import (
-    device_registry as dr,
-)
-from homeassistant.helpers.device_registry import (
-    DeviceEntry,
-    DeviceRegistry,
-)
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -37,14 +25,9 @@ from pyvelop.exceptions import MeshDeviceNotFoundResponse
 from pyvelop.mesh import Mesh
 
 from . import _get_device_registry_entry
-from .const import (
-    CONF_COORDINATOR_MESH,
-    CONF_DEVICE_TRACKERS,
-    DEF_CONSIDER_HOME,
-    DOMAIN,
-    ENTITY_SLUG,
-    SIGNAL_UPDATE_DEVICE_TRACKER,
-)
+from .const import (CONF_COORDINATOR_MESH, CONF_DEVICE_TRACKERS,
+                    DEF_CONSIDER_HOME, DOMAIN, ENTITY_SLUG,
+                    SIGNAL_UPDATE_DEVICE_TRACKER)
 from .logger import Logger
 
 # endregion
@@ -53,8 +36,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
-    """Add the entities"""
-
+    """Add the entities."""
     device_trackers: List[LinksysVelopMeshDeviceTracker] = [
         LinksysVelopMeshDeviceTracker(
             config_entry=config,
@@ -68,11 +50,10 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry, async_add_
 
 
 class LinksysVelopMeshDeviceTracker(ScannerEntity):
-    """Representation of a device tracker"""
+    """Representation of a device tracker."""
 
     def __init__(self, config_entry: ConfigEntry, device_id: str, hass: HomeAssistant) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self._attr_should_poll = False
 
         self._config: ConfigEntry = config_entry
@@ -105,16 +86,14 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         # endregion
 
     def _get_device_adapter_info(self) -> None:
-        """Gather the network details about the device tracker"""
-
+        """Gather the network details about the device tracker."""
         adapter: List[Dict] = [a for a in self._device.network]
         if adapter:
             self._mac = dr.format_mac(adapter[0].get("mac", ""))
             self._ip = adapter[0].get("ip", "")
 
     def _get_mesh_from_registry(self) -> Optional[DeviceEntry]:
-        """Retrieve the Mesh device from the registry"""
-
+        """Retrieve the Mesh device from the registry."""
         dr_mesh: List[DeviceEntry] = _get_device_registry_entry(
             config_entry_id=self._config.entry_id,
             device_registry=dr.async_get(hass=self._hass),
@@ -126,8 +105,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         return dr_mesh[0]
 
     def _stop_tracking(self, unique_id: str) -> None:
-        """Stop monitoring the tracker"""
-
+        """Stop monitoring the tracker."""
         new_options = copy.deepcopy(dict(**self._config.options))  # deepcopy a dict copy so we get all the options
         trackers: List[str]
         if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
@@ -136,12 +114,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             self._hass.config_entries.async_update_entry(entry=self._config, options=new_options)
 
     def _update_mesh_device_connections(self) -> None:
-        """Update the `connections` property for the Mesh
+        """Update the `connections` property for the Mesh.
 
         N.B.  HASS versions prior to 2022.2 do not have the `merge_connections` parameter
         so fall back to using `_attr_device_info` (should do this in HASS 2022.2 and later)
         """
-
         if not self._mac:
             return
 
@@ -161,8 +138,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 dev_reg.async_load()  # reload the device registry so the entity is immediately available
 
     async def _async_get_device_info(self, evt: Optional[dt_util.dt.datetime] = None) -> None:
-        """Retrieve the current status of the device and update the status if need be"""
-
+        """Retrieve the current status of the device and update the status if need be."""
         if self._device is None:
             return
 
@@ -234,8 +210,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             await self.async_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """Setup listeners"""
-
+        """Create listeners."""
         self.async_on_remove(
             async_dispatcher_connect(
                 hass=self.hass,
@@ -245,8 +220,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """Cancel listeners"""
-
+        """Cancel listeners."""
         # region #-- cancel the listeners --#
         if self._listener_consider_home is not None:
             self._listener_consider_home()
@@ -254,32 +228,27 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
     @property
     def ip_address(self) -> str | None:
-        """"""
-
+        """Get the IP address."""
         return self._ip
 
     @property
     def is_connected(self) -> bool:
-        """"""
-
+        """Get whether the device tracker is connected or not."""
         return self._is_connected
 
     @property
     def mac_address(self) -> str | None:
-        """"""
-
+        """Get the MAC address."""
         return self._mac
 
     @property
     def source_type(self) -> str:
-        """"""
-
+        """Get the source of the device tracker."""
         return SOURCE_TYPE_ROUTER
 
     @property
     def unique_id(self) -> Optional[str]:
-        """"""
-
+        """Get the unique_id."""
         if self._device is not None:
             return f"{self._config.entry_id}::" \
                    f"{ENTITY_DOMAIN.lower()}::" \

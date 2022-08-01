@@ -1,4 +1,5 @@
-"""Provide UI for configuring the integration"""
+"""Provide UI for configuring the integration."""
+
 # region #-- imports --#
 from __future__ import annotations
 
@@ -7,56 +8,27 @@ from typing import List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant import (
-    config_entries,
-    data_entry_flow,
-)
+from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.components.ssdp import SsdpServiceInfo
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
-)
-from homeassistant.core import (
-    callback,
-    HomeAssistant,
-)
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pyvelop.device import Device
-from pyvelop.exceptions import (
-    MeshConnectionError,
-    MeshInvalidCredentials,
-    MeshInvalidInput,
-    MeshNodeNotPrimary,
-    MeshBadResponse,
-    MeshTimeoutError,
-)
-from pyvelop.mesh import (
-    Mesh,
-    Node,
-)
+from pyvelop.exceptions import (MeshBadResponse, MeshConnectionError,
+                                MeshInvalidCredentials, MeshInvalidInput,
+                                MeshNodeNotPrimary, MeshTimeoutError)
+from pyvelop.mesh import Mesh, Node
 
-from .const import (
-    CONF_API_REQUEST_TIMEOUT,
-    CONF_DEVICE_TRACKERS,
-    CONF_FLOW_NAME,
-    CONF_NODE,
-    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-    CONF_TITLE_PLACEHOLDERS,
-    DEF_API_REQUEST_TIMEOUT,
-    DEF_CONSIDER_HOME,
-    DEF_FLOW_NAME,
-    DEF_SCAN_INTERVAL,
-    DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-    DOMAIN,
-    EVENT_NEW_PARENT_NODE,
-    ST_IGD,
-    STEP_DEVICE_TRACKERS,
-    STEP_TIMERS,
-    STEP_USER,
-)
+from .const import (CONF_API_REQUEST_TIMEOUT, CONF_DEVICE_TRACKERS,
+                    CONF_FLOW_NAME, CONF_NODE,
+                    CONF_SCAN_INTERVAL_DEVICE_TRACKER, CONF_TITLE_PLACEHOLDERS,
+                    DEF_API_REQUEST_TIMEOUT, DEF_CONSIDER_HOME, DEF_FLOW_NAME,
+                    DEF_SCAN_INTERVAL, DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    DOMAIN, EVENT_NEW_PARENT_NODE, ST_IGD,
+                    STEP_DEVICE_TRACKERS, STEP_TIMERS, STEP_USER)
 from .logger import Logger
 
 # endregion
@@ -65,8 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _is_mesh_by_host(hass: HomeAssistant, host: str) -> config_entries.ConfigEntry | None:
-    """"""
-
+    """Check if the given host is a Mesh."""
     current_entries = hass.config_entries.async_entries(DOMAIN)
     matching_entry = [
         config_entry
@@ -78,14 +49,13 @@ def _is_mesh_by_host(hass: HomeAssistant, host: str) -> config_entries.ConfigEnt
 
 
 async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwargs) -> vol.Schema:
-    """Build the input and validation schema for the config UI
+    """Build the input and validation schema for the config UI.
 
     :param step: the step we're in for a configuration or installation of the integration
     :param user_input: the data that should be used as defaults
     :param kwargs: additional information that might be required
     :return: the schema including necessary restrictions, defaults, pre-selections etc.
     """
-
     schema = {}
     if step == STEP_USER:
         schema = {
@@ -137,14 +107,13 @@ async def _async_build_schema_with_user_input(step: str, user_input: dict, **kwa
 
 
 async def _async_get_devices(mesh: Mesh) -> dict:
-    """Get the devices from the mesh for display purposes
+    """Get the devices from the mesh for display purposes.
 
     The device unique_id (as per the Mesh) is used as the key.
 
     :param mesh: the Mesh object
     :return: a dictionary containing the devices to present
     """
-
     ret: dict = {}
 
     devices: List[Device] = await mesh.async_get_devices()
@@ -156,7 +125,7 @@ async def _async_get_devices(mesh: Mesh) -> dict:
 
 
 class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the initial installation ConfigFlow"""
+    """Handle the initial installation ConfigFlow."""
 
     # Paths:
     # 1. user() --> login --> timers --> device_trackers --> finish
@@ -167,8 +136,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     _mesh: Mesh  # mesh object for the class
 
     def __init__(self):
-        """Constructor"""
-
+        """Initialise."""
         self._errors: dict = {}
         self._finish: bool = False
         self._options: dict = {}
@@ -177,19 +145,17 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
-        """Get the options flow for this handler"""
-
+        """Get the options flow for this handler."""
         return LinksysOptionsFlowHandler(config_entry=config_entry)
 
     async def _async_task_login(self, user_input) -> None:
-        """Login to the Mesh
+        """Login to the Mesh.
 
         Sets the instance variable if successful
 
         :param user_input: details of the mesh as per the config UI
         :return: None
         """
-
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         self._mesh = Mesh(**user_input, session=async_get_clientsession(hass=self.hass))
         try:
@@ -222,8 +188,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def async_step_device_trackers(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Allow the user to select the device trackers for presence detection"""
-
+        """Allow the user to select the device trackers for presence detection."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         if user_input is not None:
             self._errors = {}
@@ -244,14 +209,13 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_finish(self) -> data_entry_flow.FlowResult:
-        """Finalise the configuration entry"""
-
+        """Finalise the configuration entry."""
         _LOGGER.debug(self._log_formatter.format("entered"))
         _title = self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME) or DEF_FLOW_NAME
         return self.async_create_entry(title=_title, data={}, options=self._options)
 
     async def async_step_login(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Initiate the login task
+        """Initiate the login task.
 
         Shows the login task progress and then moves onto the next step, stays on the user step or
         aborts the process on unknown errors.
@@ -259,7 +223,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :param user_input: details entered by the user
         :return: the necessary FlowResult
         """
-
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         if not self.task_login:
             _LOGGER.debug(self._log_formatter.format("creating login task"))
@@ -273,12 +236,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             return self.async_show_progress(step_id="login", progress_action="task_login")
 
-        # noinspection PyBroadException
         try:
             _LOGGER.debug(self._log_formatter.format("running login task"))
             await self.task_login
             _LOGGER.debug(self._log_formatter.format("returned from login task"))
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             _LOGGER.debug(self._log_formatter.format("exception: %s"), err)
             return self.async_abort(reason="abort_login")
 
@@ -292,8 +254,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         discovery_info: SsdpServiceInfo
     ) -> data_entry_flow.FlowResult:
-        """Allow the Mesh primary node to be discovered via SSDP"""
-
+        """Allow the Mesh primary node to be discovered via SSDP."""
         _LOGGER.debug(self._log_formatter.format("entered, discovery_info: %s"), discovery_info)
 
         # region #-- get the important info --#
@@ -349,8 +310,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user()
 
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Allow the user to set the relevant timers for the integration"""
-
+        """Allow the user to set the relevant timers for the integration."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         if user_input is not None:
             self._errors = {}
@@ -393,8 +353,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_unignore(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Rediscover the devices if the config entry is being unignored"""
-
+        """Rediscover the devices if the config entry is being unignored."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         # region #-- get the original unique_id --#
@@ -424,8 +383,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_ssdp(device_info[0])
 
     async def async_step_user(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Handle a flow initiated by the user"""
-
+        """Handle a flow initiated by the user."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
@@ -443,11 +401,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options from the configuration of the integration"""
+    """Handle options from the configuration of the integration."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Constructor"""
-
+        """Intialise."""
         super().__init__()
         self._config_entry = config_entry
         self._errors: dict = {}
@@ -455,8 +412,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._log_formatter: Logger = Logger()
 
     async def async_step_device_trackers(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Manage the device trackers"""
-
+        """Manage the device trackers."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
@@ -467,19 +423,19 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 config_entry_id=self._config_entry.entry_id
             )
             device_tracker_entities: List[er.RegistryEntry] = [
-                dt
-                for dt in config_entry_entities
-                if dt.unique_id.startswith(f"{self._config_entry.entry_id}::device_tracker::")
+                device_tracker
+                for device_tracker in config_entry_entities
+                if device_tracker.unique_id.startswith(f"{self._config_entry.entry_id}::device_tracker::")
             ]
 
-            for dt in device_tracker_entities:
-                uid: str = dt.unique_id.split("::")[-1]
+            for device_tracker in device_tracker_entities:
+                uid: str = device_tracker.unique_id.split("::")[-1]
                 if uid not in user_input.get(CONF_DEVICE_TRACKERS):
                     _LOGGER.debug(
                         self._log_formatter.format("removing the device tracker entity for %s"),
-                        dt.name or dt.original_name
+                        device_tracker.name or device_tracker.original_name
                     )
-                    entity_registry.async_remove(entity_id=dt.entity_id)
+                    entity_registry.async_remove(entity_id=device_tracker.entity_id)
             # endregion
 
             self._options.update(user_input)
@@ -503,16 +459,13 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             last_step=False,
         )
 
-    # noinspection PyUnusedLocal
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
-        """"""
-
+        """First Step."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         return await self.async_step_timers()
 
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Manage the timer options available for the integration"""
-
+        """Manage the timer options available for the integration."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:

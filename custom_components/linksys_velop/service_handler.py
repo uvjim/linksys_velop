@@ -1,11 +1,8 @@
-"""Manage the services for the pyvelop integration"""
+"""Manage the services for the pyvelop integration."""
 
 # region #-- imports --#
 import logging
-from typing import (
-    List,
-    Optional,
-)
+from typing import List, Optional
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -14,11 +11,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.mesh import Mesh
 
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS
-)
+from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
 from .logger import Logger
 
 # endregion
@@ -28,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class LinksysVelopServiceHandler:
-    """"""
+    """Define and action serice calls."""
 
     SERVICES = {
         "check_updates": {
@@ -70,42 +63,39 @@ class LinksysVelopServiceHandler:
     }
 
     def __init__(self, hass: HomeAssistant) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self._hass: HomeAssistant = hass
         self._log_formatter: Logger = Logger()
         self._mesh: Optional[Mesh] = None
 
     def _get_mesh(self, mesh_id: str) -> Optional[Mesh]:
-        """Get the Mesh class for the service call to operate against
+        """Get the Mesh class for the service call to operate against.
 
         :param mesh_id: the device id of the mesh
         :return: the Mesh class or None
         """
-
         device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
         device: List[dr.DeviceEntry] = [d for i, d in device_registry.devices.items() if i == mesh_id]
-        ce: Optional[str] = None
+        config_entry: Optional[str] = None
         if device:
-            for ce in device[0].config_entries:
-                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(entry_id=ce)
+            for config_entry in device[0].config_entries:
+                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(entry_id=config_entry)
                 if config_entry.domain == DOMAIN:
                     self._log_formatter = Logger(unique_id=config_entry.unique_id)
                     break
             else:
-                ce = None
+                config_entry = None
 
-        ret = self._hass.data[DOMAIN][ce][CONF_COORDINATOR].data if ce else None
+        ret = self._hass.data[DOMAIN][config_entry][CONF_COORDINATOR].data if config_entry else None
 
         return ret
 
     async def _async_service_call(self, call: ServiceCall) -> None:
-        """Call the required method based on the given argument
+        """Call the required method based on the given argument.
 
         :param call: the service call that should be made
         :return: None
         """
-
         _LOGGER.debug(self._log_formatter.format("entered, call: %s"), call)
 
         args = call.data.copy()
@@ -118,14 +108,13 @@ class LinksysVelopServiceHandler:
             if method:
                 try:
                     await method(**args)
-                except Exception as err:
+                except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.warning(self._log_formatter.format("%s"), err)
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     def register_services(self) -> None:
-        """Register the services"""
-
+        """Register the services."""
         for service_name, service_details in self.SERVICES.items():
             self._hass.services.async_register(
                 domain=DOMAIN,
@@ -135,20 +124,18 @@ class LinksysVelopServiceHandler:
             )
 
     def unregister_services(self) -> None:
-        """Unregister the services"""
-
-        for service_name, service_details in self.SERVICES.items():
+        """Unregister the services."""
+        for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
     async def check_updates(self) -> None:
-        """Instruct the mesh to check for updates
+        """Instruct the mesh to check for updates.
 
         The update check could be a long-running task so a signal is also sent to listeners to update the status more
         frequently.  This allows a more reactive UI but also paves the way for status messages later.
 
         :return: None
         """
-
         _LOGGER.debug(self._log_formatter.format("entered"))
 
         await self._mesh.async_check_for_updates()
@@ -156,8 +143,7 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def delete_device(self, **kwargs) -> None:
-        """Remove a device from the device list on the mesh"""
-
+        """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
         await self._mesh.async_delete_device(**kwargs)
@@ -165,14 +151,13 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def reboot_node(self, **kwargs) -> None:
-        """Instruct the mesg to restart a node
+        """Instruct the mesh to restart a node.
 
         N.B. Rebooting the primary node will cause all ndoes to reboot. To reboot the primary node you should also
         turn the is_primary toggle on.
 
         :return:None
         """
-
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
         await self._mesh.async_reboot_node(node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False))
@@ -180,14 +165,13 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def start_speedtest(self) -> None:
-        """Start a Speedtest on the mesh
+        """Start a Speedtest on the mesh.
 
         The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
         frequently.  This allows seeing the stages of the test in the UI.
 
         :return:None
         """
-
         _LOGGER.debug(self._log_formatter.format("entered"))
 
         await self._mesh.async_start_speedtest()

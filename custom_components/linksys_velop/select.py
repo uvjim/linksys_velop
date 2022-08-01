@@ -1,4 +1,4 @@
-"""Select entities"""
+"""Select entities."""
 
 # region #-- imports --#
 from __future__ import annotations
@@ -6,19 +6,11 @@ from __future__ import annotations
 import dataclasses
 import logging
 from abc import ABC
-from typing import (
-    Any,
-    Callable,
-    List,
-    Mapping,
-    Optional,
-)
+from typing import Any, Callable, List, Mapping, Optional
 
-from homeassistant.components.select import (
-    SelectEntity,
-    SelectEntityDescription,
-    DOMAIN as ENTITY_DOMAIN,
-)
+from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.select import (SelectEntity,
+                                             SelectEntityDescription)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -28,10 +20,7 @@ from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
 from . import LinksysVelopMeshEntity
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-)
+from .const import CONF_COORDINATOR, DOMAIN
 
 # endregion
 
@@ -39,8 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
-    """"""
-
+    """Get the properties for a device with the given name."""
     required_properties = [
         "connected_adapters",
         "description",
@@ -56,8 +44,8 @@ def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
     ]
 
     ret = None
-    d: Device
-    device: List[Device] = [d for d in mesh.devices if device_name and d.name.lower() == device_name.lower()]
+    dev: Device
+    device: List[Device] = [dev for dev in mesh.devices if device_name and dev.name.lower() == device_name.lower()]
     if device:
         ret = {
             p: getattr(device[0], p, None)
@@ -89,7 +77,8 @@ class LinksysVelopSelectDescription(
     SelectEntityDescription,
     RequiredLinksysVelopDescription
 ):
-    """Describes select entity"""
+    """Describes select entity."""
+
 # endregion
 
 
@@ -98,8 +87,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """"""
-
+    """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
     selects: List[LinksysVelopMeshSelect] = [
@@ -124,7 +112,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
-    """Representation for a button in the Mesh"""
+    """Representation for a select entity in the Mesh."""
 
     entity_description: LinksysVelopSelectDescription
 
@@ -134,8 +122,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         config_entry: ConfigEntry,
         description: LinksysVelopSelectDescription
     ) -> None:
-        """Constructor"""
-
+        """Initialise."""
         self._attr_current_option = None
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False
@@ -144,15 +131,13 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
 
     async def async_select_option(self, option: str) -> None:
-        """Select the option"""
-
+        """Select the option."""
         self._attr_current_option = option
         await self.async_update_ha_state()
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """Additional attributes"""
-
+        """Additional attributes."""
         if (
             self.entity_description.extra_attributes
             and isinstance(self.entity_description.extra_attributes, Callable)
@@ -168,9 +153,8 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
 
     @property
     def options(self) -> list[str]:
-        """Build the options for the select"""
-
+        """Build the options for the select."""
         if isinstance(self.entity_description.options, Callable):
             return self.entity_description.options(self._mesh)
-        else:
-            return self.entity_description.options
+
+        return self.entity_description.options

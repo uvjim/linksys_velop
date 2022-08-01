@@ -1,4 +1,4 @@
-"""The Linksys Velop integration"""
+"""The Linksys Velop integration."""
 
 # region #-- imports --#
 from __future__ import annotations
@@ -6,71 +6,39 @@ from __future__ import annotations
 import datetime
 import logging
 from datetime import timedelta
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Set,
-)
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set
 
 import homeassistant.helpers.entity_registry as er
-from homeassistant.config_entries import (
-    ConfigEntry,
-    device_registry as dr,
-)
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
-)
-from homeassistant.core import (
-    CoreState,
-    HomeAssistant,
-)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import device_registry as dr
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed
-)
+from homeassistant.helpers.update_coordinator import (CoordinatorEntity,
+                                                      DataUpdateCoordinator,
+                                                      UpdateFailed)
 from homeassistant.util import slugify
-# noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
-# noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-# noinspection PyProtectedMember
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
 from pyvelop.exceptions import MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from .const import (
-    CONF_API_REQUEST_TIMEOUT,
-    CONF_COORDINATOR,
-    CONF_COORDINATOR_MESH,
-    CONF_DEVICE_TRACKERS,
-    CONF_ENTRY_RELOAD,
-    CONF_NODE,
-    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-    CONF_SERVICES_HANDLER,
-    CONF_UNSUB_UPDATE_LISTENER,
-    DEF_API_REQUEST_TIMEOUT,
-    DEF_SCAN_INTERVAL,
-    DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-    DOMAIN,
-    ENTITY_SLUG,
-    EVENT_NEW_PARENT_NODE,
-    PLATFORMS,
-    SIGNAL_UPDATE_DEVICE_TRACKER,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
-)
+from .const import (CONF_API_REQUEST_TIMEOUT, CONF_COORDINATOR,
+                    CONF_COORDINATOR_MESH, CONF_DEVICE_TRACKERS,
+                    CONF_ENTRY_RELOAD, CONF_NODE,
+                    CONF_SCAN_INTERVAL_DEVICE_TRACKER, CONF_SERVICES_HANDLER,
+                    CONF_UNSUB_UPDATE_LISTENER, DEF_API_REQUEST_TIMEOUT,
+                    DEF_SCAN_INTERVAL, DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    DOMAIN, ENTITY_SLUG, EVENT_NEW_PARENT_NODE, PLATFORMS,
+                    SIGNAL_UPDATE_DEVICE_TRACKER,
+                    SIGNAL_UPDATE_SPEEDTEST_STATUS)
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
 
@@ -87,8 +55,7 @@ def _get_device_registry_entry(
     device_registry: dr.DeviceRegistry,
     entry_type: str = "node"
 ) -> List[DeviceEntry]:
-    """"""
-
+    """Retrieve the given device from the registry."""
     ret = []
     my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
         registry=device_registry,
@@ -124,8 +91,7 @@ def build_event_payload(
     event: str,
     hass: HomeAssistant
 ) -> Dict[str, Any]:
-    """"""
-
+    """Build the payload for the fired events."""
     event_properties: List[str] = []
 
     if event == EVENT_NEW_NODE_ON_MESH:
@@ -179,14 +145,15 @@ def build_event_payload(
     return ret
 
 
-# noinspection PyUnusedLocal
 async def async_remove_config_entry_device(
-    hass: HomeAssistant,
+    hass: HomeAssistant,  # pylint: disable=unused-argument
     config_entry: ConfigEntry,
     device_entry: DeviceEntry
 ) -> bool:
-    """"""
+    """Allow device removal.
 
+    Do not allow the Mesh device to be removed
+    """
     log_formatter = Logger(unique_id=config_entry.unique_id)
 
     if all([  # check for Mesh device
@@ -201,8 +168,7 @@ async def async_remove_config_entry_device(
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Setup a config entry"""
-
+    """Create a config entry."""
     log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
 
@@ -222,11 +188,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     )
 
     async def _async_get_mesh_data() -> Mesh:
-        """Fetch the latest data from the Mesh
+        """Fetch the latest data from the Mesh.
 
         Will signal relevant sensors that have a state that needs updating more frequently
         """
-
         _LOGGER.debug(log_formatter.format("entered"))
 
         mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
@@ -263,10 +228,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 ),
                 config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
             )
-            raise UpdateFailed(err)
+            raise UpdateFailed(err) from err
         except Exception as err:
             _LOGGER.debug(log_formatter.format("error type: %s"), type(err))
-            raise UpdateFailed(err)
+            raise UpdateFailed(err) from err
         else:
             # region #-- check for new devices --#
             if not previous_devices:
@@ -407,7 +372,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # endregion
 
     async def device_tracker_update(_: datetime.datetime) -> None:
-        """Manage the device tracker updates
+        """Manage the device tracker updates.
 
         Uses the _ variable to ignore IDE checking for unused variables
 
@@ -416,7 +381,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         :param _: datetime object for when the event was fired
         :return: None
         """
-
         async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER)
 
     # region #-- set up the timer for checking device trackers --#
@@ -434,8 +398,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Cleanup when unloading a config entry"""
-
+    """Cleanup when unloading a config entry."""
     log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
 
@@ -470,14 +433,13 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 
 async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Reload the config entry"""
-
+    """Reload the config entry."""
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 # region #-- base entities --#
 class LinksysVelopMeshEntity(CoordinatorEntity):
-    """"""
+    """Representation of a Mesh entity."""
 
     ENTITY_DOMAIN: str
 
@@ -487,8 +449,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         config_entry: ConfigEntry,
         description,
     ) -> None:
-        """"""
-
+        """Initialise Mesh entity."""
         super().__init__(coordinator=coordinator)
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
@@ -501,15 +462,13 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
                                f"{slugify(self.entity_description.name)}"
 
     def _handle_coordinator_update(self) -> None:
-        """Update the information when the coordinator updates"""
-
+        """Update the information when the coordinator updates."""
         self._mesh = self.coordinator.data
         super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
-
         # noinspection HttpUrlsUsage
         ret = DeviceInfo(
             configuration_url=f"http://{self._mesh.connected_node}",
@@ -523,8 +482,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """"""
-
+        """Additional attributes for the entity."""
         if (
             hasattr(self.entity_description, "extra_attributes")
             and isinstance(self.entity_description.extra_attributes, Callable)
@@ -533,7 +491,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 
 
 class LinksysVelopNodeEntity(CoordinatorEntity):
-    """"""
+    """Representation of a Node entity."""
 
     ENTITY_DOMAIN: str
 
@@ -544,8 +502,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         description,
         node: Node,
     ) -> None:
-        """"""
-
+        """Initialise the Node entity."""
         super().__init__(coordinator=coordinator)
 
         self.entity_description = description
@@ -561,8 +518,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
                                f"{slugify(self.entity_description.name)}"
 
     def _get_node(self) -> Optional[Node]:
-        """Get the current node"""
-
+        """Get the current node."""
         node = [n for n in self._mesh.nodes if n.unique_id == self._node_id]
         if node:
             return node[0]
@@ -570,8 +526,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         return None
 
     def _handle_coordinator_update(self) -> None:
-        """Update the information when the coordinator updates"""
-
+        """Update the information when the coordinator updates."""
         self._mesh = self.coordinator.data
         self._node = self._get_node()
         super()._handle_coordinator_update()
@@ -579,7 +534,6 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
-
         ret = DeviceInfo(
             hw_version=self._node.hardware_version,
             identifiers={(DOMAIN, self._node.serial)},
@@ -593,8 +547,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
-        """Additional attributes for the entity"""
-
+        """Additional attributes for the entity."""
         if (
             hasattr(self.entity_description, "extra_attributes")
             and isinstance(self.entity_description.extra_attributes, Callable)
@@ -609,8 +562,7 @@ def entity_cleanup(
     entities: List[LinksysVelopMeshEntity | LinksysVelopNodeEntity],
     hass: HomeAssistant
 ):
-    """"""
-
+    """Remove entities from the registry if they are no longer needed."""
     log_formatter = Logger(unique_id=config_entry.unique_id, prefix=f"{entities[0].__class__.__name__} --> ")
     _LOGGER.debug(log_formatter.format("entered"))
 
