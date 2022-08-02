@@ -76,17 +76,17 @@ class LinksysVelopServiceHandler:
         """
         device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
         device: List[dr.DeviceEntry] = [d for i, d in device_registry.devices.items() if i == mesh_id]
-        config_entry: Optional[str] = None
+        config_entry_id: Optional[str] = None
         if device:
-            for config_entry in device[0].config_entries:
-                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(entry_id=config_entry)
+            for config_entry_id in device[0].config_entries:
+                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(entry_id=config_entry_id)
                 if config_entry.domain == DOMAIN:
                     self._log_formatter = Logger(unique_id=config_entry.unique_id)
                     break
             else:
                 config_entry = None
 
-        ret = self._hass.data[DOMAIN][config_entry][CONF_COORDINATOR].data if config_entry else None
+        ret = self._hass.data[DOMAIN][config_entry_id][CONF_COORDINATOR].data if config_entry else None
 
         return ret
 
