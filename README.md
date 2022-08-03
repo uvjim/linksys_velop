@@ -1028,234 +1028,242 @@ This card allows you to select a device and see details about it.
   <summary>YAML for the card</summary>
 
 ```yaml
-type: entities
-title: Device Details
-entities:
-  - entity: select.velop_mesh_devices
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: unique_id
-    name: ID
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: manufacturer
-    name: Manufacturer
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: model
-    name: Model
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: description
-    name: Description
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: parent_name
-    name: Parent Node
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: serial
-    name: Serial
-    tap_action:
-      action: none
-  - type: attribute
-    entity: select.velop_mesh_devices
-    attribute: operating_system
-    name: Operating System
-    tap_action:
-      action: none
-  - type: custom:template-entity-row
-    entity: select.velop_mesh_devices
-    name: Connected
-    state: |-
-      {% if states('select.velop_mesh_devices') == 'unknown' %}
-        —
-      {% else %}
-        {{ "Yes" if state_attr(config.entity, "status") is eq true else "No" }}
-      {% endif %}
-    tap_action:
-      action: none
-  - type: custom:template-entity-row
-    entity: select.velop_mesh_devices
-    name: Signal Strength
-    state: >-
-      {% set signal_strength = state_attr('select.velop_mesh_devices',
-      'connected_adapters') | first %} {% if 'signal_strength' in
-      signal_strength %}
-        {% if signal_strength.signal_strength %}
-          {{ signal_strength.signal_strength }} ({{ signal_strength.rssi}}dBm)
-        {% else %}
-          —
-        {% endif %}
-      {% else %}
-        —
-      {% endif %}
-    tap_action:
-      action: none
-  - type: custom:template-entity-row
-    entity: select.velop_mesh_devices
-    name: IP
-    state: |-
-      {% if states('select.velop_mesh_devices') == 'unknown' %}
-        —
-      {% else %}
-        {{ (state_attr('select.velop_mesh_devices', 'connected_adapters') | first).ip }}
-      {% endif %}
-    tap_action:
-      action: none
-  - type: custom:template-entity-row
-    entity: select.velop_mesh_devices
-    name: MAC
-    state: |-
-      {% if states('select.velop_mesh_devices') == 'unknown' %}
-        —
-      {% else %}
-        {{ (state_attr(config.entity, 'connected_adapters') | first).mac }}
-      {% endif %}
-    tap_action:
-      action: none
-  - type: custom:template-entity-row
-    entity: select.velop_mesh_devices
-    name: Guest Network
-    state: |-
-      {% if states("select.velop_mesh_devices") == "unknown" %}
-        —
-      {% else %}
-        {{ "Yes" if (state_attr(config.entity, "connected_adapters") | first).guest_network else "No" }}
-      {% endif %}
-    tap_action:
-      action: none
-  - type: custom:state-switch
-    entity: >-
-      {% set schedules = state_attr("select.velop_mesh_devices",
-      "parental_control_schedule") %} {% if schedules is not none and (schedules
-      | map(attribute="blocked_internet_access") | list | length) %}
-        display
-      {% endif %}
-    default: default
-    states:
-      default:
-        type: custom:template-entity-row
-        name: Blocked Internet Access
-        state: —
-        tap_action:
-          action: none
-      display:
-        type: markdown
+type: custom:auto-entities
+card:
+  type: vertical-stack
+card_param: cards
+filter:
+  include:
+    - entity_id: /select\.(velop_)*mesh_devices/
+      options:
+        type: entities
+        title: Device Details
+        entities:
+          - this.entity_id
+          - type: attribute
+            entity: this.entity_id
+            attribute: unique_id
+            name: ID
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: manufacturer
+            name: Manufacturer
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: model
+            name: Model
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: description
+            name: Description
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: parent_name
+            name: Parent Node
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: serial
+            name: Serial
+            tap_action:
+              action: none
+          - type: attribute
+            entity: this.entity_id
+            attribute: operating_system
+            name: Operating System
+            tap_action:
+              action: none
+          - type: custom:template-entity-row
+            entity: this.entity_id
+            name: Connected
+            state: |-
+              {% if states(config.entity) == 'unknown' %}
+                —
+              {% else %}
+                {{ "Yes" if state_attr(config.entity, "status") is eq true else "No" }}
+              {% endif %}
+            tap_action:
+              action: none
+          - type: custom:template-entity-row
+            entity: this.entity_id
+            name: Signal Strength
+            state: >-
+              {% set signal_strength = state_attr(config.entity,
+              'connected_adapters') | first %} {% if 'signal_strength' in
+              signal_strength %}
+                {% if signal_strength.signal_strength %}
+                  {{ signal_strength.signal_strength }} ({{ signal_strength.rssi}}dBm)
+                {% else %}
+                  —
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            tap_action:
+              action: none
+          - type: custom:template-entity-row
+            entity: this.entity_id
+            name: IP
+            state: |-
+              {% if states(config.entity) == 'unknown' %}
+                —
+              {% else %}
+                {{ (state_attr(config.entity, 'connected_adapters') | first).ip }}
+              {% endif %}
+            tap_action:
+              action: none
+          - type: custom:template-entity-row
+            entity: this.entity_id
+            name: MAC
+            state: |-
+              {% if states(config.entity) == 'unknown' %}
+                —
+              {% else %}
+                {{ (state_attr(config.entity, 'connected_adapters') | first).mac }}
+              {% endif %}
+            tap_action:
+              action: none
+          - type: custom:template-entity-row
+            entity: this.entity_id
+            name: Guest Network
+            state: |-
+              {% if states(config.entity) == "unknown" %}
+                —
+              {% else %}
+                {{ "Yes" if (state_attr(config.entity, "connected_adapters") | first).guest_network else "No" }}
+              {% endif %}
+            tap_action:
+              action: none
+          - type: custom:state-switch
+            entity: >-
+              {% set schedules = state_attr("this.entity_id",
+              "parental_control_schedule") %} {% if schedules is not none and
+              (schedules | map(attribute="blocked_internet_access") | list |
+              length) %}
+                display
+              {% endif %}
+            default: default
+            states:
+              default:
+                type: custom:template-entity-row
+                name: Blocked Internet Access
+                state: —
+                tap_action:
+                  action: none
+              display:
+                type: markdown
+                card_mod:
+                  style:
+                    ha-markdown$: >
+                      table { width: 100%; border-collapse: collapse; }
+
+                      p { margin-bottom: 0px; }
+
+                      tbody tr:nth-child(2n+1) { background-color:
+                      var(--table-row-background-color); }
+
+                      tbody tr td { padding: 4px 0px; }
+
+                      tbody tr td:first-of-type { padding-left: 20px; }
+                content: >-
+                  Blocked Internet Access
+
+                  |  |  |
+
+                  |---|---:| {% set schedules = state_attr("this.entity_id",
+                  "parental_control_schedule") %} {% if schedules is not none
+                  and (schedules | map(attribute="blocked_internet_access") |
+                  list | length) %}
+                    {% for day in schedules.blocked_internet_access -%}
+                      |{{ day | title }}|{{ schedules.blocked_internet_access[day] | join(", ") }}|
+                    {% endfor -%}
+                  {% endif %}
+          - type: custom:state-switch
+            entity: >-
+              {% set sites = state_attr("this.entity_id",
+              "parental_control_schedule") %} {% if sites is not none and (sites
+              | map(attribute="blocked_sites") | reject | list | length) %}
+                display
+              {% endif %}
+            default: default
+            states:
+              default:
+                type: custom:template-entity-row
+                name: Blocked Sites
+                state: —
+                tap_action:
+                  action: none
+              display:
+                type: markdown
+                card_mod:
+                  style:
+                    ha-markdown$: >
+                      table { width: 100%; border-collapse: collapse; }
+
+                      p { margin-bottom: 0px; }
+
+                      tbody tr:nth-child(2n+1) { background-color:
+                      var(--table-row-background-color); }
+
+                      tbody tr td { padding: 4px 0px; }
+
+                      tbody tr td:first-of-type { padding-left: 20px; }
+                content: >-
+                  Blocked Sites
+
+                  |  |
+
+                  |:---|
+
+                  {% set sites = state_attr("this,entity_id",
+                  "parental_control_schedule") %} {% if sites is not none and
+                  (sites | map(attribute="blocked_sites") | list | length) %}
+                    {%- for site in sites.blocked_sites -%}
+                      |{{ site }}|
+                    {% endfor -%}
+                  {% endif %}
         card_mod:
           style:
-            ha-markdown$: >
-              table { width: 100%; border-collapse: collapse; }
-
-              p { margin-bottom: 0px; }
-
-              tbody tr:nth-child(2n+1) { background-color:
-              var(--table-row-background-color); }
-
-              tbody tr td { padding: 4px 0px; }
-
-              tbody tr td:first-of-type { padding-left: 20px; }
-        content: >-
-          Blocked Internet Access
-
-          |  |  |
-
-          |---|---:| {% set schedules = state_attr("select.velop_mesh_devices",
-          "parental_control_schedule") %} {% if schedules is not none and
-          (schedules | map(attribute="blocked_internet_access") | list | length)
-          %}
-            {% for day in schedules.blocked_internet_access -%}
-              |{{ day | title }}|{{ schedules.blocked_internet_access[day] | join(", ") }}|
-            {% endfor -%}
-          {% endif %}
-  - type: custom:state-switch
-    entity: >-
-      {% set sites = state_attr("select.velop_mesh_devices",
-      "parental_control_schedule") %} {% if sites is not none and (sites |
-      map(attribute="blocked_sites") | list | length) %}
-        display
-      {% endif %}
-    default: default
-    states:
-      default:
-        type: custom:template-entity-row
-        name: Blocked Sites
-        state: —
-        tap_action:
-          action: none
-      display:
-        type: markdown
-        card_mod:
-          style:
-            ha-markdown$: >
-              table { width: 100%; border-collapse: collapse; }
-
-              p { margin-bottom: 0px; }
-
-              tbody tr:nth-child(2n+1) { background-color:
-              var(--table-row-background-color); }
-
-              tbody tr td { padding: 4px 0px; }
-
-              tbody tr td:first-of-type { padding-left: 20px; }
-        content: >-
-          Blocked Sites
-
-          |  |
-
-          |:---|
-
-          {% set sites = state_attr("select.velop_mesh_devices",
-          "parental_control_schedule") %} {% if sites is not none and (sites |
-          map(attribute="blocked_sites") | list | length) %}
-            {%- for site in sites.blocked_sites -%}
-              |{{ site }}|
-            {% endfor -%}
-          {% endif %}
-show_header_toggle: false
-card_mod:
-  style:
-    .: |
-      #states > div:first-of-type { margin-bottom: 20px; }
-    hui-select-entity-row:
-      $:
-        hui-generic-entity-row:
-          $: |
-            state-badge { display: none; }
-            state-badge + div.info { margin-left: 0px; }
-    hui-attribute-row:
-      $:
-        hui-generic-entity-row:
-          $: |
-            state-badge { display: none; }
-            state-badge + div.info { margin-left: 0px; }
-    template-entity-row:
-      $: |
-        #wrapper { min-height: auto !important; }
-        state-badge { display: none; }
-        state-badge + div.info { margin-left: 0px; }
-    state-switch:
-      $:
-        template-entity-row:
-          $: |
-            #wrapper { min-height: auto !important; }
-            state-badge { display: none; }
-            state-badge + div.info { margin-left: 0px; }
-        hui-markdown-card:
-          $:
             .: |
-              ha-card { border-radius: 0px; box-shadow: none; }
-              ha-markdown { padding: 0px !important; }
+              #states > div:first-of-type { margin-bottom: 20px; }
+            hui-select-entity-row:
+              $:
+                hui-generic-entity-row:
+                  $: |
+                    state-badge { display: none; }
+                    state-badge + div.info { margin-left: 0px; }
+            hui-attribute-row:
+              $:
+                hui-generic-entity-row:
+                  $: |
+                    state-badge { display: none; }
+                    state-badge + div.info { margin-left: 0px; }
+            template-entity-row:
+              $: |
+                #wrapper { min-height: auto !important; }
+                state-badge { display: none; }
+                state-badge + div.info { margin-left: 0px; }
+            state-switch:
+              $:
+                template-entity-row:
+                  $: |
+                    #wrapper { min-height: auto !important; }
+                    state-badge { display: none; }
+                    state-badge + div.info { margin-left: 0px; }
+                hui-markdown-card:
+                  $:
+                    .: |
+                      ha-card { border-radius: 0px; box-shadow: none; }
+                      ha-markdown { padding: 0px !important; }
 ```
 </details>
 
