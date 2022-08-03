@@ -461,7 +461,13 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         if not getattr(self, "entity_domain", None):
             self.entity_domain: str = ""
 
-        self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
+        try:
+            _ = self.has_entity_name
+            self._attr_has_entity_name = True
+            self._attr_name = self.entity_description.name
+        except AttributeError:
+            self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
+
         self._attr_unique_id = f"{config_entry.entry_id}::" \
                                f"{self.entity_domain.lower()}::" \
                                f"{slugify(self.entity_description.name)}"
@@ -517,7 +523,13 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         self._node_id: str = node.unique_id
         self._node: Node = self._get_node()
 
-        self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+        try:
+            _ = self.has_entity_name
+            self._attr_has_entity_name = True
+            self._attr_name = self.entity_description.name
+        except AttributeError:
+            self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+
         self._attr_unique_id = f"{self._node.unique_id}::" \
                                f"{self.entity_domain.lower()}::" \
                                f"{slugify(self.entity_description.name)}"

@@ -75,7 +75,12 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._get_device_adapter_info()
                 _LOGGER.debug(self._log_formatter.format("mac: %s"), self._mac)
                 self._update_mesh_device_connections()
-                self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
+                try:
+                    _ = self.has_entity_name
+                    self._attr_has_entity_name = True
+                    self._attr_name = device.name
+                except AttributeError:
+                    self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
                 break
         else:  # got to the end and didn't find it
             _LOGGER.warning(
