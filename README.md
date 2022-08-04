@@ -1097,9 +1097,10 @@ filter:
             entity: this.entity_id
             name: Signal Strength
             state: >-
-              {% set signal_strength = state_attr(config.entity,
-              'connected_adapters') | first %} {% if 'signal_strength' in
-              signal_strength %}
+              {% set connected_adapters = state_attr(config.entity,
+              'connected_adapters') %} {% set signal_strength =
+              connected_adapters | first if connected_adapters else [] %} {% if
+              'signal_strength' in signal_strength %}
                 {% if signal_strength.signal_strength %}
                   {{ signal_strength.signal_strength }} ({{ signal_strength.rssi}}dBm)
                 {% else %}
@@ -1113,33 +1114,39 @@ filter:
           - type: custom:template-entity-row
             entity: this.entity_id
             name: IP
-            state: |-
-              {% if states(config.entity) == 'unknown' %}
-                —
+            state: >-
+              {% set connected_adapters = state_attr(config.entity,
+              'connected_adapters') %}
+
+              {% if connected_adapters %}
+                {{ (connected_adapters | first).ip }}
               {% else %}
-                {{ (state_attr(config.entity, 'connected_adapters') | first).ip }}
+                —
               {% endif %}
             tap_action:
               action: none
           - type: custom:template-entity-row
             entity: this.entity_id
             name: MAC
-            state: |-
-              {% if states(config.entity) == 'unknown' %}
-                —
+            state: >-
+              {% set connected_adapters = state_attr(config.entity,
+              'connected_adapters') %}
+
+              {% if connected_adapters %}
+                {{ (connected_adapters | first).mac }}
               {% else %}
-                {{ (state_attr(config.entity, 'connected_adapters') | first).mac }}
+                —
               {% endif %}
             tap_action:
               action: none
           - type: custom:template-entity-row
             entity: this.entity_id
             name: Guest Network
-            state: |-
-              {% if states(config.entity) == "unknown" %}
+            state: >-
+              {% set connected_adapters = state_attr(config.entity,
+              'connected_adapters') %} {% if connected_adapters %} {{ "Yes" if
+              (connected_adapters | first).guest_network else "No" }} {% else %}
                 —
-              {% else %}
-                {{ "Yes" if (state_attr(config.entity, "connected_adapters") | first).guest_network else "No" }}
               {% endif %}
             tap_action:
               action: none
