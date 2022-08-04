@@ -1020,6 +1020,7 @@ This card allows you to select a device and see details about it.
 
 ### Pre-requisites
 
+- [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
 - [card-mod](https://github.com/thomasloven/lovelace-card-mod)
 - [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
 - [state-switch](https://github.com/thomasloven/lovelace-state-switch)
