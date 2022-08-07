@@ -589,27 +589,30 @@ filter:
                   {% set devices_entity = "sensor." ~
                   "this.entity_id".split(".")[1] | replace("wan_status",
                   "online_devices") %} {% set devices =
-                  state_attr(devices_entity, 'devices') %} | # | Name | IP |
+                  state_attr(devices_entity, "devices") %} | # | Name | IP |
                   Type |
 
-                  |:---:|:---|---:|:---:| {%- for device in devices -%}
-                    {%- set device_ip = device.ip -%}
-                    {%- set connection_type = device.connection | lower -%}
-                    {%- set guest_network = device.guest_network -%}
-                    {%- if connection_type == "wired" -%}
-                      {%- set connection_icon = "ethernet" -%}
-                    {% elif connection_type == "wireless" -%}
-                      {%- set connection_icon = "wifi" -%}
-                    {% elif connection_type == "unknown" -%}
-                      {%- set connection_icon = "help" -%}
-                    {% else -%}
-                      {%- set connection_icon = "" -%}
-                    {%- endif %}
-                  {{ "| {} | {}{} | {} | {} |".format(loop.index, device.name,
-                  '&nbsp;<ha-icon icon="hass:account-multiple"></ha-icon>' if
-                  guest_network else '', device_ip, '<ha-icon icon="hass:' ~
+                  |:---:|:---|---:|:---:| {% if devices %}
+                    {%- for device in devices -%}
+                      {%- set device_name = device.name if "name" in device else '<ha-icon icon="mdi:minus"></ha-icon>' -%}
+                      {%- set device_ip = device.ip if "ip" in device else '<ha-icon icon="mdi:minus"></ha-icon>' -%}
+                      {%- set connection_type = device.connection | lower if "connection" in device else "" -%}
+                      {%- set guest_network = device.guest_network if "guest_network" in device else "" -%}
+                      {%- if connection_type == "wired" -%}
+                        {%- set connection_icon = "ethernet" -%}
+                      {% elif connection_type == "wireless" -%}
+                        {%- set connection_icon = "wifi" -%}
+                      {% elif connection_type == "unknown" -%}
+                        {%- set connection_icon = "help" -%}
+                      {% else -%}
+                        {%- set connection_icon = "minus" -%}
+                      {%- endif %}
+                  {{ "| {} | {}{} | {} | {} |".format(loop.index, device_name,
+                  '&nbsp;<ha-icon icon="mdi:account-multiple"></ha-icon>' if
+                  guest_network else '', device_ip, '<ha-icon icon="mdi:' ~
                   connection_icon ~ '"></ha-icon>') }}
                     {%- endfor %}
+                  {% endif %}
           - type: custom:fold-entity-row
             padding: 0
             head:
@@ -648,13 +651,8 @@ filter:
                   "this.entity_id".split(".")[1] | replace("wan_status",
                   "offline_devices") %} {% set devices =
                   state_attr(devices_entity, 'devices') %} | # | Name |
-
-                  |:---:|:---|
-
-                  {% for device in devices %} {{ "| {} | {}
-                  |".format(loop.index, device.name) }}
-
-                  {% endfor %}
+                  |:---:|:---| {% for device in devices %} {{ "| {} | {}
+                  |".format(loop.index, device.name) }} {% endfor %}
           - type: custom:auto-entities
             card:
               type: custom:fold-entity-row
