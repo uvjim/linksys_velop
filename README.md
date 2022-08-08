@@ -584,7 +584,9 @@ filter:
                       tbody tr:nth-child(2n+1) { background-color:
                       var(--table-row-background-color); }
 
-                      thead tr th, tbody tr td { padding: 4px 10px; }
+                      thead tr th, tbody tr td { padding: 4px 10px; word-break:
+                      keep-all; } tbody tr td:nth-child(3) { word-break:
+                      break-all; }
                 content: >
                   {% set devices_entity = "sensor." ~
                   "this.entity_id".split(".")[1] | replace("wan_status",
@@ -595,8 +597,8 @@ filter:
                   |:---:|:---|---:|:---:| {% if devices %}
                     {%- for device in devices -%}
                       {%- set device_name = device.name if "name" in device else '<ha-icon icon="mdi:minus"></ha-icon>' -%}
-                      {%- set device_ip = device.ip if "ip" in device else '<ha-icon icon="mdi:minus"></ha-icon>' -%}
                       {%- set connection_type = device.connection | lower if "connection" in device else "" -%}
+                      {%- set device_ip = iif("ip" in device, device.get('ip'), iif("ipv6" in device, device.get("ipv6"), '<ha-icon icon="mdi:minus"></ha-icon>')) -%}
                       {%- set guest_network = device.guest_network if "guest_network" in device else "" -%}
                       {%- if connection_type == "wired" -%}
                         {%- set connection_icon = "ethernet" -%}
