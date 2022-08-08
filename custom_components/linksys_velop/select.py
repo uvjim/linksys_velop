@@ -29,18 +29,11 @@ _LOGGER = logging.getLogger(__name__)
 
 def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
     """Get the properties for a device with the given name."""
-    required_properties = [
-        "connected_adapters",
-        "description",
-        "manufacturer",
-        "model",
-        "name",
-        "operating_system",
-        "parent_name",
-        "parental_control_schedule",
-        "serial",
-        "status",
-        "unique_id",
+    # -- return all properties from the Device object for use --#
+    required_properties: List[str] = [
+        prop
+        for prop in dir(Device)
+        if not prop.startswith("_")
     ]
 
     ret = None
