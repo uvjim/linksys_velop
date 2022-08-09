@@ -653,8 +653,11 @@ filter:
                   "this.entity_id".split(".")[1] | replace("wan_status",
                   "offline_devices") %} {% set devices =
                   state_attr(devices_entity, 'devices') %} | # | Name |
-                  |:---:|:---| {% for device in devices %} {{ "| {} | {}
-                  |".format(loop.index, device.name) }} {% endfor %}
+
+                  |:---:|:---| {% for device in devices %}
+
+                  {{ "| {} | {} |".format(loop.index, device.name) }} {% endfor
+                  %}
           - type: custom:auto-entities
             card:
               type: custom:fold-entity-row
