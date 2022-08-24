@@ -3,6 +3,38 @@
 
 Home Assistant integration for the Linksys Velop Wi-Fi system.
 
+## Table of Contents
+* [Description](https://github.com/uvjim/linksys_velop#description)
+  * [Definitions](https://github.com/uvjim/linksys_velop#definitions)
+  * [Entities Provided](https://github.com/uvjim/linksys_velop#entities-provided)
+    * [Binary Sensors](https://github.com/uvjim/linksys_velop#binary-sensors)
+    * [Buttons](https://github.com/uvjim/linksys_velop#buttons)
+    * [Device Trackers](https://github.com/uvjim/linksys_velop#device-trackers)
+    * [Select](https://github.com/uvjim/linksys_velop#select)
+    * [Sensors](https://github.com/uvjim/linksys_velop#sensors)
+    * [Switches](https://github.com/uvjim/linksys_velop#switches)
+    * [Update](https://github.com/uvjim/linksys_velop#update-only-if-hass--202240)
+  * [Events Fired](https://github.com/uvjim/linksys_velop#events-fired)
+    * [linksys_velop_new_device_on_mesh](https://github.com/uvjim/linksys_velop#linksys_velop_new_device_on_mesh)
+    * [linksys_velop_new_node_on_mesh](https://github.com/uvjim/linksys_velop#linksys_velop_new_node_on_mesh)
+    * [linksys_velop_new_primary_node](https://github.com/uvjim/linksys_velop#linksys_velop_new_primary_node)
+  * [Services](https://github.com/uvjim/linksys_velop#services)
+* [Setup](https://github.com/uvjim/linksys_velop#setup)
+* [Configurable Options](https://github.com/uvjim/linksys_velop#configurable-options)
+  * [Timers](https://github.com/uvjim/linksys_velop#timers)
+  * [Device Trackers](https://github.com/uvjim/linksys_velop#device-trackers-1)
+* [Advanced Options](https://github.com/uvjim/linksys_velop#advanced-options)
+* [Troubleshooting](https://github.com/uvjim/linksys_velop#troubleshooting)
+  * [Debug Logging](https://github.com/uvjim/linksys_velop#debug-logging)
+  * [Diagnostics Integration](https://github.com/uvjim/linksys_velop#diagnostics-integration)
+* [Example Lovelace UI](https://github.com/uvjim/linksys_velop#example-lovelace-ui)
+  * [Main UI](https://github.com/uvjim/linksys_velop#main-ui)
+    * [Card 1](https://github.com/uvjim/linksys_velop#card-1)
+    * [Card 2](https://github.com/uvjim/linksys_velop#card-2)
+    * [Card 3](https://github.com/uvjim/linksys_velop#card-3)
+  * [Using the Select Entity](https://github.com/uvjim/linksys_velop#using-the-select-entity)
+* [Example Automations](https://github.com/uvjim/linksys_velop#example-automations)
+
 ## Description
 
 This custom component has been designed to for Home Assistant and enables
