@@ -7,8 +7,11 @@ from abc import ABC
 from typing import Any, Callable, List, Optional
 
 from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.switch import (SwitchDeviceClass, SwitchEntity,
-                                             SwitchEntityDescription)
+from homeassistant.components.switch import (
+    SwitchDeviceClass,
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -47,16 +50,20 @@ class RequiredLinksysVelopDescription:
 class LinksysVelopSwitchDescription(
     OptionalLinksysVelopDescription,
     SwitchEntityDescription,
-    RequiredLinksysVelopDescription
+    RequiredLinksysVelopDescription,
 ):
     """Describes switch entity."""
+
 
 # endregion
 
 
 SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
     LinksysVelopSwitchDescription(
-        extra_attributes=lambda m: {f"network {idx}": network for idx, network in enumerate(m.guest_wifi_details)},
+        extra_attributes=lambda m: {
+            f"network {idx}": network
+            for idx, network in enumerate(m.guest_wifi_details)
+        },
         icon_off="hass:wifi-off",
         icon_on="hass:wifi",
         key="guest_wifi_enabled",
@@ -68,7 +75,7 @@ SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
         turn_on="async_set_guest_wifi_state",
         turn_on_args={
             "state": True,
-        }
+        },
     ),
     LinksysVelopSwitchDescription(
         extra_attributes=lambda m: (
@@ -91,7 +98,7 @@ SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
         turn_on="async_set_parental_control_state",
         turn_on_args={
             "state": True,
-        }
+        },
     ),
 )
 
@@ -99,7 +106,7 @@ SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the switches from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
@@ -117,7 +124,9 @@ async def async_setup_entry(
 
     switches_to_remove: List = []
     if switches_to_remove:
-        entity_cleanup(config_entry=config_entry, entities=switches_to_remove, hass=hass)
+        entity_cleanup(
+            config_entry=config_entry, entities=switches_to_remove, hass=hass
+        )
 
 
 class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
@@ -129,14 +138,16 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopSwitchDescription
+        description: LinksysVelopSwitchDescription,
     ) -> None:
         """Initialise."""
         self._attr_device_class = SwitchDeviceClass.SWITCH
         self._attr_entity_category = EntityCategory.CONFIG
         self.entity_domain = ENTITY_DOMAIN
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
+        super().__init__(
+            config_entry=config_entry, coordinator=coordinator, description=description
+        )
 
         self._value = self._get_value()
 

@@ -11,11 +11,16 @@ from typing import Any, Callable, List, Mapping, Optional
 
 from homeassistant.components.binary_sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass, BinarySensorEntity, BinarySensorEntityDescription)
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import (async_dispatcher_connect,
-                                              async_dispatcher_send)
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
@@ -24,8 +29,13 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
-from .const import (CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_RESULTS,
-                    SIGNAL_UPDATE_SPEEDTEST_STATUS, UPDATE_DOMAIN)
+from .const import (
+    CONF_COORDINATOR,
+    DOMAIN,
+    SIGNAL_UPDATE_SPEEDTEST_RESULTS,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+    UPDATE_DOMAIN,
+)
 
 # endregion
 
@@ -50,16 +60,22 @@ class RequiredLinksysVelopDescription:
 class LinksysVelopBinarySensorDescription(
     OptionalLinksysVelopDescription,
     BinarySensorEntityDescription,
-    RequiredLinksysVelopDescription
+    RequiredLinksysVelopDescription,
 ):
     """Describe binary sensor entity."""
+
+
 # endregion
 
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     LinksysVelopBinarySensorDescription(
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        extra_attributes=lambda m: {"ip": m.wan_ip, "dns": m.wan_dns or None, "mac": m.wan_mac},
+        extra_attributes=lambda m: {
+            "ip": m.wan_ip,
+            "dns": m.wan_dns or None,
+            "mac": m.wan_mac,
+        },
         key="wan_status",
         name="WAN Status",
     ),
@@ -69,16 +85,16 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
 
     binary_sensors: List[
-        LinksysVelopMeshBinarySensor |
-        LinksysVelopNodeBinarySensor |
-        LinksysVelopMeshSpeedtestStatusBinarySensor
+        LinksysVelopMeshBinarySensor
+        | LinksysVelopNodeBinarySensor
+        | LinksysVelopMeshSpeedtestStatusBinarySensor
     ] = [
         LinksysVelopMeshBinarySensor(
             config_entry=config_entry,
@@ -95,43 +111,52 @@ async def async_setup_entry(
             description=LinksysVelopBinarySensorDescription(
                 key="",
                 name="Speedtest Status",
-            )
+            ),
         )
     )
 
     binary_sensors_update: List[LinksysVelopNodeBinarySensor] = []
     for node in mesh.nodes:
         # -- build the binary sensor for showing an update available for each node --#
-        binary_sensors_update.extend([
-            LinksysVelopNodeBinarySensor(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopBinarySensorDescription(
-                    device_class=BinarySensorDeviceClass.UPDATE,
-                    key="update_available",
-                    name="Update Available",
-                    state_value=lambda n: n.firmware.get("version") != n.firmware.get("latest_version")
-                )
-            ),
-        ])
+        binary_sensors_update.extend(
+            [
+                LinksysVelopNodeBinarySensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopBinarySensorDescription(
+                        device_class=BinarySensorDeviceClass.UPDATE,
+                        key="update_available",
+                        name="Update Available",
+                        state_value=lambda n: n.firmware.get("version")
+                        != n.firmware.get("latest_version"),
+                    ),
+                ),
+            ]
+        )
 
         # -- build the additional binary sensors --#
-        binary_sensors.extend([
-            LinksysVelopNodeBinarySensor(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopBinarySensorDescription(
-                    device_class=BinarySensorDeviceClass.CONNECTIVITY,
-                    extra_attributes=lambda n: n.connected_adapters[0] if n.connected_adapters else {},
-                    key="status",
-                    name="Status",
-                )
-            ),
-        ])
+        binary_sensors.extend(
+            [
+                LinksysVelopNodeBinarySensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopBinarySensorDescription(
+                        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                        extra_attributes=lambda n: n.connected_adapters[0]
+                        if n.connected_adapters
+                        else {},
+                        key="status",
+                        name="Status",
+                    ),
+                ),
+            ]
+        )
 
-    if UPDATE_DOMAIN is None:  # if the update entity isn't available create the update available binary sensors
+    if (
+        UPDATE_DOMAIN is None
+    ):  # if the update entity isn't available create the update available binary sensors
         binary_sensors.extend(binary_sensors_update)
 
     async_add_entities(binary_sensors)
@@ -143,14 +168,18 @@ async def async_setup_entry(
             description=LinksysVelopBinarySensorDescription(
                 key="",
                 name="Check for Updates Status",
-            )
+            ),
         )
     ]
-    if UPDATE_DOMAIN is not None:  # if the update entity is available remove any existing update available sensor
+    if (
+        UPDATE_DOMAIN is not None
+    ):  # if the update entity is available remove any existing update available sensor
         binary_sensors_to_remove.extend(binary_sensors_update)
 
     if binary_sensors_to_remove:
-        entity_cleanup(config_entry=config_entry, entities=binary_sensors_to_remove, hass=hass)
+        entity_cleanup(
+            config_entry=config_entry, entities=binary_sensors_to_remove, hass=hass
+        )
 
 
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
@@ -162,12 +191,14 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription
+        description: LinksysVelopBinarySensorDescription,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
+        super().__init__(
+            config_entry=config_entry, coordinator=coordinator, description=description
+        )
 
     @property
     def is_on(self) -> Optional[bool]:
@@ -188,12 +219,17 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription
+        description: LinksysVelopBinarySensorDescription,
     ) -> None:
         """Initialise."""
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self.entity_domain = ENTITY_DOMAIN
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            node=node,
+        )
 
     @property
     def is_on(self) -> Optional[bool]:
@@ -223,7 +259,7 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
                 self._remove_time_interval = async_track_time_interval(
                     self.hass,
                     self._async_get_speedtest_state,
-                    timedelta(seconds=self._status_update_interval)
+                    timedelta(seconds=self._status_update_interval),
                 )
         else:
             if self._remove_time_interval:
@@ -235,7 +271,9 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
 
     def _handle_coordinator_update(self) -> None:
         """Update the speedtest status information when the coordinator updates."""
-        asyncio.run_coroutine_threadsafe(coro=self._async_get_speedtest_state(), loop=self.hass.loop)
+        asyncio.run_coroutine_threadsafe(
+            coro=self._async_get_speedtest_state(), loop=self.hass.loop
+        )
         super()._handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
@@ -256,9 +294,7 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
         """Set the current stage of the test as an attribute."""
-        return {
-            "status": self._status_text
-        }
+        return {"status": self._status_text}
 
     @property
     def is_on(self) -> bool:
