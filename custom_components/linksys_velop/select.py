@@ -9,8 +9,7 @@ from abc import ABC
 from typing import Any, Callable, List, Mapping, Optional
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.select import (SelectEntity,
-                                             SelectEntityDescription)
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -31,19 +30,18 @@ def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
     """Get the properties for a device with the given name."""
     # -- return all properties from the Device object for use --#
     required_properties: List[str] = [
-        prop
-        for prop in dir(Device)
-        if not prop.startswith("_")
+        prop for prop in dir(Device) if not prop.startswith("_")
     ]
 
     ret = None
     dev: Device
-    device: List[Device] = [dev for dev in mesh.devices if device_name and dev.name.lower() == device_name.lower()]
+    device: List[Device] = [
+        dev
+        for dev in mesh.devices
+        if device_name and dev.name.lower() == device_name.lower()
+    ]
     if device:
-        ret = {
-            p: getattr(device[0], p, None)
-            for p in required_properties
-        }
+        ret = {p: getattr(device[0], p, None) for p in required_properties}
 
     return ret
 
@@ -68,9 +66,10 @@ class RequiredLinksysVelopDescription:
 class LinksysVelopSelectDescription(
     OptionalLinksysVelopDescription,
     SelectEntityDescription,
-    RequiredLinksysVelopDescription
+    RequiredLinksysVelopDescription,
 ):
     """Describes select entity."""
+
 
 # endregion
 
@@ -78,7 +77,7 @@ class LinksysVelopSelectDescription(
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
@@ -91,13 +90,8 @@ async def async_setup_entry(
                 extra_attributes=_get_device_details,
                 key="devices",
                 name="Devices",
-                options=lambda m: (
-                    [
-                        device.name
-                        for device in m.devices
-                    ]
-                )
-            )
+                options=lambda m: ([device.name for device in m.devices]),
+            ),
         )
     ]
 
@@ -113,7 +107,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopSelectDescription
+        description: LinksysVelopSelectDescription,
     ) -> None:
         """Initialise."""
         self._attr_current_option = None
@@ -121,7 +115,9 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         self._attr_entity_registry_enabled_default = False
         self.entity_domain = ENTITY_DOMAIN
 
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
+        super().__init__(
+            config_entry=config_entry, coordinator=coordinator, description=description
+        )
 
     async def async_select_option(self, option: str) -> None:
         """Select the option."""
@@ -131,9 +127,8 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """Additional attributes."""
-        if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
+        if self.entity_description.extra_attributes and isinstance(
+            self.entity_description.extra_attributes, Callable
         ):
             ea_args: dict
             if self.entity_description.extra_attributes_args:

@@ -25,40 +25,36 @@ class LinksysVelopServiceHandler:
 
     SERVICES = {
         "check_updates": {
-            "schema":
-                vol.Schema(
-                    {
-                        vol.Required("mesh"): str,
-                    }
-                )
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                }
+            )
         },
         "delete_device": {
-            "schema":
-                vol.Schema(
-                    {
-                        vol.Required("mesh"): str,
-                        vol.Optional("device_id"): str,
-                        vol.Optional("device_name"): str
-                    }
-                )
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                    vol.Optional("device_id"): str,
+                    vol.Optional("device_name"): str,
+                }
+            )
         },
         "reboot_node": {
-            "schema":
-                vol.Schema(
-                    {
-                        vol.Required("mesh"): str,
-                        vol.Required("node_name"): str,
-                        vol.Optional("is_primary"): bool,
-                    }
-                )
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                    vol.Required("node_name"): str,
+                    vol.Optional("is_primary"): bool,
+                }
+            )
         },
         "start_speedtest": {
-            "schema":
-                vol.Schema(
-                    {
-                        vol.Required("mesh"): str,
-                    }
-                )
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                }
+            )
         },
     }
 
@@ -75,18 +71,26 @@ class LinksysVelopServiceHandler:
         :return: the Mesh class or None
         """
         device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
-        device: List[dr.DeviceEntry] = [d for i, d in device_registry.devices.items() if i == mesh_id]
+        device: List[dr.DeviceEntry] = [
+            d for i, d in device_registry.devices.items() if i == mesh_id
+        ]
         config_entry_id: Optional[str] = None
         if device:
             for config_entry_id in device[0].config_entries:
-                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(entry_id=config_entry_id)
+                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(
+                    entry_id=config_entry_id
+                )
                 if config_entry.domain == DOMAIN:
                     self._log_formatter = Logger(unique_id=config_entry.unique_id)
                     break
             else:
                 config_entry = None
 
-        ret = self._hass.data[DOMAIN][config_entry_id][CONF_COORDINATOR].data if config_entry else None
+        ret = (
+            self._hass.data[DOMAIN][config_entry_id][CONF_COORDINATOR].data
+            if config_entry
+            else None
+        )
 
         return ret
 
@@ -160,7 +164,9 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        await self._mesh.async_reboot_node(node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False))
+        await self._mesh.async_reboot_node(
+            node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False)
+        )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 

@@ -9,8 +9,11 @@ from abc import ABC
 from typing import List
 
 from homeassistant.components.update import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.update import (UpdateDeviceClass, UpdateEntity,
-                                             UpdateEntityDescription)
+from homeassistant.components.update import (
+    UpdateDeviceClass,
+    UpdateEntity,
+    UpdateEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -41,9 +44,10 @@ class RequiredLinksysVelopDescription:
 class LinksysVelopUpdateDescription(
     OptionalLinksysVelopDescription,
     UpdateEntityDescription,
-    RequiredLinksysVelopDescription
+    RequiredLinksysVelopDescription,
 ):
     """Describes update entity."""
+
 
 # endregion
 
@@ -51,7 +55,7 @@ class LinksysVelopUpdateDescription(
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
@@ -62,18 +66,20 @@ async def async_setup_entry(
     # region #-- node sensors --#
     node: Node
     for node in mesh.nodes:
-        update_entities.extend([
-            LinksysVelopNodeUpdate(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=LinksysVelopUpdateDescription(
-                    device_class=UpdateDeviceClass.FIRMWARE,
-                    key="",
-                    name="Update",
-                )
-            ),
-        ])
+        update_entities.extend(
+            [
+                LinksysVelopNodeUpdate(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopUpdateDescription(
+                        device_class=UpdateDeviceClass.FIRMWARE,
+                        key="",
+                        name="Update",
+                    ),
+                ),
+            ]
+        )
     # endregion
 
     async_add_entities(update_entities)
@@ -93,11 +99,16 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopUpdateDescription
+        description: LinksysVelopUpdateDescription,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            node=node,
+        )
 
     @property
     def auto_update(self) -> bool:

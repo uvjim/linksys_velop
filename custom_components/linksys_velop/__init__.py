@@ -18,9 +18,11 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.update_coordinator import (CoordinatorEntity,
-                                                      DataUpdateCoordinator,
-                                                      UpdateFailed)
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 from homeassistant.util import slugify
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
@@ -30,15 +32,26 @@ from pyvelop.exceptions import MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from .const import (CONF_API_REQUEST_TIMEOUT, CONF_COORDINATOR,
-                    CONF_COORDINATOR_MESH, CONF_DEVICE_TRACKERS,
-                    CONF_ENTRY_RELOAD, CONF_NODE,
-                    CONF_SCAN_INTERVAL_DEVICE_TRACKER, CONF_SERVICES_HANDLER,
-                    CONF_UNSUB_UPDATE_LISTENER, DEF_API_REQUEST_TIMEOUT,
-                    DEF_SCAN_INTERVAL, DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-                    DOMAIN, ENTITY_SLUG, EVENT_NEW_PARENT_NODE, PLATFORMS,
-                    SIGNAL_UPDATE_DEVICE_TRACKER,
-                    SIGNAL_UPDATE_SPEEDTEST_STATUS)
+from .const import (
+    CONF_API_REQUEST_TIMEOUT,
+    CONF_COORDINATOR,
+    CONF_COORDINATOR_MESH,
+    CONF_DEVICE_TRACKERS,
+    CONF_ENTRY_RELOAD,
+    CONF_NODE,
+    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+    CONF_SERVICES_HANDLER,
+    CONF_UNSUB_UPDATE_LISTENER,
+    DEF_API_REQUEST_TIMEOUT,
+    DEF_SCAN_INTERVAL,
+    DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+    DOMAIN,
+    ENTITY_SLUG,
+    EVENT_NEW_PARENT_NODE,
+    PLATFORMS,
+    SIGNAL_UPDATE_DEVICE_TRACKER,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+)
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
 
@@ -51,45 +64,43 @@ EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
 
 
 def _get_device_registry_entry(
-    config_entry_id: str,
-    device_registry: dr.DeviceRegistry,
-    entry_type: str = "node"
+    config_entry_id: str, device_registry: dr.DeviceRegistry, entry_type: str = "node"
 ) -> List[DeviceEntry]:
     """Retrieve the given device from the registry."""
     ret = []
     my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
-        registry=device_registry,
-        config_entry_id=config_entry_id
+        registry=device_registry, config_entry_id=config_entry_id
     )
     dr_device: dr.DeviceEntry
     if entry_type.lower() == "node":
         ret: List[DeviceEntry] = [
             dr_device
             for dr_device in my_devices
-            if all([
-                dr_device.manufacturer != PYVELOP_AUTHOR,
-                dr_device.name.lower() != "mesh",
-            ])
+            if all(
+                [
+                    dr_device.manufacturer != PYVELOP_AUTHOR,
+                    dr_device.name.lower() != "mesh",
+                ]
+            )
         ]
     elif entry_type.lower() == "mesh":
         ret: List[DeviceEntry] = [
             dr_device
             for dr_device in my_devices
-            if all([
-                dr_device.manufacturer == PYVELOP_AUTHOR,
-                dr_device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-                dr_device.name.lower() == "mesh",
-            ])
+            if all(
+                [
+                    dr_device.manufacturer == PYVELOP_AUTHOR,
+                    dr_device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+                    dr_device.name.lower() == "mesh",
+                ]
+            )
         ]
 
     return ret
 
 
 def build_event_payload(
-    config_entry: ConfigEntry,
-    device: Device | Node,
-    event: str,
-    hass: HomeAssistant
+    config_entry: ConfigEntry, device: Device | Node, event: str, hass: HomeAssistant
 ) -> Dict[str, Any]:
     """Build the payload for the fired events."""
     event_properties: List[str] = []
@@ -128,8 +139,7 @@ def build_event_payload(
         ]
 
     ret: Dict[str, Any] = {
-        prop: getattr(device, prop, None)
-        for prop in event_properties
+        prop: getattr(device, prop, None) for prop in event_properties
     }
     if ret:
         # region #-- get the mesh device_id --#
@@ -148,7 +158,7 @@ def build_event_payload(
 async def async_remove_config_entry_device(
     hass: HomeAssistant,  # pylint: disable=unused-argument
     config_entry: ConfigEntry,
-    device_entry: DeviceEntry
+    device_entry: DeviceEntry,
 ) -> bool:
     """Allow device removal.
 
@@ -156,12 +166,16 @@ async def async_remove_config_entry_device(
     """
     log_formatter = Logger(unique_id=config_entry.unique_id)
 
-    if all([  # check for Mesh device
-        device_entry.name == "Mesh",
-        device_entry.manufacturer == PYVELOP_AUTHOR,
-        device_entry.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})"
-    ]):
-        _LOGGER.error(log_formatter.format("Attempt to remove the Mesh device rejected"))
+    if all(
+        [  # check for Mesh device
+            device_entry.name == "Mesh",
+            device_entry.manufacturer == PYVELOP_AUTHOR,
+            device_entry.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+        ]
+    ):
+        _LOGGER.error(
+            log_formatter.format("Attempt to remove the Mesh device rejected")
+        )
         return False
 
     return True
@@ -183,7 +197,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
-        request_timeout=config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+        request_timeout=config_entry.options.get(
+            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+        ),
         session=async_get_clientsession(hass=hass),
     )
 
@@ -198,7 +214,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
 
         # -- get the existing devices --#
-        _LOGGER.debug(log_formatter.format("retrieving existing devices for comparison"))
+        _LOGGER.debug(
+            log_formatter.format("retrieving existing devices for comparison")
+        )
         device: Device
         previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
 
@@ -207,7 +225,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         previous_nodes = _get_device_registry_entry(
             config_entry_id=config_entry.entry_id,
             device_registry=device_registry,
-            entry_type="node"
+            entry_type="node",
         )
         previous_nodes_serials: Set[str] = {
             next(iter(prev_node.identifiers))[1]  # serial number of node
@@ -226,7 +244,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 log_formatter.format(
                     "timeout gathering data from the mesh (current timeout: %.2f) - consider increasing the timeout"
                 ),
-                config_entry.options.get(CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
+                config_entry.options.get(
+                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                ),
             )
             raise UpdateFailed(err) from err
         except Exception as err:
@@ -235,10 +255,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         else:
             # region #-- check for new devices --#
             if not previous_devices:
-                _LOGGER.debug(log_formatter.format("no previous devices - ignoring comparison"))
+                _LOGGER.debug(
+                    log_formatter.format("no previous devices - ignoring comparison")
+                )
             else:
                 _LOGGER.debug(log_formatter.format("comparing devices"))
-                current_devices: Set[str] = {device.unique_id for device in mesh.devices}
+                current_devices: Set[str] = {
+                    device.unique_id for device in mesh.devices
+                }
                 new_devices: Set[str] = current_devices.difference(previous_devices)
                 if new_devices:
                     for device in mesh.devices:
@@ -248,57 +272,88 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 config_entry=config_entry,
                                 device=device,
                                 event=EVENT_NEW_DEVICE_ON_MESH,
-                                hass=hass
+                                hass=hass,
                             )
-                            _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_DEVICE_ON_MESH, payload)
-                            hass.bus.async_fire(event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload)
+                            _LOGGER.debug(
+                                log_formatter.format("%s: %s"),
+                                EVENT_NEW_DEVICE_ON_MESH,
+                                payload,
+                            )
+                            hass.bus.async_fire(
+                                event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload
+                            )
                 _LOGGER.debug(log_formatter.format("devices compared"))
             # endregion
 
             # region #-- check for new or update nodes --#
             if not previous_nodes:
-                _LOGGER.debug(log_formatter.format("no previous nodes - ignoring comparison"))
+                _LOGGER.debug(
+                    log_formatter.format("no previous nodes - ignoring comparison")
+                )
             else:
                 _LOGGER.debug(log_formatter.format("comparing nodes"))
                 node: Node
                 current_nodes: Set[str] = {node.serial for node in mesh.nodes}
                 # region #-- process new nodes --#
                 new_nodes: Set[str] = current_nodes.difference(previous_nodes_serials)
-                is_reloading = hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).get(config_entry.entry_id)
+                is_reloading = (
+                    hass.data[DOMAIN]
+                    .get(CONF_ENTRY_RELOAD, {})
+                    .get(config_entry.entry_id)
+                )
                 if new_nodes and not is_reloading:
                     for node in mesh.nodes:
                         if node.serial in new_nodes:
-                            _LOGGER.debug(log_formatter.format("new node found: %s"), node.serial)
+                            _LOGGER.debug(
+                                log_formatter.format("new node found: %s"), node.serial
+                            )
                             if hass.state == CoreState.running:  # reload the config
                                 if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
                                     hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
-                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][config_entry.entry_id] = True
-                                await hass.config_entries.async_reload(config_entry.entry_id)
-                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(config_entry.entry_id, None)
+                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][
+                                    config_entry.entry_id
+                                ] = True
+                                await hass.config_entries.async_reload(
+                                    config_entry.entry_id
+                                )
+                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(
+                                    config_entry.entry_id, None
+                                )
 
                             # -- fire the event --#
                             payload = build_event_payload(
                                 config_entry=config_entry,
                                 device=node,
                                 event=EVENT_NEW_DEVICE_ON_MESH,
-                                hass=hass
+                                hass=hass,
                             )
-                            _LOGGER.debug(log_formatter.format("%s: %s"), EVENT_NEW_NODE_ON_MESH, payload)
-                            hass.bus.async_fire(event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload)
+                            _LOGGER.debug(
+                                log_formatter.format("%s: %s"),
+                                EVENT_NEW_NODE_ON_MESH,
+                                payload,
+                            )
+                            hass.bus.async_fire(
+                                event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload
+                            )
                 # endregion
                 # region #-- look for updates to nodes --#
                 update_properties = ["name"]
                 for node in mesh.nodes:
-                    previous_node: List[DeviceEntry] = [  # get the node from the device registry based on serial
+                    previous_node: List[
+                        DeviceEntry
+                    ] = [  # get the node from the device registry based on serial
                         prev_node
                         for prev_node in previous_nodes
-                        if next(iter(prev_node.identifiers))[1].lower() == node.serial.lower()
+                        if next(iter(prev_node.identifiers))[1].lower()
+                        == node.serial.lower()
                     ]
                     if not previous_node:
                         continue
 
                     for prop in update_properties:
-                        if getattr(previous_node[0], prop, None) != getattr(node, prop, None):
+                        if getattr(previous_node[0], prop, None) != getattr(
+                            node, prop, None
+                        ):
                             _LOGGER.debug(
                                 log_formatter.format("updating %s for %s (%s --> %s)"),
                                 prop,
@@ -306,7 +361,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 getattr(previous_node[0], prop, None),
                                 getattr(node, prop),
                             )
-                            device_registry.async_update_device(device_id=previous_node[0].id, name=getattr(node, prop))
+                            device_registry.async_update_device(
+                                device_id=previous_node[0].id, name=getattr(node, prop)
+                            )
 
                 # endregion
                 _LOGGER.debug(log_formatter.format("nodes compared"))
@@ -314,23 +371,31 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
             # region #-- check for a primary node change --#
             primary_node: List[Node] = [
-                node
-                for node in mesh.nodes
-                if node.type == "primary"
+                node for node in mesh.nodes if node.type == "primary"
             ]
             if primary_node and primary_node[0].serial != config_entry.unique_id:
-                _LOGGER.debug(log_formatter.format("assuming the primary node has changed"))
+                _LOGGER.debug(
+                    log_formatter.format("assuming the primary node has changed")
+                )
                 if hass.state == CoreState.running:
-                    if hass.config_entries.async_update_entry(entry=config_entry, unique_id=primary_node[0].serial):
+                    if hass.config_entries.async_update_entry(
+                        entry=config_entry, unique_id=primary_node[0].serial
+                    ):
                         payload: Dict[str, Any] = build_event_payload(
                             config_entry=config_entry,
                             device=primary_node[0],
                             event=EVENT_NEW_PARENT_NODE,
                             hass=hass,
                         )
-                        hass.bus.async_fire(event_type=EVENT_NEW_PARENT_NODE, event_data=payload)
+                        hass.bus.async_fire(
+                            event_type=EVENT_NEW_PARENT_NODE, event_data=payload
+                        )
                 else:
-                    _LOGGER.debug(log_formatter.format("backing off updates until HASS is fully running"))
+                    _LOGGER.debug(
+                        log_formatter.format(
+                            "backing off updates until HASS is fully running"
+                        )
+                    )
             # endregion
 
             hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
@@ -344,7 +409,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         logger=_LOGGER,
         name=f"{DOMAIN} ({getattr(log_formatter, '_unique_id')})",
         update_interval=timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL]),
-        update_method=_async_get_mesh_data
+        update_method=_async_get_mesh_data,
     )
     await coordinator.async_config_entry_first_refresh()
 
@@ -356,7 +421,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     _LOGGER.debug(log_formatter.format("setting up platforms: %s"), setup_platforms)
     # TODO: remove try/except when minimum version is 2022.8.0
     try:
-        await hass.config_entries.async_forward_entry_setups(config_entry, setup_platforms)
+        await hass.config_entries.async_forward_entry_setups(
+            config_entry, setup_platforms
+        )
     except AttributeError:
         hass.config_entries.async_setup_platforms(config_entry, setup_platforms)
     # endregion
@@ -370,9 +437,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- listen for config changes --#
     _LOGGER.debug(log_formatter.format("listening for config changes"))
-    hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER] = config_entry.add_update_listener(
-        _async_update_listener
-    )
+    hass.data[DOMAIN][config_entry.entry_id][
+        CONF_UNSUB_UPDATE_LISTENER
+    ] = config_entry.add_update_listener(_async_update_listener)
     # endregion
 
     async def device_tracker_update(_: datetime.datetime) -> None:
@@ -388,12 +455,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER)
 
     # region #-- set up the timer for checking device trackers --#
-    if config_entry.options[CONF_DEVICE_TRACKERS]:  # only do setup if device trackers were selected
+    if config_entry.options[
+        CONF_DEVICE_TRACKERS
+    ]:  # only do setup if device trackers were selected
         _LOGGER.debug(log_formatter.format("setting up device trackers"))
-        await device_tracker_update(datetime.datetime.now())  # update before setting the timer
-        scan_interval = config_entry.options.get(CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER)
+        await device_tracker_update(
+            datetime.datetime.now()
+        )  # update before setting the timer
+        scan_interval = config_entry.options.get(
+            CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
+        )
         config_entry.async_on_unload(
-            async_track_time_interval(hass, device_tracker_update, timedelta(seconds=scan_interval))
+            async_track_time_interval(
+                hass, device_tracker_update, timedelta(seconds=scan_interval)
+            )
         )
     # endregion
 
@@ -417,7 +492,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     _LOGGER.debug(log_formatter.format("%i instances"), len(all_config_entries))
     if len(all_config_entries) == 1:
         _LOGGER.debug(log_formatter.format("unregistering services"))
-        services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER]
+        services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][
+            CONF_SERVICES_HANDLER
+        ]
         services.unregister_services()
     # endregion
 
@@ -436,7 +513,9 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     return ret
 
 
-async def _async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+async def _async_update_listener(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
     """Reload the config entry."""
     await hass.config_entries.async_reload(config_entry.entry_id)
 
@@ -468,9 +547,11 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         except AttributeError:
             self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
 
-        self._attr_unique_id = f"{config_entry.entry_id}::" \
-                               f"{self.entity_domain.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self._attr_unique_id = (
+            f"{config_entry.entry_id}::"
+            f"{self.entity_domain.lower()}::"
+            f"{slugify(self.entity_description.name)}"
+        )
 
     def _handle_coordinator_update(self) -> None:
         """Update the information when the coordinator updates."""
@@ -494,9 +575,8 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """Additional attributes for the entity."""
-        if (
-            hasattr(self.entity_description, "extra_attributes")
-            and isinstance(self.entity_description.extra_attributes, Callable)
+        if hasattr(self.entity_description, "extra_attributes") and isinstance(
+            self.entity_description.extra_attributes, Callable
         ):
             return self.entity_description.extra_attributes(self._mesh)
 
@@ -528,11 +608,15 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
             self._attr_has_entity_name = True
             self._attr_name = self.entity_description.name
         except AttributeError:
-            self._attr_name = f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+            self._attr_name = (
+                f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
+            )
 
-        self._attr_unique_id = f"{self._node.unique_id}::" \
-                               f"{self.entity_domain.lower()}::" \
-                               f"{slugify(self.entity_description.name)}"
+        self._attr_unique_id = (
+            f"{self._node.unique_id}::"
+            f"{self.entity_domain.lower()}::"
+            f"{slugify(self.entity_description.name)}"
+        )
 
     def _get_node(self) -> Optional[Node]:
         """Get the current node."""
@@ -565,11 +649,12 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """Additional attributes for the entity."""
-        if (
-            hasattr(self.entity_description, "extra_attributes")
-            and isinstance(self.entity_description.extra_attributes, Callable)
+        if hasattr(self.entity_description, "extra_attributes") and isinstance(
+            self.entity_description.extra_attributes, Callable
         ):
             return self.entity_description.extra_attributes(self._node)
+
+
 # endregion
 
 
@@ -577,16 +662,18 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 def entity_cleanup(
     config_entry: ConfigEntry,
     entities: List[LinksysVelopMeshEntity | LinksysVelopNodeEntity],
-    hass: HomeAssistant
+    hass: HomeAssistant,
 ):
     """Remove entities from the registry if they are no longer needed."""
-    log_formatter = Logger(unique_id=config_entry.unique_id, prefix=f"{entities[0].__class__.__name__} --> ")
+    log_formatter = Logger(
+        unique_id=config_entry.unique_id,
+        prefix=f"{entities[0].__class__.__name__} --> ",
+    )
     _LOGGER.debug(log_formatter.format("entered"))
 
     entity_registry: er.EntityRegistry = er.async_get(hass=hass)
     er_entries: List[er.RegistryEntry] = er.async_entries_for_config_entry(
-        registry=entity_registry,
-        config_entry_id=config_entry.entry_id
+        registry=entity_registry, config_entry_id=config_entry.entry_id
     )
 
     cleanup_unique_ids = [e.unique_id for e in entities]
@@ -599,4 +686,6 @@ def entity_cleanup(
         entity_registry.async_remove(entity_id=entity.entity_id)
 
     _LOGGER.debug(log_formatter.format("exited"))
+
+
 # endregion

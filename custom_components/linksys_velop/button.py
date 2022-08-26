@@ -9,8 +9,11 @@ from abc import ABC
 from typing import Callable, List, Optional
 
 from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.button import (ButtonDeviceClass, ButtonEntity,
-                                             ButtonEntityDescription)
+from homeassistant.components.button import (
+    ButtonDeviceClass,
+    ButtonEntity,
+    ButtonEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -46,9 +49,10 @@ class RequiredLinksysVelopDescription:
 class LinksysVelopButtonDescription(
     OptionalLinksysVelopDescription,
     ButtonEntityDescription,
-    RequiredLinksysVelopDescription
+    RequiredLinksysVelopDescription,
 ):
     """Describes button entity."""
+
 
 # endregion
 
@@ -65,9 +69,7 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
         key="",
         name="Start Speedtest",
         press_action="async_start_speedtest",
-        press_action_arguments={
-            "signal": SIGNAL_UPDATE_SPEEDTEST_STATUS
-        }
+        press_action_arguments={"signal": SIGNAL_UPDATE_SPEEDTEST_STATUS},
     ),
 )
 
@@ -75,7 +77,7 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
@@ -104,10 +106,8 @@ async def async_setup_entry(
                         device_class=ButtonDeviceClass.RESTART,
                         name="Reboot",
                         press_action="async_reboot_node",
-                        press_action_arguments={
-                            "node_name": node.name
-                        }
-                    )
+                        press_action_arguments={"node_name": node.name},
+                    ),
                 )
             )
     # endregion
@@ -119,7 +119,12 @@ async def async_setup_entry(
         entity_cleanup(config_entry=config_entry, entities=buttons_to_remove, hass=hass)
 
 
-async def _async_button_pressed(action: str, hass: HomeAssistant, mesh: Mesh, action_arguments: Optional[dict] = None):
+async def _async_button_pressed(
+    action: str,
+    hass: HomeAssistant,
+    mesh: Mesh,
+    action_arguments: Optional[dict] = None,
+):
     """Carry out the button press action."""
     action: Optional[Callable] = getattr(mesh, action, None)
     signal: str = action_arguments.pop("signal", None)
@@ -140,11 +145,13 @@ class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopButtonDescription
+        description: LinksysVelopButtonDescription,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description)
+        super().__init__(
+            config_entry=config_entry, coordinator=coordinator, description=description
+        )
 
     async def async_press(self) -> None:
         """Handle the button being pressed."""
@@ -166,11 +173,16 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopButtonDescription
+        description: LinksysVelopButtonDescription,
     ) -> None:
         """Intialise."""
         self.entity_domain = ENTITY_DOMAIN
-        super().__init__(config_entry=config_entry, coordinator=coordinator, description=description, node=node)
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            node=node,
+        )
 
     async def async_press(self) -> None:
         """Handle the button being pressed."""
