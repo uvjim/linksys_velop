@@ -3,18 +3,32 @@
 # region #-- imports --#
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
+from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
+from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.mesh import Device, Mesh, Node
 
 from .const import CONF_COORDINATOR, DOMAIN
 
 # endregion
+
+
+ATTR_REDACT: Iterable = {
+    CONF_PASSWORD,
+    "macAddress",
+    "apBSSID",
+    "stationBSSID",
+    "serialNumber",
+    "unique_id",
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -25,20 +39,21 @@ async def async_get_config_entry_diagnostics(
         CONF_COORDINATOR
     ]
     mesh: Mesh = coordinator.data
-    mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
-    _: Optional[List[Device]] = mesh_attributes.pop(
-        "devices", None
-    )  # these will be a non-serialisable form
-    _: Optional[List[Node]] = mesh_attributes.pop(
-        "nodes", None
-    )  # these will be a non-serialisable form
+    mesh_attributes: Dict = getattr(mesh, "_mesh_attributes")
+
+    # region #-- non-serialisable objects --#
+    devices: Optional[List[Device]] = mesh_attributes.pop("devices", None)
+    nodes: Optional[List[Node]] = mesh_attributes.pop("nodes", None)
+    # endregion
 
     # region #-- create generic details --#
-    ret: dict[str, Any] = {
+    ret: Dict[str, Any] = {
         "config_entry": config_entry.as_dict(),  # get the config entry details
         "mesh_details": {  # get mesh details
             key: mesh_attributes.get(key) for key in mesh_attributes
         },
+        "nodes": [node.__dict__ for node in nodes if nodes],
+        "devices": [device.__dict__ for device in devices if devices],
     }
     # endregion
 
@@ -68,12 +83,46 @@ async def async_get_config_entry_diagnostics(
 
     return async_redact_data(
         ret,
-        (
-            CONF_PASSWORD,
-            "macAddress",
-            "apBSSID",
-            "stationBSSID",
-            "serialNumber",
-            "unique_id",
-        ),
+        ATTR_REDACT,
     )
+
+
+async def async_get_device_diagnostics(
+    hass: HomeAssistant, config_entry: ConfigEntry, device: DeviceEntry
+):
+    """Diagnostics for a specific device.
+
+    N.B. If the device is the Mesh then data for the ConfigEntry diagnostics is returned
+    """
+    if all(  # check if the device is the Mesh
+        [
+            device.manufacturer == PYVELOP_AUTHOR,
+            device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
+            device.name.lower() == "mesh",
+        ]
+    ):
+        return await async_get_config_entry_diagnostics(hass, config_entry)
+
+    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][
+        CONF_COORDINATOR
+    ]
+    mesh: Mesh = coordinator.data
+
+    ret: Dict[str, Any] = {
+        "device_entry": {
+            p: getattr(device, p, None)
+            for p in [prop for prop in dir(DeviceEntry) if not prop.startswith("_")]
+        }
+    }
+
+    node: List[Node] = [
+        n
+        for n in mesh.nodes
+        if mesh.nodes and n.serial == next(iter(device.identifiers))[1]
+    ]
+    if node:
+        ret["node"] = node[0].__dict__
+
+    ret = async_redact_data(ret, ATTR_REDACT.union({"identifiers"}))
+
+    return ret
