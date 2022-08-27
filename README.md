@@ -330,7 +330,10 @@ diagnostics can be found.
 
 ![Diagnostics link](images/diagnostics.png)
 
-Example output can be found [here](examples/diagnostics_ouput.json)
+Example output: -
+
+* [Device](examples/device_diagnostics.json)
+* [Configuration Entry and Mesh](examples/config_entry_and_mesh_diagnostics.json)
 
 # Example Lovelace UI
 
