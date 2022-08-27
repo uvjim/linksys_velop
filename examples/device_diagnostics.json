@@ -1,0 +1,173 @@
+{
+  "home_assistant": {
+    "installation_type": "Home Assistant Core",
+    "version": "2022.8.0b7",
+    "dev": false,
+    "hassio": false,
+    "virtualenv": true,
+    "python_version": "3.10.5",
+    "docker": false,
+    "arch": "aarch64",
+    "timezone": "Europe/London",
+    "os_name": "Linux",
+    "os_version": "5.15.32-v8+",
+    "run_as_root": false
+  },
+  "custom_components": {
+    "linksys_velop": {
+      "version": "2022.6.1",
+      "requirements": [
+        "pyvelop==2022.8.4"
+      ]
+    },
+    "hdhomerun": {
+      "version": "2022.8.1",
+      "requirements": []
+    }
+  },
+  "integration_manifest": {
+    "codeowners": [
+      "@uvjim"
+    ],
+    "config_flow": true,
+    "dependencies": [
+      "ssdp"
+    ],
+    "domain": "linksys_velop",
+    "documentation": "https://github.com/uvjim/linksys_velop",
+    "iot_class": "local_polling",
+    "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
+    "loggers": [
+      "pyvelop"
+    ],
+    "name": "Linksys Velop",
+    "requirements": [
+      "pyvelop==2022.8.4"
+    ],
+    "ssdp": [
+      {
+        "st": "urn:schemas-upnp-org:device:InternetGatewayDevice:2",
+        "manufacturer": "Linksys"
+      }
+    ],
+    "version": "2022.6.1",
+    "is_built_in": false
+  },
+  "data": {
+    "device_entry": {
+      "area_id": null,
+      "config_entries": [
+        "5dfd158a5ce87052d269561d89119d00"
+      ],
+      "configuration_url": null,
+      "connections": [],
+      "disabled": false,
+      "disabled_by": null,
+      "entry_type": null,
+      "hw_version": "1",
+      "id": "6aceb655ee9a1afe006caa26f99ce4e2",
+      "identifiers": "**REDACTED**",
+      "is_new": false,
+      "manufacturer": "Linksys",
+      "model": "MX42",
+      "name": "Utility",
+      "name_by_user": null,
+      "suggested_area": null,
+      "sw_version": "1.0.12.209581",
+      "via_device_id": null
+    },
+    "node": {
+      "_attribs": {
+        "deviceID": "80236f06-e622-faec-9410-e89f80603b3d",
+        "lastChangeRevision": 17892,
+        "model": {
+          "deviceType": "Infrastructure",
+          "manufacturer": "Linksys",
+          "modelNumber": "MX42",
+          "hardwareVersion": "1",
+          "description": "Velop AX4200 WiFi 6 System"
+        },
+        "unit": {
+          "serialNumber": "**REDACTED**",
+          "firmwareVersion": "1.0.12.209581",
+          "firmwareDate": "2021-12-14T10:22:54Z"
+        },
+        "isAuthority": false,
+        "nodeType": "Slave",
+        "isHomeKitSupported": false,
+        "friendlyName": "LINKSYS37866",
+        "knownInterfaces": [
+          {
+            "macAddress": "**REDACTED**",
+            "interfaceType": "Wireless",
+            "band": "5GHz"
+          },
+          {
+            "macAddress": "**REDACTED**",
+            "interfaceType": "Unknown"
+          }
+        ],
+        "connections": [
+          {
+            "macAddress": "**REDACTED**",
+            "ipAddress": "192.168.1.58"
+          }
+        ],
+        "properties": [
+          {
+            "name": "userDeviceLocation",
+            "value": "Utility"
+          },
+          {
+            "name": "userDeviceName",
+            "value": "Utility"
+          }
+        ],
+        "maxAllowedProperties": 16,
+        "results_time": 1661610308,
+        "backhaul": {
+          "deviceUUID": "80236f06-e622-faec-9410-e89f80603b3d",
+          "ipAddress": "192.168.1.58",
+          "parentIPAddress": "192.168.1.254",
+          "connectionType": "Wireless",
+          "wirelessConnectionInfo": {
+            "radioID": "5GH",
+            "channel": 112,
+            "apRSSI": -67,
+            "stationRSSI": -69,
+            "apBSSID": "**REDACTED**",
+            "stationBSSID": "**REDACTED**"
+          },
+          "speedMbps": "205.555",
+          "timestamp": "2022-08-27T14:21:29Z"
+        },
+        "updates": {
+          "deviceUUID": "80236f06-e622-faec-9410-e89f80603b3d",
+          "lastSuccessfulCheckTime": "2022-08-26T13:27:52Z"
+        }
+      },
+      "_MeshDevice__device_id": "80236f06-e622-faec-9410-e89f80603b3d",
+      "_Node__connected_devices": [
+        {
+          "name": "Office - Printer",
+          "ip": "192.168.1.3",
+          "type": "Wireless",
+          "guest_network": false
+        },
+        {
+          "name": "Driveway - Camera",
+          "ip": "192.168.1.42",
+          "type": "Wireless",
+          "guest_network": false
+        },
+        {
+          "name": "Hallway - Nest Thermostat",
+          "ip": "192.168.1.45",
+          "type": "Wireless",
+          "guest_network": false
+        }
+      ],
+      "_Node__parent_name": "Lounge"
+    }
+  }
+}
