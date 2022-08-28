@@ -9,7 +9,7 @@ from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
@@ -96,6 +96,7 @@ async def async_get_device_diagnostics(
     """
     if all(  # check if the device is the Mesh
         [
+            device.entry_type == DeviceEntryType.SERVICE,
             device.manufacturer == PYVELOP_AUTHOR,
             device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
             device.name.lower() == "mesh",

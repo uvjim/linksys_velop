@@ -14,7 +14,7 @@ from homeassistant.config_entries import device_registry as dr
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
@@ -89,6 +89,7 @@ def _get_device_registry_entry(
             for dr_device in my_devices
             if all(
                 [
+                    dr_device.entry_type == DeviceEntryType.SERVICE,
                     dr_device.manufacturer == PYVELOP_AUTHOR,
                     dr_device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
                     dr_device.name.lower() == "mesh",
@@ -564,6 +565,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         # noinspection HttpUrlsUsage
         ret = DeviceInfo(
             configuration_url=f"http://{self._mesh.connected_node}",
+            entry_type=DeviceEntryType.SERVICE,
             identifiers={(DOMAIN, self._config.entry_id)},
             manufacturer=PYVELOP_AUTHOR,
             model=f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
