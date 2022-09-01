@@ -252,6 +252,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             raise UpdateFailed(err) from err
         except Exception as err:
             _LOGGER.debug(log_formatter.format("error type: %s"), type(err))
+            _LOGGER.error(log_formatter.format(err))
             raise UpdateFailed(err) from err
         else:
             # region #-- check for new devices --#
