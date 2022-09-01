@@ -15,7 +15,7 @@
   ],
   "name": "Linksys Velop",
   "requirements": [
-    "pyvelop==2022.8.4"
+    "pyvelop==2022.9.1"
   ],
   "ssdp": [
     {
