@@ -27,9 +27,10 @@
             },
             "timers": {
                 "data": {
+                    "api_request_timeout": "Czas oczekiwania w sekundach na odpowiedź z sieci Mesh",
+                    "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)",
                     "scan_interval": "Interwał skanowania (w sekundach)",
-                    "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)",
-                    "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)"
+                    "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)"
                 },
                 "title": "Linksys Velop",
                 "description": "Ustaw różne timery dla integracji"
