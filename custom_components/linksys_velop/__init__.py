@@ -28,7 +28,7 @@ from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshTimeoutError
+from pyvelop.exceptions import MeshException, MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.node import NODE_TYPE_SECONDARY, Node
 
@@ -219,7 +219,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             log_formatter.format("retrieving existing devices for comparison")
         )
         device: Device
-        previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
+        try:
+            previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
+        except MeshException:
+            previous_devices: Set[str] = {}
 
         # -- get the existing nodes --#
         _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
