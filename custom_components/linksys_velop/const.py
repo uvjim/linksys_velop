@@ -26,6 +26,7 @@ CONF_COORDINATOR_MESH: str = "mesh"
 CONF_DEVICE_TRACKERS: str = "tracked"
 CONF_ENTRY_RELOAD: str = "reloading"
 CONF_FLOW_NAME: str = "name"
+CONF_LOGGING_SERIAL: str = "logging_serial"
 CONF_NODE: str = "node"
 CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
@@ -36,6 +37,7 @@ CONF_UNSUB_UPDATE_LISTENER: str = "unsub_update_listener"
 DEF_API_REQUEST_TIMEOUT: int = 10
 DEF_CONSIDER_HOME: int = 180
 DEF_FLOW_NAME: str = "Linksys Velop Mesh"
+DEF_LOGGING_SERIAL: bool = False
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 

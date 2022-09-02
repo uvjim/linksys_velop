@@ -11,7 +11,13 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.mesh import Mesh
 
-from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
+from .const import (
+    CONF_COORDINATOR,
+    CONF_LOGGING_SERIAL,
+    DEF_LOGGING_SERIAL,
+    DOMAIN,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+)
 from .logger import Logger
 
 # endregion
@@ -81,7 +87,12 @@ class LinksysVelopServiceHandler:
                     entry_id=config_entry_id
                 )
                 if config_entry.domain == DOMAIN:
-                    self._log_formatter = Logger(unique_id=config_entry.unique_id)
+                    if config_entry.options.get(
+                        CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL
+                    ):
+                        self._log_formatter = Logger(unique_id=config_entry.unique_id)
+                    else:
+                        self._log_formatter = Logger()
                     break
             else:
                 config_entry = None
