@@ -303,6 +303,7 @@ still available of you configure them in the underlying HASS config files.
 * `node_images`: the path to the folder location containing the images to
   use for nodes. This is currently used in the card and also for the
   `update` entity, e.g. `/local/velop_nodes` _(the default)_.  This relies on the `http` integration from HASS, details of which can be found [here](https://www.home-assistant.io/integrations/http), and more specifically [here](https://www.home-assistant.io/integrations/http#hosting-files) for the path to place the files in.
+* `logging_serial`: setting this to `true` will make the serial number of the primary node appear in the logs. This will be useful if there a multiple instances of the integration configured and debug logs are enabled. _(defaults to false)_
 
 ## Troubleshooting
 
