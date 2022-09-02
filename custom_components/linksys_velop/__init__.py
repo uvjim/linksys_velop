@@ -38,11 +38,13 @@ from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
     CONF_ENTRY_RELOAD,
+    CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
     DEF_API_REQUEST_TIMEOUT,
+    DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
@@ -165,7 +167,10 @@ async def async_remove_config_entry_device(
 
     Do not allow the Mesh device to be removed
     """
-    log_formatter = Logger(unique_id=config_entry.unique_id)
+    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        log_formatter = Logger(unique_id=config_entry.unique_id)
+    else:
+        log_formatter = Logger()
 
     if all(
         [  # check for Mesh device
@@ -184,7 +189,11 @@ async def async_remove_config_entry_device(
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Create a config entry."""
-    log_formatter = Logger(unique_id=config_entry.unique_id)
+    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        log_formatter = Logger(unique_id=config_entry.unique_id)
+    else:
+        log_formatter = Logger()
+
     _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- prepare the memory storage --#
@@ -409,10 +418,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         return mesh
 
     _LOGGER.debug(log_formatter.format("setting up the coordinator"))
+    coordinator_name = DOMAIN
+    if getattr(log_formatter, "_unique_id"):
+        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
     coordinator = DataUpdateCoordinator(
         hass=hass,
         logger=_LOGGER,
-        name=f"{DOMAIN} ({getattr(log_formatter, '_unique_id')})",
+        name=coordinator_name,
         update_interval=timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL]),
         update_method=_async_get_mesh_data,
     )
@@ -483,7 +495,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Cleanup when unloading a config entry."""
-    log_formatter = Logger(unique_id=config_entry.unique_id)
+    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        log_formatter = Logger(unique_id=config_entry.unique_id)
+    else:
+        log_formatter = Logger()
+
     _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- unsubscribe from listening for updates --#
@@ -675,10 +691,16 @@ def entity_cleanup(
     hass: HomeAssistant,
 ):
     """Remove entities from the registry if they are no longer needed."""
-    log_formatter = Logger(
-        unique_id=config_entry.unique_id,
-        prefix=f"{entities[0].__class__.__name__} --> ",
-    )
+    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        log_formatter = Logger(
+            unique_id=config_entry.unique_id,
+            prefix=f"{entities[0].__class__.__name__} --> ",
+        )
+    else:
+        log_formatter = Logger(
+            prefix=f"{entities[0].__class__.__name__} --> ",
+        )
+
     _LOGGER.debug(log_formatter.format("entered"))
 
     entity_registry: er.EntityRegistry = er.async_get(hass=hass)

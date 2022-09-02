@@ -37,7 +37,9 @@ from . import _get_device_registry_entry
 from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
+    CONF_LOGGING_SERIAL,
     DEF_CONSIDER_HOME,
+    DEF_LOGGING_SERIAL,
     DOMAIN,
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
@@ -76,7 +78,10 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
         self._config: ConfigEntry = config_entry
         self._listener_consider_home: Optional[Callable] = None
-        self._log_formatter: Logger = Logger(unique_id=self._config.unique_id)
+        if self._config.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+            self._log_formatter: Logger = Logger(unique_id=self._config.unique_id)
+        else:
+            self._log_formatter: Logger = Logger()
         self._device: Optional[Device] = None
         self._hass: HomeAssistant = hass
         self._ip: str = ""
