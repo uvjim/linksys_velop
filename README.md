@@ -301,6 +301,9 @@ It is possible to configure the following options for the integration.
 ![Configure Logging](images/config_logging.png)
 
 - `Include the serial number in debug logs`: setting this will make the serial number of the primary node appear in the debug logs. This will be useful if there a multiple instances of the integration configured. _(defaults to off)_
+- `Logging mode` - this setting has no effect if logging for the integration is configured in `configuration.yaml`
+  - `off`: disable debug logging
+  - `Single poll`: only enable debug logging for a single poll requesting information from the Mesh.
 
 ## Advanced Options
 
@@ -314,6 +317,10 @@ still available of you configure them in the underlying HASS config files.
 ## Troubleshooting
 
 ### Debug Logging
+
+> This way of logging is most useful if there is an intermitent problem as it will continue logging until it is disabled again.
+
+If your intention is only to log a single request because the issue is repeatable then see [here](#logging)
 
 Debug logging can be enabled in Home Assistant using the `logger`
 integration see [here](https://www.home-assistant.io/integrations/logger/).
@@ -329,11 +336,9 @@ logger:
 ### Diagnostics Integration
 
 Starting with Home Assistant 2022.2 a new diagnostics integration can be
-used to provide troubleshooting for integrations. This integration supports
-that as of version `2021.1.3`.
+used to provide troubleshooting for integrations. This integration supports that as of version `2021.1.3`.
 
-The highlighted area in the image below shows where the link for downloading
-diagnostics can be found.
+The highlighted area in the image below shows where the link for downloading diagnostics can be found.
 
 ![Diagnostics link](images/diagnostics.png)
 
