@@ -23,6 +23,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 * [Configurable Options](https://github.com/uvjim/linksys_velop#configurable-options)
   * [Timers](https://github.com/uvjim/linksys_velop#timers)
   * [Device Trackers](https://github.com/uvjim/linksys_velop#device-trackers-1)
+  * [Logging](https://github.com/uvjim/linksys_velop#logging)
 * [Advanced Options](https://github.com/uvjim/linksys_velop#advanced-options)
 * [Troubleshooting](https://github.com/uvjim/linksys_velop#troubleshooting)
   * [Debug Logging](https://github.com/uvjim/linksys_velop#debug-logging)
