@@ -4,37 +4,37 @@
 Home Assistant integration for the Linksys Velop Wi-Fi system.
 
 ## Table of Contents
-* [Description](https://github.com/uvjim/linksys_velop#description)
-  * [Definitions](https://github.com/uvjim/linksys_velop#definitions)
-  * [Entities Provided](https://github.com/uvjim/linksys_velop#entities-provided)
-    * [Binary Sensors](https://github.com/uvjim/linksys_velop#binary-sensors)
-    * [Buttons](https://github.com/uvjim/linksys_velop#buttons)
-    * [Device Trackers](https://github.com/uvjim/linksys_velop#device-trackers)
-    * [Select](https://github.com/uvjim/linksys_velop#select)
-    * [Sensors](https://github.com/uvjim/linksys_velop#sensors)
-    * [Switches](https://github.com/uvjim/linksys_velop#switches)
-    * [Update](https://github.com/uvjim/linksys_velop#update-only-if-hass--202240)
-  * [Events Fired](https://github.com/uvjim/linksys_velop#events-fired)
-    * [linksys_velop_new_device_on_mesh](https://github.com/uvjim/linksys_velop#linksys_velop_new_device_on_mesh)
-    * [linksys_velop_new_node_on_mesh](https://github.com/uvjim/linksys_velop#linksys_velop_new_node_on_mesh)
-    * [linksys_velop_new_primary_node](https://github.com/uvjim/linksys_velop#linksys_velop_new_primary_node)
-  * [Services](https://github.com/uvjim/linksys_velop#services)
-* [Setup](https://github.com/uvjim/linksys_velop#setup)
-* [Configurable Options](https://github.com/uvjim/linksys_velop#configurable-options)
-  * [Timers](https://github.com/uvjim/linksys_velop#timers)
-  * [Device Trackers](https://github.com/uvjim/linksys_velop#device-trackers-1)
-  * [Logging](https://github.com/uvjim/linksys_velop#logging)
-* [Advanced Options](https://github.com/uvjim/linksys_velop#advanced-options)
-* [Troubleshooting](https://github.com/uvjim/linksys_velop#troubleshooting)
-  * [Debug Logging](https://github.com/uvjim/linksys_velop#debug-logging)
-  * [Diagnostics Integration](https://github.com/uvjim/linksys_velop#diagnostics-integration)
-* [Example Lovelace UI](https://github.com/uvjim/linksys_velop#example-lovelace-ui)
-  * [Main UI](https://github.com/uvjim/linksys_velop#main-ui)
-    * [Card 1](https://github.com/uvjim/linksys_velop#card-1)
-    * [Card 2](https://github.com/uvjim/linksys_velop#card-2)
-    * [Card 3](https://github.com/uvjim/linksys_velop#card-3)
-  * [Using the Select Entity](https://github.com/uvjim/linksys_velop#using-the-select-entity)
-* [Example Automations](https://github.com/uvjim/linksys_velop#example-automations)
+* [Description](#description)
+  * [Definitions](#definitions)
+  * [Entities Provided](#entities-provided)
+    * [Binary Sensors](#binary-sensors)
+    * [Buttons](#buttons)
+    * [Device Trackers](#device-trackers)
+    * [Select](#select)
+    * [Sensors](#sensors)
+    * [Switches](#switches)
+    * [Update](#update-only-if-hass--202240)
+  * [Events Fired](#events-fired)
+    * [linksys_velop_new_device_on_mesh](#linksys_velop_new_device_on_mesh)
+    * [linksys_velop_new_node_on_mesh](#linksys_velop_new_node_on_mesh)
+    * [linksys_velop_new_primary_node](#linksys_velop_new_primary_node)
+  * [Services](#services)
+* [Setup](#setup)
+* [Configurable Options](#configurable-options)
+  * [Timers](#timers)
+  * [Device Trackers](#device-trackers-1)
+  * [Logging](#logging)
+* [Advanced Options](#advanced-options)
+* [Troubleshooting](#troubleshooting)
+  * [Debug Logging](#debug-logging)
+  * [Diagnostics Integration](#diagnostics-integration)
+* [Example Lovelace UI](#example-lovelace-ui)
+  * [Main UI](#main-ui)
+    * [Card 1](#card-1)
+    * [Card 2](#card-2)
+    * [Card 3](#card-3)
+  * [Using the Select Entity](#using-the-select-entity)
+* [Example Automations](#example-automations)
 
 ## Description
 
@@ -122,6 +122,25 @@ install time and from reconfiguring the integration.
   - includes current and latest firmware versions
 
 ### Events Fired
+
+#### `linksys_velop_logging_stopped`
+
+This event is fired when logging was turned on in the configurable options
+(see [here](#logging)) and has stopped.
+
+The event looks as follows: -
+
+```json
+event_type: linksys_velop_logging_stopped
+data:
+  name: 192.168.1.254
+origin: LOCAL
+time_fired: "2022-09-03T16:42:40.065730+00:00"
+context:
+  id: 01GC23Q821F2BRE6XXKZEY6RP7
+  parent_id: null
+  user_id: null
+```
 
 #### `linksys_velop_new_device_on_mesh`
 
@@ -319,8 +338,7 @@ still available of you configure them in the underlying HASS config files.
 ### Debug Logging
 
 > This way of logging is most useful if there is an intermitent problem as it will continue logging until it is disabled again.
-
-If your intention is only to log a single request because the issue is repeatable then see [here](#logging)
+If your intention is only to log a single request because the issue is repeatable then see [here](#logging).
 
 Debug logging can be enabled in Home Assistant using the `logger`
 integration see [here](https://www.home-assistant.io/integrations/logger/).
@@ -1372,6 +1390,10 @@ generic or even done in a better way but these are for example purposes only.
 <details>
   <summary>Notify when a brand-new device comes onto the Mesh</summary>
 
+This will create a notification that looks like the following screenshot.
+
+![new device on mesh](images/linksys_velop_new_device_on_mesh.png)
+
 ```yaml
 alias: 'Notify: New Device on Mesh'
 description: ''
@@ -1429,13 +1451,14 @@ action:
 mode: parallel
 ````
 
-This will create a notification that looks like the following screenshot.
-
-![new device on mesh](images/linksys_velop_new_device_on_mesh.png)
 </details>
 
 <details>
   <summary>Notify when a new node comes onto the Mesh</summary>
+
+This will create a notification that looks like this: -
+
+![new node on mesh](images/linksys_velop_new_node_on_mesh.png)
 
 ```yaml
 alias: New Automation
@@ -1469,17 +1492,14 @@ action:
 mode: single
 ```
 
-This will create a notification that looks like this: -
-
-![new node on mesh](images/linksys_velop_new_node_on_mesh.png)
 </details>
 
 <details>
   <summary>Notify on events</summary>
 
 ```yaml
-alias: 'Notify: Velop Information'
-description: ''
+alias: "Notify: Velop Information"
+description: ""
 trigger:
   - platform: event
     event_type: linksys_velop_new_device_on_mesh
@@ -1491,61 +1511,83 @@ trigger:
     event_type: linksys_velop_new_primary_node
     event_data: {}
     id: Primary Node Changed
+  - platform: event
+    event_type: linksys_velop_logging_stopped
+    id: Logging Stopped
 condition: []
 action:
-  - service: persistent_notification.create
-    data:
-      notification_id: >-
-        {{ trigger.event.event_type }}_{{ trigger.event.data.get('unique_id') or
-        trigger.event.data.get('serial') }}
-      title: Linksys Velop - {{ trigger.id }}
-      message: >-
-        {% if trigger.event.data.get('name') is not none %}
-          ## {{ trigger.event.data.name }}
-        {% endif %}
+  - variables:
+      title_prefix: "Linksys Velop - "
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id in [\"Logging Stopped\"] }}"
+    then:
+      - variables:
+          notification_id: logging_stopped
+          message: Logging has stopped for {{ trigger.event.data.get('name') }}
+      - service: persistent_notification.create
+        data:
+          notification_id: "{{ notification_id }}"
+          title: "{{ title_prefix }}{{ trigger.id }}"
+          message: "{{ message }}"
+    else:
+      - variables:
+          notification_id: >-
+            {{ trigger.event.event_type }}_{{
+            trigger.event.data.get('unique_id') or
+            trigger.event.data.get('serial') }}
+          message: >-
+            {% if trigger.event.data.get('name') is not none %}
+              ## {{ trigger.event.data.name }}
+            {% endif %}
 
-        |   |   |   |
+            |   |   |   |
 
-        |---|---|---| {% if trigger.event.data.get('mesh_device_id') is not none
-        %}
+            |---|---|---| {% if trigger.event.data.get('mesh_device_id') is not
+            none %}
 
-        |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
-        'name_by_user') or device_attr(trigger.event.data.mesh_device_id,
-        'name') }}| {% endif %} {% if trigger.event.data.get('parent_name') is
-        not none %}
+            |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
+            'name_by_user') or device_attr(trigger.event.data.mesh_device_id,
+            'name') }}| {% endif %} {% if trigger.event.data.get('parent_name')
+            is not none %}
 
-        |Parent:|&emsp;|{{ trigger.event.data.parent_name }}| {% endif %} {% if
-        trigger.event.data.get('host') is not none %}
+            |Parent:|&emsp;|{{ trigger.event.data.parent_name }}| {% endif %} {%
+            if trigger.event.data.get('host') is not none %}
 
-        |Host:|&emsp;|{{ trigger.event.data.host }}| {% endif %} {% if
-        trigger.event.data.get('connected_adapters') is not none and
-        trigger.event.data.get('connected_adapters') | count > 0 %}
+            |Host:|&emsp;|{{ trigger.event.data.host }}| {% endif %} {% if
+            trigger.event.data.get('connected_adapters') is not none and
+            trigger.event.data.get('connected_adapters') | count > 0 %}
 
-        |Guest:|&emsp;|{{ 'Yes' if
-        trigger.event.data.connected_adapters[0].get('guest_network', False) is
-        eq true else 'No' }}|
+            |Guest:|&emsp;|{{ 'Yes' if
+            trigger.event.data.connected_adapters[0].get('guest_network', False)
+            is eq true else 'No' }}|
 
-        |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip', 'N/A')
-        }}|
+            |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip',
+            'N/A') }}|
 
-        |MAC:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('mac',
-        'N/A') }}| {% endif %} {% if trigger.event.data.get('description') is
-        not none %}
+            |MAC:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('mac',
+            'N/A') }}| {% endif %} {% if trigger.event.data.get('description')
+            is not none %}
 
-        |Description:|&emsp;|{{ trigger.event.data.description }}| {% endif %}
-        {% if trigger.event.data.get('manufacturer') is not none %}
+            |Description:|&emsp;|{{ trigger.event.data.description }}| {% endif
+            %} {% if trigger.event.data.get('manufacturer') is not none %}
 
-        |Manufacturer:|&emsp;|{{ trigger.event.data.manufacturer }}| {% endif %}
-        {% if trigger.event.data.get('model') is not none %}
+            |Manufacturer:|&emsp;|{{ trigger.event.data.manufacturer }}| {%
+            endif %} {% if trigger.event.data.get('model') is not none %}
 
-        |Model:|&emsp;|{{ trigger.event.data.model }}| {% endif %} {% if
-        trigger.event.data.get('serial') is not none %}
+            |Model:|&emsp;|{{ trigger.event.data.model }}| {% endif %} {% if
+            trigger.event.data.get('serial') is not none %}
 
-        |Serial:|&emsp;|{{ trigger.event.data.serial }}| {% endif %} {% if
-        trigger.event.data.get('operating_system') is not none %}
+            |Serial:|&emsp;|{{ trigger.event.data.serial }}| {% endif %} {% if
+            trigger.event.data.get('operating_system') is not none %}
 
-        |Operating System:|&emsp;|{{ trigger.event.data.operating_system }}| {%
-        endif %}
+            |Operating System:|&emsp;|{{ trigger.event.data.operating_system }}|
+            {% endif %}
+      - service: persistent_notification.create
+        data:
+          notification_id: "{{ notification_id }}"
+          title: "{{ title_prefix }}{{ trigger.id }}"
+          message: "{{ message }}"
 mode: parallel
 ```
 </details>
