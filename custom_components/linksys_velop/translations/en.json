@@ -17,12 +17,11 @@
         },
         "flow_title": "{name}",
         "step": {
-            "user": {
+            "device_trackers": {
                 "data": {
-                    "node": "Primary node address",
-                    "password": "Password"
+                    "tracked": "Available devices"
                 },
-                "description": "Enter the details to connect to the Linksys Velop mesh",
+                "description": "Select the devices you would like to use for presence tracking",
                 "title": "Linksys Velop"
             },
             "timers": {
@@ -32,21 +31,35 @@
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
-                "title": "Linksys Velop",
-                "description": "Set the various timers for the integration"
+                "description": "Set the various timers for the integration",
+                "title": "Linksys Velop"
             },
-            "device_trackers": {
+            "user": {
                 "data": {
-                    "tracked": "Available devices"
+                    "node": "Primary node address",
+                    "password": "Password"
                 },
-                "title": "Linksys Velop",
-                "description": "Select the devices you would like to use for presence tracking"
+                "description": "Enter the details to connect to the Linksys Velop mesh",
+                "title": "Linksys Velop"
             }
         },
         "title": "Linksys Velop"
     },
     "options": {
         "step": {
+            "device_trackers": {
+                "data": {
+                    "tracked": "Available devices"
+                },
+                "description": "Select the devices you would like to use for presence tracking",
+                "title": "Linksys Velop"
+            },
+            "init": {
+                "menu_options": {
+                    "device_trackers": "Device Trackers",
+                    "timers": "Timers"
+                }
+            },
             "timers": {
                 "data": {
                     "api_request_timeout": "Time in seconds to wait for a response from the Mesh",
@@ -54,15 +67,8 @@
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
-                "title": "Linksys Velop",
-                "description": "Set the various timers for the integration"
-            },
-            "device_trackers": {
-                "data": {
-                    "tracked": "Available devices"
-                },
-                "title": "Linksys Velop",
-                "description": "Select the devices you would like to use for presence tracking"
+                "description": "Set the various timers for the integration",
+                "title": "Linksys Velop"
             }
         }
     }

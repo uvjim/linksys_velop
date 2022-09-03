@@ -47,9 +47,10 @@ from .logger import Logger
 
 # endregion
 
+STEP_DEVICE_TRACKERS: str = "device_trackers"
+STEP_INIT: str = "init"
 STEP_USER: str = "user"
 STEP_TIMERS: str = "timers"
-STEP_DEVICE_TRACKERS: str = "device_trackers"
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -515,7 +516,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
         """First Step."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-        return await self.async_step_timers()
+        return self.async_show_menu(
+            step_id=STEP_INIT,
+            menu_options=[STEP_TIMERS, STEP_DEVICE_TRACKERS],
+        )
 
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
         """Manage the timer options available for the integration."""
