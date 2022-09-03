@@ -27,10 +27,12 @@ from pyvelop.exceptions import (
 )
 from pyvelop.mesh import Mesh, Node
 
+from . import async_logging_state
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_FLOW_NAME,
+    CONF_LOGGING_MODE,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
@@ -38,11 +40,13 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_FLOW_NAME,
+    DEF_LOGGING_MODE,
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
     EVENT_NEW_PARENT_NODE,
+    LOGGING_STATES,
     ST_IGD,
 )
 from .logger import Logger
@@ -129,6 +133,10 @@ async def _async_build_schema_with_user_input(
                 CONF_LOGGING_SERIAL,
                 default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
             ): bool,
+            vol.Required(
+                CONF_LOGGING_MODE,
+                default=user_input.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE),
+            ): vol.In(LOGGING_STATES),
         }
 
     return vol.Schema(schema)
@@ -537,6 +545,13 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self._options.update(user_input)
+            if self._options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) == "off":
+                await async_logging_state(
+                    config_entry=self._config_entry,
+                    hass=self.hass,
+                    log_formatter=self._log_formatter,
+                    state=False,
+                )
             return self.async_create_entry(title="", data=self._options)
 
         return self.async_show_form(

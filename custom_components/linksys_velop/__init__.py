@@ -38,18 +38,21 @@ from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
     CONF_ENTRY_RELOAD,
+    CONF_LOGGING_MODE,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
     DEF_API_REQUEST_TIMEOUT,
+    DEF_LOGGING_MODE,
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
     ENTITY_SLUG,
     EVENT_NEW_PARENT_NODE,
+    LOGGING_STATES,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
@@ -61,8 +64,12 @@ from .service_handler import LinksysVelopServiceHandler
 
 _LOGGER = logging.getLogger(__name__)
 
+EVENT_LOGGING_STOPPED: str = f"{DOMAIN}_logging_stopped"
 EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
 EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
+
+LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
+LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
 
 
 def _get_device_registry_entry(
@@ -103,7 +110,10 @@ def _get_device_registry_entry(
 
 
 def build_event_payload(
-    config_entry: ConfigEntry, device: Device | Node, event: str, hass: HomeAssistant
+    config_entry: ConfigEntry,
+    event: str,
+    hass: HomeAssistant,
+    device: Optional[Device | Node] = None,
 ) -> Dict[str, Any]:
     """Build the payload for the fired events."""
     event_properties: List[str] = []
@@ -141,21 +151,56 @@ def build_event_payload(
             "unique_id",
         ]
 
-    ret: Dict[str, Any] = {
-        prop: getattr(device, prop, None) for prop in event_properties
-    }
-    if ret:
-        # region #-- get the mesh device_id --#
-        mesh_details: List[DeviceEntry] = _get_device_registry_entry(
-            config_entry_id=config_entry.entry_id,
-            device_registry=dr.async_get(hass=hass),
-            entry_type="mesh",
-        )
-        if mesh_details:
-            ret["mesh_device_id"] = mesh_details[0].id
-        # endregion
+    if device:
+        ret: Dict[str, Any] = {
+            prop: getattr(device, prop, None) for prop in event_properties
+        }
+        if ret:
+            # region #-- get the mesh device_id --#
+            mesh_details: List[DeviceEntry] = _get_device_registry_entry(
+                config_entry_id=config_entry.entry_id,
+                device_registry=dr.async_get(hass=hass),
+                entry_type="mesh",
+            )
+            if mesh_details:
+                ret["mesh_device_id"] = mesh_details[0].id
+            # endregion
+    else:
+        if event == EVENT_LOGGING_STOPPED:
+            ret = {"name": config_entry.title}
 
     return ret
+
+
+async def async_logging_state(
+    config_entry: ConfigEntry, hass: HomeAssistant, log_formatter: Logger, state: bool
+) -> None:
+    """Turn logging on or off."""
+    logging_level: str = LOGGING_ON if state else LOGGING_OFF
+    _LOGGER.debug(log_formatter.format("setting log state: %s"), logging_level)
+    await hass.services.async_call(
+        blocking=True,
+        domain="logger",
+        service="set_level",
+        service_data={
+            f"custom_components.{DOMAIN}": logging_level,
+            PYVELOP_NAME: logging_level,
+        },
+    )
+    if (
+        not state
+        and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) != "off"
+    ):
+        options: Dict = dict(**config_entry.options)
+        options[CONF_LOGGING_MODE] = "off"
+        hass.config_entries.async_update_entry(entry=config_entry, options=options)
+        if hass.state != CoreState.stopping:
+            hass.bus.async_fire(
+                event_type=EVENT_LOGGING_STOPPED,
+                event_data=build_event_payload(
+                    config_entry=config_entry, event=EVENT_LOGGING_STOPPED, hass=hass
+                ),
+            )
 
 
 async def async_remove_config_entry_device(
@@ -194,7 +239,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     else:
         log_formatter = Logger()
 
+    # region #-- start logging if needed --#
+    logging_mode: bool = config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
+    if logging_mode in LOGGING_STATES and logging_mode != "off":
+        await async_logging_state(
+            config_entry=config_entry,
+            hass=hass,
+            log_formatter=log_formatter,
+            state=True,
+        )
+    # endregion
+
     _LOGGER.debug(log_formatter.format("entered"))
+    _LOGGER.debug(
+        log_formatter.format("logging mode: %s"),
+        logging_mode,
+    )
 
     # region #-- prepare the memory storage --#
     _LOGGER.debug(log_formatter.format("preparing memory storage"))
@@ -432,6 +492,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = coordinator
     # endregion
+
+    if logging_mode == "single":
+        await async_logging_state(
+            config_entry=config_entry,
+            hass=hass,
+            log_formatter=log_formatter,
+            state=False,
+        )
 
     # region #-- setup the platforms --#
     setup_platforms: List[str] = list(filter(None, PLATFORMS))
