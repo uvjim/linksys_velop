@@ -15,6 +15,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
     * [Switches](#switches)
     * [Update](#update-only-if-hass--202240)
   * [Events Fired](#events-fired)
+    * [linksys_velop_logging_stopped](#linksys_velop_logging_stopped)
     * [linksys_velop_new_device_on_mesh](#linksys_velop_new_device_on_mesh)
     * [linksys_velop_new_node_on_mesh](#linksys_velop_new_node_on_mesh)
     * [linksys_velop_new_primary_node](#linksys_velop_new_primary_node)
@@ -130,7 +131,7 @@ This event is fired when logging was turned on in the configurable options
 
 The event looks as follows: -
 
-```json
+```yaml
 event_type: linksys_velop_logging_stopped
 data:
   name: 192.168.1.254
