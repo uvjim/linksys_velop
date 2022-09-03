@@ -58,7 +58,3 @@ SIGNAL_UPDATE_SPEEDTEST_RESULTS: str = "update_speedtest_results"
 SIGNAL_UPDATE_SPEEDTEST_STATUS: str = "update_speedtest_status"
 
 ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
-
-STEP_USER: str = "user"
-STEP_TIMERS: str = "timers"
-STEP_DEVICE_TRACKERS: str = "device_trackers"

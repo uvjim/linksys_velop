@@ -42,13 +42,15 @@ from .const import (
     DOMAIN,
     EVENT_NEW_PARENT_NODE,
     ST_IGD,
-    STEP_DEVICE_TRACKERS,
-    STEP_TIMERS,
-    STEP_USER,
 )
 from .logger import Logger
 
 # endregion
+
+STEP_USER: str = "user"
+STEP_TIMERS: str = "timers"
+STEP_DEVICE_TRACKERS: str = "device_trackers"
+
 
 _LOGGER = logging.getLogger(__name__)
 
