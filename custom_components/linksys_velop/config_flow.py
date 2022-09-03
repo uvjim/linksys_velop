@@ -31,12 +31,14 @@ from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_FLOW_NAME,
+    CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_TITLE_PLACEHOLDERS,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_FLOW_NAME,
+    DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
@@ -49,6 +51,7 @@ from .logger import Logger
 
 STEP_DEVICE_TRACKERS: str = "device_trackers"
 STEP_INIT: str = "init"
+STEP_LOGGING: str = "logging"
 STEP_USER: str = "user"
 STEP_TIMERS: str = "timers"
 
@@ -119,6 +122,13 @@ async def _async_build_schema_with_user_input(
             vol.Optional(CONF_DEVICE_TRACKERS, default=valid_trackers): cv.multi_select(
                 kwargs["multi_select_contents"]
             )
+        }
+    elif step == STEP_LOGGING:
+        schema = {
+            vol.Required(
+                CONF_LOGGING_SERIAL,
+                default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
+            ): bool,
         }
 
     return vol.Schema(schema)
@@ -495,7 +505,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             # endregion
 
             self._options.update(user_input)
-            return self.async_create_entry(title="", data=self._options)
+            return self.async_step_logging()
 
         mesh = Mesh(
             node=self._config_entry.options[CONF_NODE],
@@ -518,7 +528,24 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
         return self.async_show_menu(
             step_id=STEP_INIT,
-            menu_options=[STEP_TIMERS, STEP_DEVICE_TRACKERS],
+            menu_options=[STEP_TIMERS, STEP_DEVICE_TRACKERS, STEP_LOGGING],
+        )
+
+    async def async_step_logging(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Manage settings for logging."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            self._options.update(user_input)
+            return self.async_create_entry(title="", data=self._options)
+
+        return self.async_show_form(
+            step_id=STEP_LOGGING,
+            data_schema=await _async_build_schema_with_user_input(
+                STEP_LOGGING, self._options
+            ),
+            errors=self._errors,
+            last_step=False,
         )
 
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:

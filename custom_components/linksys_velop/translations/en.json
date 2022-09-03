@@ -57,8 +57,16 @@
             "init": {
                 "menu_options": {
                     "device_trackers": "Device Trackers",
+                    "logging": "Logging",
                     "timers": "Timers"
                 }
+            },
+            "logging": {
+                "data": {
+                    "logging_serial": "Include the serial number in debug logs"
+                },
+                "description": "Configure logging details",
+                "title": "Linksys Velop"
             },
             "timers": {
                 "data": {
