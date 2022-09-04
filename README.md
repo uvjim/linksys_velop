@@ -4,6 +4,7 @@
 Home Assistant integration for the Linksys Velop Wi-Fi system.
 
 ## Table of Contents
+
 * [Description](#description)
   * [Definitions](#definitions)
   * [Entities Provided](#entities-provided)
@@ -44,30 +45,31 @@ access to the functions that would be useful in the Home Assistant environment.
 
 ### Definitions
 
-- _Mesh_: the mesh is the network itself and refers to anything that is not
+* _Mesh_: the mesh is the network itself and refers to anything that is not
   attributed to a single node or device in  the network.
-- _Node_: a node is a device that helps to form the mesh.
-- _Device_: a device is an endpoint that connects to the mesh network. Think
+* _Node_: a node is a device that helps to form the mesh.
+* _Device_: a device is an endpoint that connects to the mesh network. Think
   of these as the endpoint devices, such as a laptop, phone or tablet.
 
 ### Entities Provided
+
 Where applicable the sub-items in the list detail the additional attributes
 available.
 
 #### Binary Sensors
 
-- Mesh: Speedtest state
-  - current stage of the Speedtest, e.g. Detecting server, Checking latency
-- Mesh: WAN Status
-  - IP, DNS, MAC
-- Node: Status
-  - IP, MAC, guest network
-- Node: Update Available (only if HASS < 2022.4.0)
+* Mesh: Speedtest state
+  * current stage of the Speedtest, e.g. Detecting server, Checking latency
+* Mesh: WAN Status
+  * IP, DNS, MAC
+* Node: Status
+  * IP, MAC, guest network
+* Node: Update Available (only if HASS < 2022.4.0)
 
 #### Buttons
 
-- Mesh: Check for Updates
-- Node: Reboot
+* Mesh: Check for Updates
+* Node: Reboot
 
 #### Device Trackers
 
@@ -76,51 +78,52 @@ install time and from reconfiguring the integration.
 
 #### Select
 
-- Mesh: Devices *(disabled by default)*
-  - Once a device is selected the attributes will be updated to reflect the
+* Mesh: Devices _(disabled by default)_
+  * Once a device is selected the attributes will be updated to reflect the
     following: connected adapters, description, manufacturer, model, name,
     operating_system, parent name, serial, status and unique_id
 
 #### Sensors
 
-- Mesh: Number of Offline Devices
-  - list of device objects containing names and unique ID of devices that are
+* Mesh: Number of Offline Devices
+  * list of device objects containing names and unique ID of devices that are
     offline
-- Mesh: Number of Online Devices
-  - list of device objects containing names, unique IDs, IP addresses, adapter
+* Mesh: Number of Online Devices
+  * list of device objects containing names, unique IDs, IP addresses, adapter
     types and guest network state for the online devices
-- Mesh: Number of Guest Devices *(disabled by default)*
-  - list of device names, IP addresses, adapter types etc
-- Mesh: Date of Latest Speedtest
-  - Exit code, Latency, Download/Upload bandwidth, Result ID
-- Mesh: Number of Available Storage Partitions *(disabled by default)*
-  - list of the available partitions including the following information: IP,
+* Mesh: Number of Guest Devices _(disabled by default)_
+  * list of device names, IP addresses, adapter types etc
+* Mesh: Date of Latest Speedtest
+  * Exit code, Latency, Download/Upload bandwidth, Result ID
+* Mesh: Number of Available Storage Partitions _(disabled by default)_
+  * list of the available partitions including the following information: IP,
     label, available Kb, used Kb, used %age and last checked time
-- Node: Number of Connected Devices
-  - list of names, IP addresses, type of connection and guest network state for
+* Node: Number of Connected Devices
+  * list of names, IP addresses, type of connection and guest network state for
     the connected devices
-- Node: Backhaul (RSSI value in dBm)
-  - backhaul information (connection type, speed in Mbps, last checked time and textual representation of RSSI)
-- Node: Current Firmware Version (only if HASS < 2022.4.0)
-- Node: Last Update Check *(disabled by default)*
-- Node: Model Number
-- Node: Newest Firmware Version (only if HASS < 2022.4.0)
-- Node: Parent Name
-  - IP address of the parent
-- Node: Serial Number
-- Node: Type of Node, e.g. Primary Secondary
+* Node: Backhaul (RSSI value in dBm)
+  * backhaul information (connection type, speed in Mbps, last checked time and
+  textual representation of RSSI)
+* Node: Current Firmware Version (only if HASS < 2022.4.0)
+* Node: Last Update Check _(disabled by default)_
+* Node: Model Number
+* Node: Newest Firmware Version (only if HASS < 2022.4.0)
+* Node: Parent Name
+  * IP address of the parent
+* Node: Serial Number
+* Node: Type of Node, e.g. Primary Secondary
 
 #### Switches
 
-- Mesh: Guest Wi-Fi state
-  - list of guest networks available
-- Mesh: Parental Control state
-  - list of the rules being applied
+* Mesh: Guest Wi-Fi state
+  * list of guest networks available
+* Mesh: Parental Control state
+  * list of the rules being applied
 
 #### Update (only if HASS > 2022.4.0)
 
-- Node: Firmware update available.
-  - includes current and latest firmware versions
+* Node: Firmware update available.
+  * includes current and latest firmware versions
 
 ### Events Fired
 
@@ -267,10 +270,10 @@ node is changed.
 The following services are available.  Each service is described in metadata
 so paramters are described in the Home Assistant Services page.
 
-- Check for Updates
-- Delete Device
-- Execute Speedtest &ast;
-- Reboot Node
+* Check for Updates
+* Delete Device
+* Execute Speedtest &ast;
+* Reboot Node
 
 > &ast; these are considered long-running tasks. When the binary sensors spot
   these tasks are running an additional timer is set up that polls every
@@ -282,8 +285,8 @@ When setting up the integration you will be asked for the following information.
 
 ![Initial Setup Screen](images/setup_user.png)
 
-- `Primary node address`: must be the node classed as the primary node
-- `Password`: the password you would use to log in to the router. This may
+* `Primary node address`: must be the node classed as the primary node
+* `Password`: the password you would use to log in to the router. This may
   not be the same as the password for the application or web UI if you use
   the Linksys cloud service.
 
@@ -300,19 +303,19 @@ It is possible to configure the following options for the integration.
 
 ![Configure Timers](images/config_timers.png)
 
-- `Scan Interval`: the frequency of updates for the sensors, default `30s`
-- `Device Tracker Interval`: the frequency of updates for the device
+* `Scan Interval`: the frequency of updates for the sensors, default `30s`
+* `Device Tracker Interval`: the frequency of updates for the device
   trackers, default `10s`
-- `Consider Home Period`: the time to wait before considering a device away
+* `Consider Home Period`: the time to wait before considering a device away
   after it notifies of becoming disconnected, default `180s`
-- `Response Timeout`: the number of seconds to wait for a response from
+* `Response Timeout`: the number of seconds to wait for a response from
   an individual request to the API
 
 ### Device Trackers
 
 ![Configure Device Trackers](images/config_device_trackers.png)
 
-- `Available devices`: a multi-select list of the devices found on the mesh.
+* `Available devices`: a multi-select list of the devices found on the mesh.
   This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
 
@@ -320,21 +323,21 @@ It is possible to configure the following options for the integration.
 
 ![Configure Logging](images/config_logging.png)
 
-- `Include the serial number in debug logs`: setting this will make the serial
+* `Include the serial number in debug logs`: setting this will make the serial
 number of the primary node appear in the debug logs. This will be useful if
 there a multiple instances of the integration configured. _(defaults to off)_
-- `Include query responses in logs`: setting this will cause the debug logs to
+* `Include query responses in logs`: setting this will cause the debug logs to
 include the responses to the queries. This could drastically increase the size
 of your logs depending on the number of devices you have connected to the mesh.
 
-  > __N.B.__ there is no redaction on the responses as much of the response will
+  > **N.B.** there is no redaction on the responses as much of the response will
   be required for troubleshooting. Using [diagnostics](#diagnostics-integration)
   a pre-processed and redacted version can be downloaded for the mesh or a node.
   _(defaults to off)_
-- `Logging mode` - this setting has no effect if logging for the integration is
+* `Logging mode` - this setting has no effect if logging for the integration is
 configured in `configuration.yaml`
-  - `off`: disable debug logging
-  - `Single poll`: only enable debug logging for a single poll requesting
+  * `off`: disable debug logging
+  * `Single poll`: only enable debug logging for a single poll requesting
   information from the Mesh.
 
 ## Advanced Options
@@ -354,8 +357,9 @@ still available of you configure them in the underlying HASS config files.
 
 ### Debug Logging
 
-> This way of logging is most useful if there is an intermitent problem as it will continue logging until it is disabled again.
-If your intention is only to log a single request because the issue is repeatable then see [here](#logging).
+> This way of logging is most useful if there is an intermitent problem as it
+will continue logging until it is disabled again. If your intention is only to
+log a single request because the issue is repeatable then see [here](#logging).
 
 Debug logging can be enabled in Home Assistant using the `logger`
 integration see [here](https://www.home-assistant.io/integrations/logger/).
@@ -371,9 +375,11 @@ logger:
 ### Diagnostics Integration
 
 Starting with Home Assistant 2022.2 a new diagnostics integration can be
-used to provide troubleshooting for integrations. This integration supports that as of version `2021.1.3`.
+used to provide troubleshooting for integrations. This integration supports that
+as of version `2021.1.3`.
 
-The highlighted area in the image below shows where the link for downloading diagnostics can be found.
+The highlighted area in the image below shows where the link for downloading
+diagnostics can be found.
 
 ![Diagnostics link](images/diagnostics.png)
 
@@ -390,7 +396,7 @@ Example output: -
 |:---:|:---:|
 | ![Lovelace Dark UI](images/lovelace_dark.png) | ![Lovelace Light UI](images/lovelace_light.png) |
 
-*Some items of detail have been pixelated for privacy purposes.*
+_Some items of detail have been pixelated for privacy purposes._
 
 The view consists of 3 main cards.  These are detailed below.
 
@@ -403,8 +409,8 @@ This card is used mainly to work around a limitation in Button Card documented
 
 The following custom cards are required for this part of the view.
 
-- [Button Card](https://github.com/custom-cards/button-card)
-- [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+* [Button Card](https://github.com/custom-cards/button-card)
+* [card-mod](https://github.com/thomasloven/lovelace-card-mod)
 
 <details>
   <summary>YAML for the card</summary>
@@ -416,6 +422,7 @@ card_mod:
   style: |
     :host { display: none !important; }
 ```
+
 </details>
 
 ### Card 2
@@ -424,11 +431,11 @@ This card creates the Mesh part of the view.
 
 #### Pre-requisites
 
-- [Button Card](https://github.com/custom-cards/button-card)
-- [card-mod](https://github.com/thomasloven/lovelace-card-mod)
-- [fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
-- [hui-element](https://github.com/thomasloven/lovelace-hui-element)
-- [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
+* [Button Card](https://github.com/custom-cards/button-card)
+* [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+* [fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
+* [hui-element](https://github.com/thomasloven/lovelace-hui-element)
+* [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
 
 <details>
   <summary>YAML for the card</summary>
@@ -782,6 +789,7 @@ filter:
 
                       {% endfor %}
 ```
+
 </details>
 
 ### Card 3
@@ -790,13 +798,13 @@ This card creates the Node part of the view.
 
 #### Pre-requisites
 
-- [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
-- [Button Card](https://github.com/custom-cards/button-card)
-- [card-mod](https://github.com/thomasloven/lovelace-card-mod)
-- [Config Template Card](https://github.com/thomasloven/lovelace-hui-element)
-- [fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
-- [hui-element](https://github.com/thomasloven/lovelace-hui-element)
-- [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
+* [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
+* [Button Card](https://github.com/custom-cards/button-card)
+* [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+* [Config Template Card](https://github.com/thomasloven/lovelace-hui-element)
+* [fold-entity-row](https://github.com/thomasloven/lovelace-fold-entity-row)
+* [hui-element](https://github.com/thomasloven/lovelace-hui-element)
+* [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
 
 <details>
   <summary>YAML for the card</summary>
@@ -1095,6 +1103,7 @@ filter:
 
                         thead tr th, tbody tr td { padding: 4px 10px; }
 ```
+
 </details>
 
 ## Using the Select Entity
@@ -1105,10 +1114,10 @@ This card allows you to select a device and see details about it.
 
 ### Pre-requisites
 
-- [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
-- [card-mod](https://github.com/thomasloven/lovelace-card-mod)
-- [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
-- [state-switch](https://github.com/thomasloven/lovelace-state-switch)
+* [auto-entities](https://github.com/thomasloven/lovelace-auto-entities)
+* [card-mod](https://github.com/thomasloven/lovelace-card-mod)
+* [template-entity-row](https://github.com/thomasloven/lovelace-template-entity-row)
+* [state-switch](https://github.com/thomasloven/lovelace-state-switch)
 
 <details>
   <summary>YAML for the card</summary>
@@ -1358,6 +1367,7 @@ filter:
                       ha-card { border-radius: 0px; box-shadow: none; }
                       ha-markdown { padding: 0px !important; }
 ```
+
 </details>
 
 # Example Automations
@@ -1402,6 +1412,7 @@ generic or even done in a better way but these are for example purposes only.
       default: []
   mode: single
   ```
+
 </details>
 
 <details>
@@ -1607,4 +1618,5 @@ action:
           message: "{{ message }}"
 mode: parallel
 ```
+
 </details>
