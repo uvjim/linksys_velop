@@ -38,6 +38,7 @@ from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
     CONF_ENTRY_RELOAD,
+    CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
@@ -45,6 +46,7 @@ from .const import (
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
     DEF_API_REQUEST_TIMEOUT,
+    DEF_LOGGING_JNAP_RESPONSE,
     DEF_LOGGING_MODE,
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
@@ -70,6 +72,7 @@ EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
 
 LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
 LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
+LOGGING_REVERT: str = logging.getLevelName(logging.getLogger("").level)
 
 
 def _get_device_registry_entry(
@@ -177,7 +180,18 @@ async def async_logging_state(
 ) -> None:
     """Turn logging on or off."""
     logging_level: str = LOGGING_ON if state else LOGGING_OFF
-    _LOGGER.debug(log_formatter.format("setting log state: %s"), logging_level)
+    if logging_level == LOGGING_ON and config_entry.options.get(
+        CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
+    ):
+        logging_level_jnap_response: str = LOGGING_ON
+    else:
+        logging_level_jnap_response: str = LOGGING_REVERT
+    if not state:
+        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
+        _LOGGER.debug(
+            log_formatter.format("JNAP response log state: %s"),
+            logging_level_jnap_response,
+        )
     await hass.services.async_call(
         blocking=True,
         domain="logger",
@@ -185,7 +199,13 @@ async def async_logging_state(
         service_data={
             f"custom_components.{DOMAIN}": logging_level,
             PYVELOP_NAME: logging_level,
+            f"{PYVELOP_NAME}.jnap.verbose": logging_level_jnap_response,
         },
+    )
+    _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
+    _LOGGER.debug(
+        log_formatter.format("JNAP response log state: %s"),
+        logging_level_jnap_response,
     )
     if (
         not state

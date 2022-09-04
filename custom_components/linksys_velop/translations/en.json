@@ -63,8 +63,9 @@
             },
             "logging": {
                 "data": {
-                    "logging_serial": "Include the serial number in debug logs",
-                    "logging_mode": "Logging mode"
+                    "logging_mode": "Logging mode",
+                    "logging_jnap_response": "Include query responses in debug logs",
+                    "logging_serial": "Include the serial number in debug logs"
                 },
                 "description": "Configure logging details and state\n\n_The mode setting has no effect if logging for the integration is defined in configuration.yaml_",
                 "title": "Linksys Velop"
