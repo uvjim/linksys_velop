@@ -320,10 +320,22 @@ It is possible to configure the following options for the integration.
 
 ![Configure Logging](images/config_logging.png)
 
-- `Include the serial number in debug logs`: setting this will make the serial number of the primary node appear in the debug logs. This will be useful if there a multiple instances of the integration configured. _(defaults to off)_
-- `Logging mode` - this setting has no effect if logging for the integration is configured in `configuration.yaml`
+- `Include the serial number in debug logs`: setting this will make the serial
+number of the primary node appear in the debug logs. This will be useful if
+there a multiple instances of the integration configured. _(defaults to off)_
+- `Include query responses in logs`: setting this will cause the debug logs to
+include the responses to the queries. This could drastically increase the size
+of your logs depending on the number of devices you have connected to the mesh.
+
+  > __N.B.__ there is no redaction on the responses as much of the response will
+  be required for troubleshooting. Using [diagnostics](#diagnostics-integration)
+  a pre-processed and redacted version can be downloaded for the mesh or a node.
+  _(defaults to off)_
+- `Logging mode` - this setting has no effect if logging for the integration is
+configured in `configuration.yaml`
   - `off`: disable debug logging
-  - `Single poll`: only enable debug logging for a single poll requesting information from the Mesh.
+  - `Single poll`: only enable debug logging for a single poll requesting
+  information from the Mesh.
 
 ## Advanced Options
 
@@ -332,7 +344,11 @@ still available of you configure them in the underlying HASS config files.
 
 * `node_images`: the path to the folder location containing the images to
   use for nodes. This is currently used in the card and also for the
-  `update` entity, e.g. `/local/velop_nodes` _(the default)_.  This relies on the `http` integration from HASS, details of which can be found [here](https://www.home-assistant.io/integrations/http), and more specifically [here](https://www.home-assistant.io/integrations/http#hosting-files) for the path to place the files in.
+  `update` entity, e.g. `/local/velop_nodes` _(the default)_.  This relies on
+  the `http` integration from HASS, details of which can be found
+  [here](https://www.home-assistant.io/integrations/http), and more specifically
+  [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
+  path to place the files in.
 
 ## Troubleshooting
 
