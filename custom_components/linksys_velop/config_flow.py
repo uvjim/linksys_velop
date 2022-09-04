@@ -32,6 +32,7 @@ from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_FLOW_NAME,
+    CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
@@ -40,6 +41,7 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_FLOW_NAME,
+    DEF_LOGGING_JNAP_RESPONSE,
     DEF_LOGGING_MODE,
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
@@ -132,6 +134,12 @@ async def _async_build_schema_with_user_input(
             vol.Required(
                 CONF_LOGGING_SERIAL,
                 default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
+            ): bool,
+            vol.Required(
+                CONF_LOGGING_JNAP_RESPONSE,
+                default=user_input.get(
+                    CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
+                ),
             ): bool,
             vol.Required(
                 CONF_LOGGING_MODE,
