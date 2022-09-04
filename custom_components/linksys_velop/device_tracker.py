@@ -159,6 +159,9 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             return
 
         dr_mesh: DeviceEntry = self._get_mesh_from_registry()
+        if not dr_mesh:
+            return
+
         if not {(dr.CONNECTION_NETWORK_MAC, self._mac)}.issubset(dr_mesh.connections):
             dev_reg: DeviceRegistry = dr.async_get(hass=self._hass)
             try:
