@@ -30,7 +30,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshDeviceNotFoundResponse
+from pyvelop.exceptions import MeshDeviceNotFoundResponse, MeshInvalidOutput
 from pyvelop.mesh import Mesh
 
 from . import _get_device_registry_entry
@@ -200,6 +200,14 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._device.name,
             )
             self._stop_tracking(unique_id=self._device.unique_id)
+            return
+        except MeshInvalidOutput:
+            _LOGGER.warning(
+                self._log_formatter.format(
+                    "Invalid output received when checking for %s on the mesh."
+                ),
+                self._device.name,
+            )
             return
 
         self._device = tracker_details
