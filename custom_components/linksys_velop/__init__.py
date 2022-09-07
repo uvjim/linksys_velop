@@ -763,10 +763,14 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
         """Additional attributes for the entity."""
-        if hasattr(self.entity_description, "extra_attributes") and isinstance(
-            self.entity_description.extra_attributes, Callable
+        if (
+            hasattr(self.entity_description, "extra_attributes")
+            and isinstance(self.entity_description.extra_attributes, Callable)
+            and self._node
         ):
             return self.entity_description.extra_attributes(self._node)
+
+        return None
 
 
 # endregion
