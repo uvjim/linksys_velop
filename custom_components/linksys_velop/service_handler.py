@@ -161,7 +161,12 @@ class LinksysVelopServiceHandler:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        await self._mesh.async_delete_device(**kwargs)
+        if kwargs.get("device_id"):
+            await self._mesh.async_delete_device_by_id(device=kwargs.get("device_id"))
+        elif kwargs.get("device_name"):
+            await self._mesh.async_delete_device_by_name(
+                device=kwargs.get("device_name")
+            )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
