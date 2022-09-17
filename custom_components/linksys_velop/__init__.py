@@ -683,12 +683,14 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         return ret
 
     @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
         if hasattr(self.entity_description, "extra_attributes") and isinstance(
             self.entity_description.extra_attributes, Callable
         ):
             return self.entity_description.extra_attributes(self._mesh)
+
+        return None
 
 
 class LinksysVelopNodeEntity(CoordinatorEntity):
@@ -728,7 +730,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
             f"{slugify(self.entity_description.name)}"
         )
 
-    def _get_node(self) -> Optional[Node]:
+    def _get_node(self) -> Node | None:
         """Get the current node."""
         node = [n for n in self._mesh.nodes if n.unique_id == self._node_id]
         if node:
@@ -761,7 +763,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         return ret
 
     @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
         if (
             hasattr(self.entity_description, "extra_attributes")
