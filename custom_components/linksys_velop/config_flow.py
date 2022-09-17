@@ -521,7 +521,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             # endregion
 
             self._options.update(user_input)
-            return self.async_step_logging()
+            return await self.async_step_logging()
 
         mesh = Mesh(
             node=self._config_entry.options[CONF_NODE],
