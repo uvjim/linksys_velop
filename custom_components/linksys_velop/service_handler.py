@@ -1,8 +1,10 @@
 """Manage the services for the pyvelop integration."""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import logging
-from typing import List, Optional
+from typing import List
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
@@ -68,9 +70,9 @@ class LinksysVelopServiceHandler:
         """Initialise."""
         self._hass: HomeAssistant = hass
         self._log_formatter: Logger = Logger()
-        self._mesh: Optional[Mesh] = None
+        self._mesh: Mesh | None = None
 
-    def _get_mesh(self, mesh_id: str) -> Optional[Mesh]:
+    def _get_mesh(self, mesh_id: str) -> Mesh | None:
         """Get the Mesh class for the service call to operate against.
 
         :param mesh_id: the device id of the mesh
@@ -80,7 +82,7 @@ class LinksysVelopServiceHandler:
         device: List[dr.DeviceEntry] = [
             d for i, d in device_registry.devices.items() if i == mesh_id
         ]
-        config_entry_id: Optional[str] = None
+        config_entry_id: str | None = None
         if device:
             for config_entry_id in device[0].config_entries:
                 config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(
