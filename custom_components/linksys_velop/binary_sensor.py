@@ -98,6 +98,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
         key="wan_status",
         name="WAN Status",
     ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="wps_state",
+        name="WPS",
+    ),
 )
 
 

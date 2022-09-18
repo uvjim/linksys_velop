@@ -74,6 +74,7 @@ available.
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
 * Mesh: WAN Status
   * IP, DNS, MAC
+* Mesh: WPS _(disabled by default)_
 * Node: Status
   * IP, MAC, guest network
 * Node: Update Available (only if HASS < 2022.4.0)
