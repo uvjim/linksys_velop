@@ -67,6 +67,8 @@ available.
 #### Binary Sensors
 
 * Mesh: Client Steering
+* Mesh: MAC Filtering
+  * mode, address list
 * Mesh: Node Steering
 * Mesh: Speedtest state
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
