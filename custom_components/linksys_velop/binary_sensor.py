@@ -76,6 +76,15 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     ),
     LinksysVelopBinarySensorDescription(
         entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {
+            "mode": m.mac_filtering_mode,
+            "addresses": m.mac_filtering_addresses,
+        },
+        key="mac_filtering_enabled",
+        name="MAC Filtering",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
         key="node_steering_enabled",
         name="Node Steering",
     ),
