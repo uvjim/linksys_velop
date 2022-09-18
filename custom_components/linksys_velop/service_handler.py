@@ -78,6 +78,7 @@ class LinksysVelopServiceHandler:
         :param mesh_id: the device id of the mesh
         :return: the Mesh class or None
         """
+        config_entry: ConfigEntry | None = None
         device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
         device: List[dr.DeviceEntry] = [
             d for i, d in device_registry.devices.items() if i == mesh_id
@@ -85,7 +86,7 @@ class LinksysVelopServiceHandler:
         config_entry_id: str | None = None
         if device:
             for config_entry_id in device[0].config_entries:
-                config_entry: ConfigEntry = self._hass.config_entries.async_get_entry(
+                config_entry = self._hass.config_entries.async_get_entry(
                     entry_id=config_entry_id
                 )
                 if config_entry.domain == DOMAIN:
@@ -96,8 +97,6 @@ class LinksysVelopServiceHandler:
                     else:
                         self._log_formatter = Logger()
                     break
-            else:
-                config_entry = None
 
         ret = (
             self._hass.data[DOMAIN][config_entry_id][CONF_COORDINATOR].data
