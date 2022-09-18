@@ -66,10 +66,12 @@ available.
 
 #### Binary Sensors
 
-* Mesh: Client Steering  _(disabled by default)_
-* Mesh: MAC Filtering  _(disabled by default)_
+* Mesh: Client Steering _(disabled by default)_
+* Mesh: HomeKit Integration _(disabled by default)_
+* Mesh: HomeKit Integration Paired _(disabled by default)_
+* Mesh: MAC Filtering _(disabled by default)_
   * mode, address list
-* Mesh: Node Steering  _(disabled by default)_
+* Mesh: Node Steering _(disabled by default)_
 * Mesh: Speedtest state
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
 * Mesh: WAN Status
