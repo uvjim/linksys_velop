@@ -66,6 +66,7 @@ available.
 
 #### Binary Sensors
 
+* Mesh: Client Steering
 * Mesh: Speedtest state
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
 * Mesh: WAN Status
