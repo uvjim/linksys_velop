@@ -1348,6 +1348,36 @@ filter:
                       |{{ site }}|
                     {% endfor -%}
                   {% endif %}
+          - type: custom:template-entity-row
+            card_mod:
+              style: |
+                #wrapper { padding-top: 8px; }
+                .info.pointer {
+                  color: var(--mdc-theme-primary, #6200ee);
+                  font-size: var(--mdc-typography-button-font-size, 0.875rem);
+                  font-weight: 500;
+                  letter-spacing: var(--mdc-typography-button-letter-spacing, 0.0892857em);
+                  margin-right: 0px;
+                  text-align: right;
+                  text-transform: var(--mdc-typography-button-text-transform, uppercase);
+                }
+            condition: >-
+              {{ not is_state("this.entity_id", "unknown") and not
+              state_attr("this.entity_id", "status") }}
+            icon: ' '
+            name: Delete
+            tap_action: |
+              {
+                "action": "call-service",
+                "confirmation": {
+                  "text": 'Remove \"{{ states("this.entity_id") }}\" from the device list?',
+                },
+                "data": {
+                  "device_id": '{{ state_attr("this.entity_id", "unique_id") }}',
+                  "mesh": '{{ device_id("this.entity_id") }}'
+                },
+                "service": "linksys_velop.delete_device"
+              }
         card_mod:
           style:
             .: |
