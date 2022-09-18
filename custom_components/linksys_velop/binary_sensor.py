@@ -70,6 +70,11 @@ class LinksysVelopBinarySensorDescription(
 
 BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="client_steering_enabled",
+        name="Client Steering",
+    ),
+    LinksysVelopBinarySensorDescription(
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         extra_attributes=lambda m: {
             "ip": m.wan_ip,
