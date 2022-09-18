@@ -76,6 +76,16 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     ),
     LinksysVelopBinarySensorDescription(
         entity_registry_enabled_default=False,
+        key="homekit_enabled",
+        name="HomeKit Integration",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="homekit_paired",
+        name="HomeKit Integration Paired",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
         extra_attributes=lambda m: {
             "mode": m.mac_filtering_mode,
             "addresses": m.mac_filtering_addresses,
