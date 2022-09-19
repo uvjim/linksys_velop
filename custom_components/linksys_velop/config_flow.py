@@ -143,8 +143,17 @@ async def _async_build_schema_with_user_input(
             if tracker in kwargs["multi_select_contents"].keys()
         ]
         schema = {
-            vol.Optional(CONF_DEVICE_TRACKERS, default=valid_trackers): cv.multi_select(
-                kwargs["multi_select_contents"]
+            vol.Optional(
+                CONF_DEVICE_TRACKERS, default=valid_trackers
+            ): selector.SelectSelector(
+                config=selector.SelectSelectorConfig(
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    multiple=True,
+                    options=[
+                        {"label": label, "value": value}
+                        for value, label in kwargs["multi_select_contents"].items()
+                    ],
+                )
             )
         }
     elif step == STEP_LOGGING:
