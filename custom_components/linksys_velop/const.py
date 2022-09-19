@@ -47,10 +47,10 @@ DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 
 EVENT_NEW_PARENT_NODE: str = f"{DOMAIN}_new_primary_node"
 
-LOGGING_STATES: Dict[str, str] = {  # order defines order of options on screen
-    "off": "Off",
-    "single": "Single poll",
-}
+LOGGING_STATES_SELECTOR: List[Dict[str, str]] = [
+    {"label": "Off", "value": "off"},
+    {"label": "Single poll", "value": "single"},
+]
 
 PLATFORMS: List[Optional[str]] = [
     BINARY_SENSOR_DOMAIN,

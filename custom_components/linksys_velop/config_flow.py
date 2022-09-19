@@ -49,7 +49,7 @@ from .const import (
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
     EVENT_NEW_PARENT_NODE,
-    LOGGING_STATES,
+    LOGGING_STATES_SELECTOR,
     ST_IGD,
 )
 from .logger import Logger
@@ -152,17 +152,22 @@ async def _async_build_schema_with_user_input(
             vol.Required(
                 CONF_LOGGING_SERIAL,
                 default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
-            ): bool,
+            ): selector.BooleanSelector(),
             vol.Required(
                 CONF_LOGGING_JNAP_RESPONSE,
                 default=user_input.get(
                     CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
                 ),
-            ): bool,
+            ): selector.BooleanSelector(),
             vol.Required(
                 CONF_LOGGING_MODE,
                 default=user_input.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE),
-            ): vol.In(LOGGING_STATES),
+            ): selector.SelectSelector(
+                config=selector.SelectSelectorConfig(
+                    mode=selector.SelectSelectorMode.LIST,
+                    options=LOGGING_STATES_SELECTOR,
+                )
+            ),
         }
 
     return vol.Schema(schema)
