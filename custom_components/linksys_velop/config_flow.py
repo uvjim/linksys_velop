@@ -79,6 +79,8 @@ def _is_mesh_by_host(
     if matching_entry:
         return matching_entry[0]
 
+    return None
+
 
 async def _async_build_schema_with_user_input(
     step: str, user_input: dict, **kwargs
