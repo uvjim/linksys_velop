@@ -49,7 +49,7 @@ from .const import (
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
     EVENT_NEW_PARENT_NODE,
-    LOGGING_STATES_SELECTOR,
+    LOGGING_MODE_SELECTOR,
     ST_IGD,
 )
 from .logger import Logger
@@ -165,7 +165,7 @@ async def _async_build_schema_with_user_input(
             ): selector.SelectSelector(
                 config=selector.SelectSelectorConfig(
                     mode=selector.SelectSelectorMode.LIST,
-                    options=LOGGING_STATES_SELECTOR,
+                    options=LOGGING_MODE_SELECTOR,
                 )
             ),
         }

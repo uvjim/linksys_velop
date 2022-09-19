@@ -47,7 +47,7 @@ DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 
 EVENT_NEW_PARENT_NODE: str = f"{DOMAIN}_new_primary_node"
 
-LOGGING_STATES_SELECTOR: List[Dict[str, str]] = [
+LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
     {"label": "Off", "value": "off"},
     {"label": "Single poll", "value": "single"},
 ]
