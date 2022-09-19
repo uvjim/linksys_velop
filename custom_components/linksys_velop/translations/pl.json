@@ -26,7 +26,7 @@
             },
             "timers": {
                 "data": {
-                    "api_request_timeout": "Czas oczekiwania w sekundach na odpowiedź z sieci Mesh",
+                    "api_request_timeout": "Czas oczekiwania na odpowiedź z sieci Mesh (w sekundach)",
                     "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)",
                     "scan_interval": "Interwał skanowania (w sekundach)",
                     "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)"
@@ -56,7 +56,7 @@
             },
             "timers": {
                 "data": {
-                    "api_request_timeout": "Czas oczekiwania w sekundach na odpowiedź z sieci Mesh",
+                    "api_request_timeout": "Czas oczekiwania na odpowiedź z sieci Mesh (w sekundach)",
                     "consider_home": "Czas oczekiwania przed przejściem do not_home (w sekundach)",
                     "scan_interval": "Interwał skanowania (w sekundach)",
                     "scan_interval_device_tracker": "Interwał skanowania w celu śledzenia urządzeń (dla device_tracker'a, w sekundach)"
