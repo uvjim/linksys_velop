@@ -15,6 +15,7 @@ from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pyvelop.device import Device
 from pyvelop.exceptions import (
@@ -100,17 +101,32 @@ async def _async_build_schema_with_user_input(
             vol.Required(
                 CONF_SCAN_INTERVAL,
                 default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
-            ): cv.positive_int,
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
             vol.Required(
                 CONF_SCAN_INTERVAL_DEVICE_TRACKER,
                 default=user_input.get(
                     CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
                 ),
-            ): cv.positive_int,
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
             vol.Required(
                 CONF_CONSIDER_HOME,
                 default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
-            ): cv.positive_int,
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
             vol.Required(
                 CONF_API_REQUEST_TIMEOUT,
                 default=user_input.get(
