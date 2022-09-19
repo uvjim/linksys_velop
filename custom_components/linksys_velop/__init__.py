@@ -54,7 +54,7 @@ from .const import (
     DOMAIN,
     ENTITY_SLUG,
     EVENT_NEW_PARENT_NODE,
-    LOGGING_STATES,
+    LOGGING_MODE_SELECTOR,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
@@ -261,7 +261,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # region #-- start logging if needed --#
     logging_mode: bool = config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-    if logging_mode in LOGGING_STATES and logging_mode != "off":
+    if (
+        logging_mode in [mode.get("value") for mode in LOGGING_MODE_SELECTOR]
+        and logging_mode != "off"
+    ):
         await async_logging_state(
             config_entry=config_entry,
             hass=hass,
