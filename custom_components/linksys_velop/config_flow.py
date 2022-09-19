@@ -95,8 +95,16 @@ async def _async_build_schema_with_user_input(
     schema = {}
     if step == STEP_USER:
         schema = {
-            vol.Required(CONF_NODE, default=user_input.get(CONF_NODE, "")): str,
-            vol.Required(CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")): str,
+            vol.Required(
+                CONF_NODE, default=user_input.get(CONF_NODE, "")
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
+            ): selector.TextSelector(
+                config=selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.PASSWORD
+                )
+            ),
         }
     elif step == STEP_TIMERS:
         schema = {
