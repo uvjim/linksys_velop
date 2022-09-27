@@ -667,7 +667,8 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Update the information when the coordinator updates."""
-        self._mesh = self.coordinator.data
+        if self.coordinator.data is not None:
+            self._mesh = self.coordinator.data
         super()._handle_coordinator_update()
 
     @property
@@ -743,8 +744,10 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Update the information when the coordinator updates."""
-        self._mesh = self.coordinator.data
-        self._node = self._get_node()
+        if self.coordinator.data is not None:
+            self._mesh = self.coordinator.data
+            if (node := self._get_node()) is not None:
+                self._node = node
         super()._handle_coordinator_update()
 
     @property
