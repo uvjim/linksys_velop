@@ -21,6 +21,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
     * [new_device](#new_device)
     * [new_node](#new_node)
     * [new_primary_node](#new_primary_node)
+  * [Device Triggers](#device-triggers)
   * [Services](#services)
 * [Setup](#setup)
 * [Configurable Options](#configurable-options)
@@ -262,6 +263,13 @@ context:
   user_id: null
 ```
 
+### Device Triggers
+
+All events are available in automations as device triggers on the Mesh device,
+as per the following screenshot.
+
+![Device Triggers](images/device_triggers.png)
+
 ### Services
 
 The following services are available.  Each service is described in metadata
@@ -275,13 +283,6 @@ so paramters are described in the Home Assistant Services page.
 > &ast; these are considered long-running tasks. When the binary sensors spot
   these tasks are running an additional timer is set up that polls every
   second to get updates and updates the relevant attributes for that sensor.
-
-### Device Triggers
-
-All services are available in automations as device triggers on the Mesh device,
-as per the following screenshot.
-
-![Device Triggers](images/device_triggers.png)
 
 ## Setup
 
