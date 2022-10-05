@@ -45,6 +45,14 @@
         },
         "title": "Linksys Velop"
     },
+    "device_automation": {
+        "trigger_type": {
+            "logging_stopped": "Logging stopped",
+            "new_device": "New device found",
+            "new_node": "New node found",
+            "new_primary_node": "Primary node changed"
+        }
+    },
     "options": {
         "step": {
             "device_trackers": {
