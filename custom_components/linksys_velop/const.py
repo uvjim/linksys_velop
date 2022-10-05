@@ -33,6 +33,7 @@ CONF_NODE: str = "node"
 CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
 CONF_SERVICES_HANDLER: str = "services_handler"
+CONF_SUBTYPE: str = "subtype"
 CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
 CONF_UNSUB_UPDATE_LISTENER: str = "unsub_update_listener"
 
@@ -44,8 +45,6 @@ DEF_LOGGING_MODE: str = "off"
 DEF_LOGGING_SERIAL: bool = False
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
-
-EVENT_NEW_PARENT_NODE: str = f"{DOMAIN}_new_primary_node"
 
 LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
     {"label": "Off", "value": "off"},

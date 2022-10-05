@@ -9,14 +9,12 @@ from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.mesh import Device, Mesh, Node
 
 from .const import CONF_COORDINATOR, DOMAIN
+from .helpers import dr_device_is_mesh
 
 # endregion
 
@@ -94,14 +92,7 @@ async def async_get_device_diagnostics(
 
     N.B. If the device is the Mesh then data for the ConfigEntry diagnostics is returned
     """
-    if all(  # check if the device is the Mesh
-        [
-            device.entry_type == DeviceEntryType.SERVICE,
-            device.manufacturer == PYVELOP_AUTHOR,
-            device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            device.name.lower() == "mesh",
-        ]
-    ):
+    if dr_device_is_mesh(device=device):
         return await async_get_config_entry_diagnostics(hass, config_entry)
 
     coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][

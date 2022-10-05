@@ -12,7 +12,7 @@ import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import device_registry as dr
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
-from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -53,12 +53,13 @@ from .const import (
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
     ENTITY_SLUG,
-    EVENT_NEW_PARENT_NODE,
     LOGGING_MODE_SELECTOR,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
+from .events import EVENT_TYPE, EventSubType, build_payload
+from .helpers import dr_nodes_for_mesh
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
 
@@ -66,113 +67,9 @@ from .service_handler import LinksysVelopServiceHandler
 
 _LOGGER = logging.getLogger(__name__)
 
-EVENT_LOGGING_STOPPED: str = f"{DOMAIN}_logging_stopped"
-EVENT_NEW_DEVICE_ON_MESH: str = f"{DOMAIN}_new_device_on_mesh"
-EVENT_NEW_NODE_ON_MESH: str = f"{DOMAIN}_new_node_on_mesh"
-
 LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
 LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
 LOGGING_REVERT: str = logging.getLevelName(logging.getLogger("").level)
-
-
-def _get_device_registry_entry(
-    config_entry_id: str, device_registry: dr.DeviceRegistry, entry_type: str = "node"
-) -> List[DeviceEntry]:
-    """Retrieve the given device from the registry."""
-    ret = []
-    my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
-        registry=device_registry, config_entry_id=config_entry_id
-    )
-    dr_device: dr.DeviceEntry
-    if entry_type.lower() == "node":
-        ret: List[DeviceEntry] = [
-            dr_device
-            for dr_device in my_devices
-            if all(
-                [
-                    dr_device.manufacturer != PYVELOP_AUTHOR,
-                    dr_device.name.lower() != "mesh",
-                ]
-            )
-        ]
-    elif entry_type.lower() == "mesh":
-        ret: List[DeviceEntry] = [
-            dr_device
-            for dr_device in my_devices
-            if all(
-                [
-                    dr_device.entry_type == DeviceEntryType.SERVICE,
-                    dr_device.manufacturer == PYVELOP_AUTHOR,
-                    dr_device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-                    dr_device.name.lower() == "mesh",
-                ]
-            )
-        ]
-
-    return ret
-
-
-def build_event_payload(
-    config_entry: ConfigEntry,
-    event: str,
-    hass: HomeAssistant,
-    device: Optional[Device | Node] = None,
-) -> Dict[str, Any]:
-    """Build the payload for the fired events."""
-    event_properties: List[str] = []
-
-    if event == EVENT_NEW_NODE_ON_MESH:
-        event_properties = [
-            "backhaul",
-            "connected_adapters",
-            "model",
-            "name",
-            "parent_name",
-            "serial",
-            "status",
-            "unique_id",
-        ]
-    elif event == EVENT_NEW_DEVICE_ON_MESH:
-        event_properties = [
-            "connected_adapters",
-            "description",
-            "manufacturer",
-            "model",
-            "name",
-            "operating_system",
-            "parent_name",
-            "serial",
-            "status",
-            "unique_id",
-        ]
-    elif event == EVENT_NEW_PARENT_NODE:
-        event_properties = [
-            "connected_adapters",
-            "model",
-            "name",
-            "serial",
-            "unique_id",
-        ]
-
-    if device:
-        ret: Dict[str, Any] = {
-            prop: getattr(device, prop, None) for prop in event_properties
-        }
-        if ret:
-            # region #-- get the mesh device_id --#
-            mesh_details: List[DeviceEntry] = _get_device_registry_entry(
-                config_entry_id=config_entry.entry_id,
-                device_registry=dr.async_get(hass=hass),
-                entry_type="mesh",
-            )
-            if mesh_details:
-                ret["mesh_device_id"] = mesh_details[0].id
-            # endregion
-    else:
-        if event == EVENT_LOGGING_STOPPED:
-            ret = {"name": config_entry.title}
-
-    return ret
 
 
 async def async_logging_state(
@@ -216,9 +113,11 @@ async def async_logging_state(
         hass.config_entries.async_update_entry(entry=config_entry, options=options)
         if hass.state != CoreState.stopping:
             hass.bus.async_fire(
-                event_type=EVENT_LOGGING_STOPPED,
-                event_data=build_event_payload(
-                    config_entry=config_entry, event=EVENT_LOGGING_STOPPED, hass=hass
+                event_type=EVENT_TYPE,
+                event_data=build_payload(
+                    config_entry=config_entry,
+                    event=EventSubType.LOGGING_STOPPED,
+                    hass=hass,
                 ),
             )
 
@@ -318,15 +217,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         # -- get the existing nodes --#
         _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
-        previous_nodes = _get_device_registry_entry(
-            config_entry_id=config_entry.entry_id,
-            device_registry=device_registry,
-            entry_type="node",
-        )
-        previous_nodes_serials: Set[str] = {
-            next(iter(prev_node.identifiers))[1]  # serial number of node
-            for prev_node in previous_nodes
-        }
+        if (
+            previous_nodes := dr_nodes_for_mesh(
+                config=config_entry, device_registry=device_registry
+            )
+        ) is not None:
+            previous_nodes_serials: Set[str] = {
+                next(iter(prev_node.identifiers))[1]  # serial number of node
+                for prev_node in previous_nodes
+            }
 
         try:
             # -- gather details from the API --#
@@ -365,19 +264,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     for device in mesh.devices:
                         if device.unique_id in new_devices:
                             # -- fire the event --#
-                            payload = build_event_payload(
+                            payload = build_payload(
                                 config_entry=config_entry,
                                 device=device,
-                                event=EVENT_NEW_DEVICE_ON_MESH,
+                                event=EventSubType.NEW_DEVICE,
                                 hass=hass,
                             )
                             _LOGGER.debug(
                                 log_formatter.format("%s: %s"),
-                                EVENT_NEW_DEVICE_ON_MESH,
+                                EventSubType.NEW_DEVICE.value,
                                 payload,
                             )
                             hass.bus.async_fire(
-                                event_type=EVENT_NEW_DEVICE_ON_MESH, event_data=payload
+                                event_type=EVENT_TYPE,
+                                event_data=payload,
                             )
                 _LOGGER.debug(log_formatter.format("devices compared"))
             # endregion
@@ -418,19 +318,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 )
 
                             # -- fire the event --#
-                            payload = build_event_payload(
+                            payload = build_payload(
                                 config_entry=config_entry,
                                 device=node,
-                                event=EVENT_NEW_DEVICE_ON_MESH,
+                                event=EventSubType.NEW_NODE,
                                 hass=hass,
                             )
                             _LOGGER.debug(
                                 log_formatter.format("%s: %s"),
-                                EVENT_NEW_NODE_ON_MESH,
+                                EventSubType.NEW_NODE,
                                 payload,
                             )
                             hass.bus.async_fire(
-                                event_type=EVENT_NEW_NODE_ON_MESH, event_data=payload
+                                event_type=EVENT_TYPE, event_data=payload
                             )
                 # endregion
                 # region #-- look for updates to nodes --#
@@ -478,14 +378,14 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     if hass.config_entries.async_update_entry(
                         entry=config_entry, unique_id=primary_node[0].serial
                     ):
-                        payload: Dict[str, Any] = build_event_payload(
+                        payload: Dict[str, Any] = build_payload(
                             config_entry=config_entry,
                             device=primary_node[0],
-                            event=EVENT_NEW_PARENT_NODE,
+                            event=EventSubType.NEW_PRIMARY_NODE,
                             hass=hass,
                         )
                         hass.bus.async_fire(
-                            event_type=EVENT_NEW_PARENT_NODE, event_data=payload
+                            event_type=EventSubType.NEW_PRIMARY_NODE, event_data=payload
                         )
                 else:
                     _LOGGER.debug(
@@ -762,10 +662,6 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
         ret = DeviceInfo(
-            configuration_url=(
-                f"http://{self._node.connected_adapters[0].get('ip')}"
-                f"{'/ca' if self._node.type == NODE_TYPE_SECONDARY else ''}"
-            ),
             hw_version=self._node.hardware_version,
             identifiers={(DOMAIN, self._node.serial)},
             model=self._node.model,
@@ -773,6 +669,11 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
             manufacturer=self._node.manufacturer,
             sw_version=self._node.firmware.get("version", ""),
         )
+        if self._node.connected_adapters:
+            ret["configuration_url"] = (
+                f"http://{self._node.connected_adapters[0].get('ip')}"
+                f"{'/ca' if self._node.type == NODE_TYPE_SECONDARY else ''}"
+            )
 
         return ret
 
