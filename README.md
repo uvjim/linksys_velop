@@ -17,10 +17,10 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
     * [Switches](#switches)
     * [Update](#update-only-if-hass--202240)
   * [Events Fired](#events-fired)
-    * [linksys_velop_logging_stopped](#linksys_velop_logging_stopped)
-    * [linksys_velop_new_device_on_mesh](#linksys_velop_new_device_on_mesh)
-    * [linksys_velop_new_node_on_mesh](#linksys_velop_new_node_on_mesh)
-    * [linksys_velop_new_primary_node](#linksys_velop_new_primary_node)
+    * [logging_stopped](#logging_stopped)
+    * [new_device](#new_device)
+    * [new_node](#new_node)
+    * [new_primary_node](#new_primary_node)
   * [Services](#services)
 * [Setup](#setup)
 * [Configurable Options](#configurable-options)
@@ -142,7 +142,11 @@ install time and from reconfiguring the integration.
 
 ### Events Fired
 
-#### `linksys_velop_logging_stopped`
+The integration fires an event with type `linksys_velop_event`. Withing the data
+object there is a `subtype` value which denotes the reason for the event. This
+section shows the available subtypes.
+
+#### `logging_stopped`
 
 This event is fired when logging was turned on in the configurable options
 (see [here](#logging)) and has stopped.
@@ -150,18 +154,19 @@ This event is fired when logging was turned on in the configurable options
 The event looks as follows: -
 
 ```yaml
-event_type: linksys_velop_logging_stopped
+event_type: linksys_velop_event
 data:
   name: 192.168.1.254
+  subtype: logging_stopped
 origin: LOCAL
-time_fired: "2022-09-03T16:42:40.065730+00:00"
+time_fired: "2022-10-05T14:06:34.120984+00:00"
 context:
-  id: 01GC23Q821F2BRE6XXKZEY6RP7
+  id: 01GEM7GDM8VE5Q4S27P3WPNTX4
   parent_id: null
   user_id: null
 ```
 
-#### `linksys_velop_new_device_on_mesh`
+#### `new_device`
 
 This event is fired when a brand-new device appears on the Mesh. A device is
 considered new if it presents a device ID (determined by the Velop) that was
@@ -177,38 +182,30 @@ established by the Velop or assigned by the user.
 
 The event looks as follows: -
 
-```json
-{
-    "event_type": "linksys_velop_new_device_on_mesh",
-    "data": {
-        "connected_adapters": [
-            {
-                "mac": "11:22:33:44:55:66",
-                "ip": "192.168.1.45",
-                "guest_network": false
-            }
-        ],
-        "description": null,
-        "manufacturer": null,
-        "model": null,
-        "name": "Network Device",
-        "operating_system": null,
-        "parent_name": "Test Parent",
-        "serial": null,
-        "status": true,
-        "mesh_device_id": "04e9bfe6c39d52f8272de96cbf85909c"
-    },
-    "origin": "LOCAL",
-    "time_fired": "2022-03-27T13:43:48.335952+00:00",
-    "context": {
-        "id": "0bcafe321fc4919958c350da1aaef6de",
-        "parent_id": null,
-        "user_id": null
-    }
-}
+```yaml
+event_type: linksys_velop_event
+data:
+  connected_adapters: []
+  description: null
+  manufacturer: null
+  model: null
+  name: Network Device
+  operating_system: null
+  parent_name: null
+  serial: null
+  status: false
+  unique_id: e053a99e-f8b6-4061-b9d3-7a19a38ec079
+  mesh_device_id: f31f325891bc59506bdf98a54e23fcdd
+  subtype: new_device
+origin: LOCAL
+time_fired: "2022-10-05T13:47:38.933813+00:00"
+context:
+  id: 01GEM6DS1NND3PG936RFBGTGFJ
+  parent_id: null
+  user_id: null
 ```
 
-#### `linksys_velop_new_node_on_mesh`
+#### `new_node`
 
 This event is fired when a new node is found on the Mesh. A node is
 considered new if it is not currently configured in HASS. It may not be
@@ -219,40 +216,28 @@ The event is fired for each new node that is discovered.
 
 The event looks as follows: -
 
-```json
-{
-    "event_type": "linksys_velop_new_node_on_mesh",
-    "data": {
-        "backhaul": {
-            "connection": "Wireless",
-            "last_checked": "2022-04-14T12:11:23Z",
-            "speed_mbps": 115.037
-        },
-        "connected_adapters": [
-            {
-                "mac": "11:22:33:44:55:66",
-                "ip": "192.168.123.31",
-                "guest_network": false
-            }
-        ],
-        "model": "WHW01",
-        "name": "Utility",
-        "parent_name": "Front Bedroom",
-        "serial": "1234567890",
-        "status": true,
-        "mesh_device_id": "1ca89cc86d79dff3f3bf91cfc5f6973f"
-    },
-    "origin": "LOCAL",
-    "time_fired": "2022-04-14T12:15:10.150604+00:00",
-    "context": {
-        "id": "7510f408cfc36511b0c6372542fbfdc0",
-        "parent_id": null,
-        "user_id": null
-    }
-}
+```yaml
+event_type: linksys_velop_event
+data:
+  backhaul: {}
+  connected_adapters: []
+  model: MX42
+  name: Utility
+  parent_name: null
+  serial: 123456789
+  status: false
+  unique_id: 80236f06-e622-faec-9410-e89f80603b3d
+  mesh_device_id: f31f325891bc59506bdf98a54e23fcdd
+  subtype: new_node
+origin: LOCAL
+time_fired: "2022-10-05T13:43:17.135224+00:00"
+context:
+  id: 01GEM65SCF8BVK3BEVFHXWS5F2
+  parent_id: null
+  user_id: null
 ```
 
-#### `linksys_velop_new_primary_node`
+#### `new_primary_node`
 
 This event is fired when a new primary node is detected. The check for this
 is based on the serial number and is currently only found as part of SSDP
@@ -262,22 +247,19 @@ unique_id of the integration instance is update.
 This should stop the mesh being discovered again by SSDP when the primary
 node is changed.
 
-```json
-{
-    "event_type": "linksys_velop_new_primary_node",
-    "data": {
-        "host": "192.168.123.254",
-        "model": "velop ax4200 wifi 6 system",
-        "serial": "1234567890"
-    },
-    "origin": "LOCAL",
-    "time_fired": "2022-04-13T12:29:28.749528+00:00",
-    "context": {
-        "id": "d0cb4b018867b3311f2edb24e156d541",
-        "parent_id": null,
-        "user_id": null
-    }
-}
+```yaml
+event_type: linksys_velop_event
+data:
+  host: 192.168.1.254
+  model: "velop ax4200 wifi 6 system"
+  serial: 1234567890
+  subtype: new_primary_node
+origin: LOCAL
+time_fired: "2022-10-05T13:43:17.135224+00:00"
+context:
+  id: 01GEM65SCF8BVK3BEVFHXWS5F2
+  parent_id: null
+  user_id: null
 ```
 
 ### Services
@@ -1575,17 +1557,24 @@ alias: "Notify: Velop Information"
 description: ""
 trigger:
   - platform: event
-    event_type: linksys_velop_new_device_on_mesh
+    event_type: linksys_velop_event
+    event_data:
+      subtype: new_device
     id: Device Found
   - platform: event
-    event_type: linksys_velop_new_node_on_mesh
+    event_type: linksys_velop_event
+    event_data:
+      subtype: new_node
     id: Node Found
   - platform: event
-    event_type: linksys_velop_new_primary_node
-    event_data: {}
+    event_type: linksys_velop_event
+    event_data:
+      subtype: new_primary_node
     id: Primary Node Changed
   - platform: event
-    event_type: linksys_velop_logging_stopped
+    event_type: linksys_velop_event
+    event_data:
+      subtype: logging_stopped
     id: Logging Stopped
 condition: []
 action:
