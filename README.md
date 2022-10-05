@@ -276,6 +276,13 @@ so paramters are described in the Home Assistant Services page.
   these tasks are running an additional timer is set up that polls every
   second to get updates and updates the relevant attributes for that sensor.
 
+### Device Triggers
+
+All services are available in automations as device triggers on the Mesh device,
+as per the following screenshot.
+
+![Device Triggers](images/device_triggers.png)
+
 ## Setup
 
 When setting up the integration you will be asked for the following information.
