@@ -23,7 +23,7 @@ from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.device_registry import DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -33,7 +33,6 @@ from pyvelop.device import Device
 from pyvelop.exceptions import MeshDeviceNotFoundResponse, MeshInvalidOutput
 from pyvelop.mesh import Mesh
 
-from . import _get_device_registry_entry
 from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
@@ -44,6 +43,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
+from .helpers import dr_mesh_for_config_entry
 from .logger import Logger
 
 # endregion
@@ -124,17 +124,15 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             self._mac = dr.format_mac(adapter[0].get("mac", ""))
             self._ip = adapter[0].get("ip", "")
 
-    def _get_mesh_from_registry(self) -> Optional[DeviceEntry]:
+    def _get_mesh_from_registry(self) -> Mesh | None:
         """Retrieve the Mesh device from the registry."""
-        dr_mesh: List[DeviceEntry] = _get_device_registry_entry(
-            config_entry_id=self._config.entry_id,
-            device_registry=dr.async_get(hass=self._hass),
-            entry_type="mesh",
+        dr_mesh: Mesh = dr_mesh_for_config_entry(
+            config=self._config, device_registry=dr.async_get(hass=self._hass)
         )
-        if not dr_mesh:
-            return
+        if dr_mesh is None:
+            return None
 
-        return dr_mesh[0]
+        return dr_mesh
 
     def _stop_tracking(self, unique_id: str) -> None:
         """Stop monitoring the tracker."""
@@ -158,8 +156,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         if not self._mac:
             return
 
-        dr_mesh: DeviceEntry = self._get_mesh_from_registry()
-        if not dr_mesh:
+        if (
+            dr_mesh := dr_mesh_for_config_entry(
+                config=self._config, device_registry=dr.async_get(hass=self._hass)
+            )
+        ) is None:
             return
 
         if not {(dr.CONNECTION_NETWORK_MAC, self._mac)}.issubset(dr_mesh.connections):

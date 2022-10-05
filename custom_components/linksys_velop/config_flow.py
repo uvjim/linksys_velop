@@ -38,6 +38,7 @@ from .const import (
     CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+    CONF_SUBTYPE,
     CONF_TITLE_PLACEHOLDERS,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
@@ -48,10 +49,10 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
-    EVENT_NEW_PARENT_NODE,
     LOGGING_MODE_SELECTOR,
     ST_IGD,
 )
+from .events import EVENT_TYPE, EventSubType
 from .logger import Logger
 
 # endregion
@@ -381,13 +382,14 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._log_formatter.format("assuming the primary node has changed")
                 )
                 self.hass.bus.async_fire(
-                    event_type=EVENT_NEW_PARENT_NODE,
+                    event_type=EVENT_TYPE,
                     event_data={
                         "host": _host,
                         "manufacturer": _manufacturer,
                         "model": _model,
                         "description": _model_description,
                         "serial": _serial,
+                        CONF_SUBTYPE: EventSubType.NEW_PRIMARY_NODE,
                     },
                 )
                 update_unique_id = True
