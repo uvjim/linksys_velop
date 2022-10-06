@@ -11,6 +11,10 @@ import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
+from homeassistant.components.logger import DOMAIN as LOGGER_DOMAIN
+from homeassistant.components.logger import (
+    SERVICE_SET_LEVEL as LOGGER_SERVICE_SET_LEVEL,
+)
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
@@ -93,102 +97,116 @@ async def _async_build_schema_with_user_input(
     :param kwargs: additional information that might be required
     :return: the schema including necessary restrictions, defaults, pre-selections etc.
     """
-    schema = {}
+    schema: vol.Schema = vol.Schema({})
     if step == STEP_USER:
-        schema = {
-            vol.Required(
-                CONF_NODE, default=user_input.get(CONF_NODE, "")
-            ): selector.TextSelector(),
-            vol.Required(
-                CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-            ): selector.TextSelector(
-                config=selector.TextSelectorConfig(
-                    type=selector.TextSelectorType.PASSWORD
-                )
-            ),
-        }
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NODE, default=user_input.get(CONF_NODE, "")
+                ): selector.TextSelector(),
+                vol.Required(
+                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
+                ): selector.TextSelector(
+                    config=selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.PASSWORD
+                    )
+                ),
+            }
+        )
     elif step == STEP_TIMERS:
-        schema = {
-            vol.Required(
-                CONF_SCAN_INTERVAL,
-                default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
-            ): selector.NumberSelector(
-                config=selector.NumberSelectorConfig(
-                    min=0,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Required(
-                CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-                default=user_input.get(
-                    CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
                 ),
-            ): selector.NumberSelector(
-                config=selector.NumberSelectorConfig(
-                    min=0,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Required(
-                CONF_CONSIDER_HOME,
-                default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
-            ): selector.NumberSelector(
-                config=selector.NumberSelectorConfig(
-                    min=0,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Required(
-                CONF_API_REQUEST_TIMEOUT,
-                default=user_input.get(
-                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                vol.Required(
+                    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    default=user_input.get(
+                        CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                        DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    ),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
                 ),
-            ): cv.positive_float,
-        }
+                vol.Required(
+                    CONF_CONSIDER_HOME,
+                    default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_API_REQUEST_TIMEOUT,
+                    default=user_input.get(
+                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                    ),
+                ): cv.positive_float,
+            }
+        )
     elif step == STEP_DEVICE_TRACKERS:
         valid_trackers = [
             tracker
             for tracker in user_input.get(CONF_DEVICE_TRACKERS, [])
             if tracker in kwargs["multi_select_contents"].keys()
         ]
-        schema = {
-            vol.Optional(
-                CONF_DEVICE_TRACKERS, default=valid_trackers
-            ): selector.SelectSelector(
-                config=selector.SelectSelectorConfig(
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    multiple=True,
-                    options=[
-                        {"label": label, "value": value}
-                        for value, label in kwargs["multi_select_contents"].items()
-                    ],
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_DEVICE_TRACKERS, default=valid_trackers
+                ): selector.SelectSelector(
+                    config=selector.SelectSelectorConfig(
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                        options=[
+                            {"label": label, "value": value}
+                            for value, label in kwargs["multi_select_contents"].items()
+                        ],
+                    )
                 )
-            )
-        }
+            }
+        )
     elif step == STEP_LOGGING:
-        schema = {
-            vol.Required(
-                CONF_LOGGING_SERIAL,
-                default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
-            ): selector.BooleanSelector(),
-            vol.Required(
-                CONF_LOGGING_JNAP_RESPONSE,
-                default=user_input.get(
-                    CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
-                ),
-            ): selector.BooleanSelector(),
-            vol.Required(
-                CONF_LOGGING_MODE,
-                default=user_input.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE),
-            ): selector.SelectSelector(
-                config=selector.SelectSelectorConfig(
-                    mode=selector.SelectSelectorMode.LIST,
-                    options=LOGGING_MODE_SELECTOR,
-                )
-            ),
-        }
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_LOGGING_SERIAL,
+                    default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_LOGGING_JNAP_RESPONSE,
+                    default=user_input.get(
+                        CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
+                    ),
+                ): selector.BooleanSelector(),
+            }
+        )
+        if kwargs.get("logging_mode"):
+            schema = schema.extend(
+                schema={
+                    vol.Required(
+                        CONF_LOGGING_MODE,
+                        default=user_input.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE),
+                    ): selector.SelectSelector(
+                        config=selector.SelectSelectorConfig(
+                            mode=selector.SelectSelectorMode.LIST,
+                            options=LOGGING_MODE_SELECTOR,
+                        )
+                    )
+                }
+            )
 
-    return vol.Schema(schema)
+    return schema
 
 
 async def _async_get_devices(mesh: Mesh) -> dict:
@@ -604,11 +622,36 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             return self.async_create_entry(title="", data=self._options)
 
+        # -- check logging enabled --#
+        if self.hass.services.has_service(
+            domain=LOGGER_DOMAIN, service=LOGGER_SERVICE_SET_LEVEL
+        ):
+            return self.async_show_form(
+                step_id=STEP_LOGGING,
+                data_schema=await _async_build_schema_with_user_input(
+                    STEP_LOGGING, self._options, logging_mode=True
+                ),
+                description_placeholders={
+                    "logging_mode_warning": (
+                        "___The mode setting has no effect if logging for the integration "
+                        "is defined in configuration.yaml___"
+                    )
+                },
+                errors=self._errors,
+                last_step=False,
+            )
+
         return self.async_show_form(
             step_id=STEP_LOGGING,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_LOGGING, self._options
+                STEP_LOGGING, self._options, logging_mode=False
             ),
+            description_placeholders={
+                "logging_mode_warning": (
+                    "___The [`logger`](https://www.home-assistant.io/integrations/logger/) integration is not enabled."
+                    "\nIt is required for logging modes to be available.___"
+                )
+            },
             errors=self._errors,
             last_step=False,
         )

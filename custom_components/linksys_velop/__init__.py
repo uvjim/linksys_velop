@@ -12,7 +12,8 @@ import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import device_registry as dr
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
-from homeassistant.core import CoreState, Event, HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
+from homeassistant.exceptions import ServiceNotFound
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -70,12 +71,15 @@ _LOGGER = logging.getLogger(__name__)
 LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
 LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
 LOGGING_REVERT: str = logging.getLevelName(logging.getLogger("").level)
+LOGGING_DISABLED: bool = False
 
 
 async def async_logging_state(
     config_entry: ConfigEntry, hass: HomeAssistant, log_formatter: Logger, state: bool
 ) -> None:
     """Turn logging on or off."""
+    global LOGGING_DISABLED  # pylint: disable=global-statement
+
     logging_level: str = LOGGING_ON if state else LOGGING_OFF
     if logging_level == LOGGING_ON and config_entry.options.get(
         CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
@@ -89,37 +93,50 @@ async def async_logging_state(
             log_formatter.format("JNAP response log state: %s"),
             logging_level_jnap_response,
         )
-    await hass.services.async_call(
-        blocking=True,
-        domain="logger",
-        service="set_level",
-        service_data={
-            f"custom_components.{DOMAIN}": logging_level,
-            PYVELOP_NAME: logging_level,
-            f"{PYVELOP_NAME}.jnap.verbose": logging_level_jnap_response,
-        },
-    )
-    _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
-    _LOGGER.debug(
-        log_formatter.format("JNAP response log state: %s"),
-        logging_level_jnap_response,
-    )
-    if (
-        not state
-        and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) != "off"
-    ):
-        options: Dict = dict(**config_entry.options)
-        options[CONF_LOGGING_MODE] = "off"
-        hass.config_entries.async_update_entry(entry=config_entry, options=options)
-        if hass.state != CoreState.stopping:
-            hass.bus.async_fire(
-                event_type=EVENT_TYPE,
-                event_data=build_payload(
-                    config_entry=config_entry,
-                    event=EventSubType.LOGGING_STOPPED,
-                    hass=hass,
-                ),
+    try:
+        await hass.services.async_call(
+            blocking=True,
+            domain="logger",
+            service="set_level",
+            service_data={
+                f"custom_components.{DOMAIN}": logging_level,
+                PYVELOP_NAME: logging_level,
+                f"{PYVELOP_NAME}.jnap.verbose": logging_level_jnap_response,
+            },
+        )
+    except ServiceNotFound:
+        if not LOGGING_DISABLED:
+            _LOGGER.warning(
+                log_formatter.format(
+                    "The logger integration is not enabled. Turning integration logging off."
+                )
             )
+            options: Dict = dict(**config_entry.options)
+            options[CONF_LOGGING_MODE] = "off"
+            hass.config_entries.async_update_entry(entry=config_entry, options=options)
+            LOGGING_DISABLED = True
+    else:
+        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
+        _LOGGER.debug(
+            log_formatter.format("JNAP response log state: %s"),
+            logging_level_jnap_response,
+        )
+        if (
+            not state
+            and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) != "off"
+        ):
+            options: Dict = dict(**config_entry.options)
+            options[CONF_LOGGING_MODE] = "off"
+            hass.config_entries.async_update_entry(entry=config_entry, options=options)
+            if hass.state != CoreState.stopping:
+                hass.bus.async_fire(
+                    event_type=EVENT_TYPE,
+                    event_data=build_payload(
+                        config_entry=config_entry,
+                        event=EventSubType.LOGGING_STOPPED,
+                        hass=hass,
+                    ),
+                )
 
 
 async def async_remove_config_entry_device(
