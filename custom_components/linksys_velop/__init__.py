@@ -31,7 +31,7 @@ from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
 from pyvelop.exceptions import MeshException, MeshTimeoutError
 from pyvelop.mesh import Mesh
-from pyvelop.node import NODE_TYPE_SECONDARY, Node
+from pyvelop.node import Node, NodeType
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -689,7 +689,7 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         if self._node.connected_adapters:
             ret["configuration_url"] = (
                 f"http://{self._node.connected_adapters[0].get('ip')}"
-                f"{'/ca' if self._node.type == NODE_TYPE_SECONDARY else ''}"
+                f"{'/ca' if self._node.type is NodeType.SECONDARY else ''}"
             )
 
         return ret
