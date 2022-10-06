@@ -24,7 +24,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
-from pyvelop.node import NODE_TYPE_PRIMARY, Node
+from pyvelop.node import Node, NodeType
 
 from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
 from .const import (
@@ -279,12 +279,16 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(key="type", name="Type"),
+                    description=LinksysVelopSensorDescription(
+                        key="type",
+                        name="Type",
+                        state_value=lambda n: n.type.value,
+                    ),
                 ),
             ]
         )
 
-        if node.type != NODE_TYPE_PRIMARY:
+        if node.type is not NodeType.PRIMARY:
             sensors.append(
                 LinksysVelopNodeSensor(
                     config_entry=config_entry,
