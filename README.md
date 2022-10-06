@@ -340,7 +340,9 @@ of your logs depending on the number of devices you have connected to the mesh.
   a pre-processed and redacted version can be downloaded for the mesh or a node.
   _(defaults to off)_
 * `Logging mode` - this setting has no effect if logging for the integration is
-configured in `configuration.yaml`
+configured in `configuration.yaml` and is only available if the
+[`logger`](https://www.home-assistant.io/integrations/logger/) integration is
+enabled in `configuration.yaml`.
   * `off`: disable debug logging
   * `Single poll`: only enable debug logging for a single poll requesting
   information from the Mesh.
