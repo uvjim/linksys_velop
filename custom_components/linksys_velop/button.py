@@ -72,7 +72,7 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
     LinksysVelopButtonDescription(
         icon="mdi:wifi-sync",
         key="",
-        name="Start channel scan",
+        name="Start Channel Scan",
         press_action="async_start_channel_scan",
         press_action_arguments={"signal": SIGNAL_UPDATE_CHANNEL_SCANNING},
     ),
