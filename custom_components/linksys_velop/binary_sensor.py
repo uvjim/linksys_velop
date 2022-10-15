@@ -401,7 +401,11 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
             self._state = None
 
     async def _async_action(self, _: datetime | None = None) -> None:
-        """"""
+        """Calcaluate the actual state based on the current state in the Mesh.
+
+        This is required because we don't want to query a full update of all
+        entities from the Mesh.
+        """
         state_method: Callable | None = getattr(self._mesh, self._state_method, None)
         if not isinstance(state_method, Callable):
             raise RuntimeError("State method is not callable") from None
