@@ -129,7 +129,7 @@ async def async_setup_entry(
     binary_sensors: List[
         LinksysVelopMeshBinarySensor
         | LinksysVelopNodeBinarySensor
-        | LinksysVelopMeshSpeedtestStatusBinarySensor
+        | LinksysVelopMeshRecurringBinarySensor
     ] = [
         LinksysVelopMeshBinarySensor(
             config_entry=config_entry,
@@ -153,13 +153,22 @@ async def async_setup_entry(
                 state_method="async_get_channel_scan_info",
                 state_processor=lambda s: s.get("isRunning", False),
             ),
-            LinksysVelopMeshSpeedtestStatusBinarySensor(
+            LinksysVelopMeshRecurringBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 description=LinksysVelopBinarySensorDescription(
+                    extra_attributes=lambda r: {
+                        "status": r,
+                    },
                     key="",
                     name="Speedtest Status",
+                    state_value=lambda m: m.speedtest_status != "",
                 ),
+                recurrence_interval=1,
+                recurrence_post_signal=SIGNAL_UPDATE_SPEEDTEST_RESULTS,
+                recurrence_trigger=SIGNAL_UPDATE_SPEEDTEST_STATUS,
+                state_method="async_get_speedtest_state",
+                state_processor=lambda s: s != "",
             ),
         ]
     )
@@ -289,68 +298,6 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
             return getattr(self._node, self.entity_description.key, None)
 
 
-class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
-    """Representation of the Speedtest status binary sensor."""
-
-    _status_text: str = ""
-    _status_update_interval: int = 1
-    _remove_time_interval: Optional[Callable] = None
-
-    async def _async_get_speedtest_state(self, _: datetime | None = None):
-        """Update the state of the binary sensor.
-
-        Triggers a time interval to ensure that data is checked for more regularly when the state
-        is on.
-        """
-        self._status_text = await self._mesh.async_get_speedtest_state()
-        if self._status_text:
-            if not self._remove_time_interval:
-                self._remove_time_interval = async_track_time_interval(
-                    self.hass,
-                    self._async_get_speedtest_state,
-                    timedelta(seconds=self._status_update_interval),
-                )
-        else:
-            if self._remove_time_interval:
-                self._remove_time_interval()
-                self._remove_time_interval = None
-                async_dispatcher_send(self.hass, SIGNAL_UPDATE_SPEEDTEST_RESULTS)
-
-        self.async_schedule_update_ha_state()
-
-    def _handle_coordinator_update(self) -> None:
-        """Update the speedtest status information when the coordinator updates."""
-        asyncio.run_coroutine_threadsafe(
-            coro=self._async_get_speedtest_state(), loop=self.hass.loop
-        )
-        super()._handle_coordinator_update()
-
-    async def async_added_to_hass(self) -> None:
-        """Do stuff when entity is added to registry."""
-        self.async_on_remove(
-            async_dispatcher_connect(
-                hass=self.hass,
-                signal=SIGNAL_UPDATE_SPEEDTEST_STATUS,
-                target=self._async_get_speedtest_state,
-            )
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Tidy up when removed."""
-        if self._remove_time_interval:
-            self._remove_time_interval()
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set the current stage of the test as an attribute."""
-        return {"status": self._status_text}
-
-    @property
-    def is_on(self) -> bool:
-        """Return True if the mesh is currently running a Speedtest, False otherwise."""
-        return self._status_text != ""
-
-
 class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     """Representation of a binary sensor that may need out of band updates."""
 
@@ -365,6 +312,7 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         recurrence_trigger: str,
         state_method: str,
         state_processor: Callable[..., bool],
+        recurrence_post_signal: str | None = None,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
@@ -372,9 +320,11 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
 
         self._state: bool | None = None
 
+        self._esa: Mapping[str, Any] | None = None
         self._remove_action_interval: Callable | None = None
         self._recurrence_interval: int = recurrence_interval
         self._recurrence_trigger: str = recurrence_trigger
+        self._recurrence_post_signal: str | None = recurrence_post_signal
         self._state_method: str = state_method
         self._state_processor: Callable[..., bool] = state_processor
 
@@ -399,9 +349,11 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
             self._remove_action_interval()
             self._remove_action_interval = None
             self._state = None
+            if self._recurrence_post_signal is not None:
+                async_dispatcher_send(self.hass, self._recurrence_post_signal)
 
     async def _async_action(self, _: datetime | None = None) -> None:
-        """Calcaluate the actual state based on the current state in the Mesh.
+        """Calculate the actual state based on the current state in the Mesh.
 
         This is required because we don't want to query a full update of all
         entities from the Mesh.
@@ -413,8 +365,10 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         if not isinstance(self._state_processor, Callable):
             raise RuntimeError("State processor is not callable") from None
 
-        temp_state: bool = self._state_processor(await state_method())
-
+        state_method_results: Any = await state_method()
+        if isinstance(self.entity_description.extra_attributes, Callable):
+            self._esa = self.entity_description.extra_attributes(state_method_results)
+        temp_state: bool = self._state_processor(state_method_results)
         if temp_state:
             if self._remove_action_interval is None:
                 self._remove_action_interval = async_track_time_interval(
@@ -443,6 +397,11 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
     async def async_will_remove_from_hass(self) -> None:
         """Tidy up when removed."""
         self._stop_interval()
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return extra state attributes."""
+        return self._esa
 
     @property
     def is_on(self) -> Optional[bool]:
