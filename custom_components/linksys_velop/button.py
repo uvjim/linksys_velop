@@ -23,7 +23,12 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
-from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
+from .const import (
+    CONF_COORDINATOR,
+    DOMAIN,
+    SIGNAL_UPDATE_CHANNEL_SCANNING,
+    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+)
 
 # endregion
 
@@ -63,6 +68,13 @@ BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
         key="",
         name="Check for Updates",
         press_action="async_check_for_updates",
+    ),
+    LinksysVelopButtonDescription(
+        icon="mdi:wifi-sync",
+        key="",
+        name="Start channel scan",
+        press_action="async_start_channel_scan",
+        press_action_arguments={"signal": SIGNAL_UPDATE_CHANNEL_SCANNING},
     ),
     LinksysVelopButtonDescription(
         icon="hass:refresh",
