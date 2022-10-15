@@ -32,6 +32,7 @@ from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
 from .const import (
     CONF_COORDINATOR,
     DOMAIN,
+    SIGNAL_UPDATE_CHANNEL_SCANNING,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
     UPDATE_DOMAIN,
@@ -138,15 +139,29 @@ async def async_setup_entry(
         for binary_sensor_description in BINARY_SENSOR_DESCRIPTIONS
     ]
 
-    binary_sensors.append(
-        LinksysVelopMeshSpeedtestStatusBinarySensor(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=LinksysVelopBinarySensorDescription(
-                key="",
-                name="Speedtest Status",
+    binary_sensors.extend(
+        [
+            LinksysVelopMeshRecurringBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopBinarySensorDescription(
+                    key="is_channel_scan_running",
+                    name="Channel Scanning",
+                ),
+                recurrence_interval=40,
+                recurrence_trigger=SIGNAL_UPDATE_CHANNEL_SCANNING,
+                state_method="async_get_channel_scan_info",
+                state_processor=lambda s: s.get("isRunning", False),
             ),
-        )
+            LinksysVelopMeshSpeedtestStatusBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopBinarySensorDescription(
+                    key="",
+                    name="Speedtest Status",
+                ),
+            ),
+        ]
     )
 
     binary_sensors_update: List[LinksysVelopNodeBinarySensor] = []
@@ -334,3 +349,110 @@ class LinksysVelopMeshSpeedtestStatusBinarySensor(LinksysVelopMeshBinarySensor):
     def is_on(self) -> bool:
         """Return True if the mesh is currently running a Speedtest, False otherwise."""
         return self._status_text != ""
+
+
+class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
+    """Representation of a binary sensor that may need out of band updates."""
+
+    entity_description: LinksysVelopBinarySensorDescription
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description: LinksysVelopBinarySensorDescription,
+        recurrence_interval: int,
+        recurrence_trigger: str,
+        state_method: str,
+        state_processor: Callable[..., bool],
+    ) -> None:
+        """Initialise."""
+        self.entity_domain = ENTITY_DOMAIN
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+        self._state: bool | None = None
+
+        self._remove_action_interval: Callable | None = None
+        self._recurrence_interval: int = recurrence_interval
+        self._recurrence_trigger: str = recurrence_trigger
+        self._state_method: str = state_method
+        self._state_processor: Callable[..., bool] = state_processor
+
+        super().__init__(
+            config_entry=config_entry, coordinator=coordinator, description=description
+        )
+
+    def _handle_coordinator_update(self) -> None:
+        """React to updates from the coordinator."""
+        super()._handle_coordinator_update()
+        if self.is_on:
+            if self._remove_action_interval is None:
+                async_dispatcher_send(hass=self.hass, signal=self._recurrence_trigger)
+        else:
+            self._stop_interval()
+
+        self.async_write_ha_state()
+
+    def _stop_interval(self) -> None:
+        """Stop the interval from running."""
+        if isinstance(self._remove_action_interval, Callable):
+            self._remove_action_interval()
+            self._remove_action_interval = None
+            self._state = None
+
+    async def _async_action(self, _: datetime | None = None) -> None:
+        """"""
+        state_method: Callable | None = getattr(self._mesh, self._state_method, None)
+        if not isinstance(state_method, Callable):
+            raise RuntimeError("State method is not callable") from None
+
+        if not isinstance(self._state_processor, Callable):
+            raise RuntimeError("State processor is not callable") from None
+
+        temp_state: bool = self._state_processor(await state_method())
+
+        if temp_state:
+            if self._remove_action_interval is None:
+                self._remove_action_interval = async_track_time_interval(
+                    hass=self.hass,
+                    action=self._async_action,
+                    interval=timedelta(seconds=self._recurrence_interval),
+                )
+        self._state = temp_state
+
+        self.async_schedule_update_ha_state()
+
+        if not temp_state:
+            self._stop_interval()
+
+    async def async_added_to_hass(self) -> None:
+        """Do stuff when entity is added to registry."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                hass=self.hass,
+                signal=self._recurrence_trigger,
+                target=self._async_action,
+            )
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Tidy up when removed."""
+        self._stop_interval()
+
+    @property
+    def is_on(self) -> Optional[bool]:
+        """Get the state of the binary sensor."""
+        queried_state: bool
+        ret: bool
+        if self.entity_description.state_value:
+            queried_state = self.entity_description.state_value(self._mesh)
+        else:
+            queried_state = getattr(self._mesh, self.entity_description.key, None)
+
+        if self._state is not None:
+            ret = self._state
+        else:
+            ret = queried_state
+
+        return ret

@@ -61,6 +61,7 @@ PLATFORMS: List[Optional[str]] = [
     UPDATE_DOMAIN,
 ]
 
+SIGNAL_UPDATE_CHANNEL_SCANNING: str = f"{DOMAIN}_channel_scanning"
 SIGNAL_UPDATE_DEVICE_TRACKER: str = "update_device_tracker"
 SIGNAL_UPDATE_SPEEDTEST_RESULTS: str = "update_speedtest_results"
 SIGNAL_UPDATE_SPEEDTEST_STATUS: str = "update_speedtest_status"
