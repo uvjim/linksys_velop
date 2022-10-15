@@ -67,6 +67,7 @@ available.
 
 #### Binary Sensors
 
+* Mesh: Channel Scanning
 * Mesh: Client Steering _(disabled by default)_
 * Mesh: HomeKit Integration _(disabled by default)_
 * Mesh: HomeKit Integration Paired _(disabled by default)_
@@ -85,7 +86,13 @@ available.
 #### Buttons
 
 * Mesh: Check for Updates
+* Mesh: Start Channel Scanning &ast; _(interval: 40s)_
+* Mesh: Start Speedtest
 * Node: Reboot
+
+> &ast; These buttons start a long running task. When they are pressed or the
+  corresponding `binary_sensor` realises that the task is running a secondary
+  timer is started, using the interval in brackets above.
 
 #### Device Trackers
 
