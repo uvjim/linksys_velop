@@ -3,11 +3,10 @@
 # region #-- imports --#
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping
 
 from homeassistant.components.binary_sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.binary_sensor import (
@@ -48,8 +47,8 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the binary sensor description."""
 
-    extra_attributes: Optional[Callable] = None
-    state_value: Optional[Callable] = None
+    extra_attributes: Callable | None = None
+    state_value: Callable | None = None
 
 
 @dataclasses.dataclass
@@ -259,7 +258,7 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
         )
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._mesh)
@@ -290,7 +289,7 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
         )
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
         if self.entity_description.state_value:
             return self.entity_description.state_value(self._node)
@@ -404,7 +403,7 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         return self._esa
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
         queried_state: bool
         ret: bool
