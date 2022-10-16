@@ -30,7 +30,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshDeviceNotFoundResponse, MeshInvalidOutput
+from pyvelop.exceptions import (
+    MeshConnectionError,
+    MeshDeviceNotFoundResponse,
+    MeshInvalidOutput,
+    MeshTimeoutError,
+)
 from pyvelop.mesh import Mesh
 
 from .const import (
@@ -43,7 +48,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .helpers import dr_mesh_for_config_entry
+from .helpers import dr_mesh_for_config_entry, mesh_intensive_action_running
 from .logger import Logger
 
 # endregion
@@ -84,6 +89,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             self._log_formatter: Logger = Logger()
         self._device: Optional[Device] = None
         self._hass: HomeAssistant = hass
+        self._intensive_action: str | None = None
         self._ip: str = ""
         self._is_connected: bool = False
         self._mac: str = ""
@@ -193,6 +199,23 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 device_id=self._device.unique_id,
                 force_refresh=True,
             )
+        except (MeshConnectionError, MeshTimeoutError) as err:
+            is_running, action = mesh_intensive_action_running(
+                config_entry=self._config, hass=self.hass
+            )
+            if is_running:
+                if self._intensive_action is None:
+                    self._intensive_action = action
+                    _LOGGER.warning(
+                        self._log_formatter.format(
+                            "%s is running. Ignoring errors at this time."
+                        ),
+                        self._intensive_action,
+                    )
+            else:
+                _LOGGER.warning(self._log_formatter.format("%s"), err)
+                self._intensive_action = None
+            return
         except MeshDeviceNotFoundResponse:
             _LOGGER.warning(
                 self._log_formatter.format(
@@ -211,6 +234,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             )
             return
 
+        self._intensive_action = None
         self._device = tracker_details
         if evt is not None:  # here because the listener fired
             _LOGGER.debug(
