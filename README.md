@@ -87,7 +87,7 @@ available.
 
 * Mesh: Check for Updates
 * Mesh: Start Channel Scanning &ast; _(interval: 40s)_
-* Mesh: Start Speedtest
+* Mesh: Start Speedtest &ast; _(interval: 1s)_
 * Node: Reboot
 
 > &ast; These buttons start a long running task. When they are pressed or the
@@ -279,7 +279,7 @@ as per the following screenshot.
 
 ### Services
 
-The following services are available.  Each service is described in metadata
+The following services are available. Each service is described in metadata
 so paramters are described in the Home Assistant Services page.
 
 * Check for Updates
@@ -288,8 +288,8 @@ so paramters are described in the Home Assistant Services page.
 * Reboot Node
 
 > &ast; these are considered long-running tasks. When the binary sensors spot
-  these tasks are running an additional timer is set up that polls every
-  second to get updates and updates the relevant attributes for that sensor.
+  these tasks are running an additional timer is set up that polls at intervals
+  to get updates and updates the relevant attributes for that sensor.
 
 ## Setup
 
