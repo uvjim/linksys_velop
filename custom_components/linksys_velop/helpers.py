@@ -3,11 +3,14 @@
 # region #-- imports --#
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import device_registry as dr
+from homeassistant.config_entries import entity_registry as er
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
+from homeassistant.helpers.entity_registry import EntityRegistry
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
@@ -65,3 +68,32 @@ def dr_nodes_for_mesh(
     ]
 
     return ret or None
+
+
+def mesh_intensive_action_running(
+    config_entry: ConfigEntry,
+    hass: HomeAssistant,
+) -> Tuple[bool, str]:
+    """Establish if an intesive action is running."""
+    intensive_actions: List[str] = ["Channel Scanning"]
+
+    entity_registry: EntityRegistry = er.async_get(hass=hass)
+
+    reg_entry: er.RegistryEntry
+    ce_entities: List[er.RegistryEntry] = [
+        reg_entry
+        for _, reg_entry in entity_registry.entities.items()
+        if reg_entry.domain == "binary_sensor"
+        and reg_entry.config_entry_id == config_entry.entry_id
+        and reg_entry.original_name in intensive_actions
+    ]
+    ce_entity_states: List[bool] = [
+        hass.states.is_state(ce_entity.entity_id, "on") for ce_entity in ce_entities
+    ]
+    if any(ce_entity_states):
+        idx: int = ce_entity_states.index(True)
+        ret = (True, ce_entities[idx].original_name)
+    else:
+        ret = (False, "")
+
+    return ret
