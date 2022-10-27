@@ -59,7 +59,7 @@ class OptionalLinksysVelopDescription:
 class RequiredLinksysVelopDescription:
     """Represent the required attributes of the select description."""
 
-    options: Callable[[Any], list[str]] | list[str]
+    linksys_velop_options: Callable[[Any], list[str]] | list[str]
 
 
 @dataclasses.dataclass
@@ -90,7 +90,7 @@ async def async_setup_entry(
                 extra_attributes=_get_device_details,
                 key="devices",
                 name="Devices",
-                options=lambda m: ([device.name for device in m.devices]),
+                linksys_velop_options=lambda m: ([device.name for device in m.devices]),
             ),
         )
     ]
@@ -142,7 +142,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     @property
     def options(self) -> list[str]:
         """Build the options for the select."""
-        if isinstance(self.entity_description.options, Callable):
-            return self.entity_description.options(self._mesh)
+        if isinstance(self.entity_description.linksys_velop_options, Callable):
+            return self.entity_description.linksys_velop_options(self._mesh)
 
-        return self.entity_description.options
+        return self.entity_description.linksys_velop_options
