@@ -45,6 +45,14 @@
         },
         "title": "Linksys Velop"
     },
+    "device_automation": {
+        "trigger_type": {
+            "logging_stopped": "Rejestrowanie zatrzymane",
+            "new_device": "Znaleziono nowe urządzenie",
+            "new_node": "Znaleziono nowy węzeł",
+            "new_primary_node": "Zmieniono węzeł główny"
+        }
+    },
     "options": {
         "step": {
             "device_trackers": {
@@ -52,6 +60,22 @@
                     "tracked": "Dostępne urządzenia"
                 },
                 "description": "Wybierz urządzenia, których chcesz używać do śledzenia obecności",
+                "title": "Linksys Velop"
+            },
+            "init": {
+                "menu_options": {
+                    "device_trackers": "Śledzenie urządzeń",
+                    "logging": "Logowanie",
+                    "timers": "Czasomierze"
+                }
+            },
+            "logging": {
+                "data": {
+                    "logging_mode": "Tryb logowania",
+                    "logging_jnap_response": "Dołącz odpowiedzi na zapytania do dzienników debugowania",
+                    "logging_serial": "Dołącz numer seryjny do dzienników debugowania"
+                },
+                "description": "Skonfiguruj szczegóły i stan logowania.\n\n{logging_mode_warning}",
                 "title": "Linksys Velop"
             },
             "timers": {
