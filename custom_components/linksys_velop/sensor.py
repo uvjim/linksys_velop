@@ -105,6 +105,11 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
         name="Online Devices",
         state_value=lambda m: len(get_devices(mesh=m)),
     ),
+    LinksysVelopSensorDescription(
+        icon="mdi:ip-network-outline",
+        key="wan_ip",
+        name="WAN IP",
+    ),
 )
 
 

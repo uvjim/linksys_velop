@@ -121,6 +121,7 @@ install time and from reconfiguring the integration.
 * Mesh: Number of Available Storage Partitions _(disabled by default)_
   * list of the available partitions including the following information: IP,
     label, available Kb, used Kb, used %age and last checked time
+* Mesh: WAN IP
 * Node: Number of Connected Devices
   * list of names, IP addresses, type of connection and guest network state for
     the connected devices
