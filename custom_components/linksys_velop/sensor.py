@@ -66,6 +66,48 @@ class LinksysVelopSensorDescription(
 # endregion
 
 
+SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
+    LinksysVelopSensorDescription(
+        entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {"partitions": m.storage_available or None},
+        icon="mdi:nas",
+        key="available_storage",
+        name="Available Storage",
+        state_value=lambda m: len(m.storage_available),
+    ),
+    LinksysVelopSensorDescription(
+        entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {
+            "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
+        },
+        key="guest_devices",
+        name="Guest Devices",
+        state_value=lambda m: len(
+            [d for d in get_devices(mesh=m) if d.get("guest_network")]
+        ),
+    ),
+    LinksysVelopSensorDescription(
+        extra_attributes=(
+            lambda m: {
+                "devices": [
+                    {"name": d.get("name", ""), "id": d.get("id", "")}
+                    for d in get_devices(mesh=m, state=False)
+                ]
+            }
+        ),
+        key="offline_devices",
+        name="Offline Devices",
+        state_value=lambda m: len(get_devices(mesh=m, state=False)),
+    ),
+    LinksysVelopSensorDescription(
+        extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
+        key="online_devices",
+        name="Online Devices",
+        state_value=lambda m: len(get_devices(mesh=m)),
+    ),
+)
+
+
 # region #-- general functions for nodes and the mesh --#
 def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
     """Get the matching devices from the Mesh."""
@@ -87,48 +129,6 @@ def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
 
 
 # endregion
-
-
-SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
-    LinksysVelopSensorDescription(
-        extra_attributes=(
-            lambda m: {
-                "devices": [
-                    {"name": d.get("name", ""), "id": d.get("id", "")}
-                    for d in get_devices(mesh=m, state=False)
-                ]
-            }
-        ),
-        key="offline_devices",
-        name="Offline Devices",
-        state_value=lambda m: len(get_devices(mesh=m, state=False)),
-    ),
-    LinksysVelopSensorDescription(
-        extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
-        key="online_devices",
-        name="Online Devices",
-        state_value=lambda m: len(get_devices(mesh=m)),
-    ),
-    LinksysVelopSensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {"partitions": m.storage_available or None},
-        icon="mdi:nas",
-        key="available_storage",
-        name="Available Storage",
-        state_value=lambda m: len(m.storage_available),
-    ),
-    LinksysVelopSensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {
-            "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
-        },
-        key="guest_devices",
-        name="Guest Devices",
-        state_value=lambda m: len(
-            [d for d in get_devices(mesh=m) if d.get("guest_network")]
-        ),
-    ),
-)
 
 
 async def async_setup_entry(
