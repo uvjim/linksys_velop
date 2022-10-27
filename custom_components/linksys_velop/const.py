@@ -62,8 +62,8 @@ PLATFORMS: List[Optional[str]] = [
 ]
 
 SIGNAL_UPDATE_CHANNEL_SCANNING: str = f"{DOMAIN}_channel_scanning"
-SIGNAL_UPDATE_DEVICE_TRACKER: str = "update_device_tracker"
-SIGNAL_UPDATE_SPEEDTEST_RESULTS: str = "update_speedtest_results"
-SIGNAL_UPDATE_SPEEDTEST_STATUS: str = "update_speedtest_status"
+SIGNAL_UPDATE_DEVICE_TRACKER: str = f"{DOMAIN}_update_device_tracker"
+SIGNAL_UPDATE_SPEEDTEST_RESULTS: str = f"{DOMAIN}_update_speedtest_results"
+SIGNAL_UPDATE_SPEEDTEST_STATUS: str = f"{DOMAIN}_update_speedtest_status"
 
 ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
