@@ -51,6 +51,9 @@ def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the select description."""
 
+    custom_options: Callable[[Any], list[str]] | list[str] = dataclasses.field(
+        default_factory=list
+    )
     extra_attributes_args: Optional[dict] = dataclasses.field(default_factory=dict)
     extra_attributes: Optional[Callable[[Any], dict]] = None
 
@@ -58,8 +61,6 @@ class OptionalLinksysVelopDescription:
 @dataclasses.dataclass
 class RequiredLinksysVelopDescription:
     """Represent the required attributes of the select description."""
-
-    linksys_velop_options: Callable[[Any], list[str]] | list[str]
 
 
 @dataclasses.dataclass
@@ -87,10 +88,10 @@ async def async_setup_entry(
             config_entry=config_entry,
             coordinator=coordinator,
             description=LinksysVelopSelectDescription(
+                custom_options=lambda m: ([device.name for device in m.devices]),
                 extra_attributes=_get_device_details,
                 key="devices",
                 name="Devices",
-                linksys_velop_options=lambda m: ([device.name for device in m.devices]),
             ),
         )
     ]
@@ -142,7 +143,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     @property
     def options(self) -> list[str]:
         """Build the options for the select."""
-        if isinstance(self.entity_description.linksys_velop_options, Callable):
-            return self.entity_description.linksys_velop_options(self._mesh)
+        if isinstance(self.entity_description.custom_options, Callable):
+            return self.entity_description.custom_options(self._mesh)
 
-        return self.entity_description.linksys_velop_options
+        return self.entity_description.custom_options or self.entity_description.options
