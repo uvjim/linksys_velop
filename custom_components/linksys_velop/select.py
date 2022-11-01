@@ -41,7 +41,7 @@ def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
         if device_name and dev.name.lower() == device_name.lower()
     ]
     if device:
-        ret = {p: getattr(device[0], p, None) for p in required_properties}
+        ret = {p: getattr(device[0], p, None) or None for p in required_properties}
 
     return ret
 
