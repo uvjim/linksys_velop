@@ -533,6 +533,7 @@ filter:
                 color: darkred
             styles:
               card:
+                - border: 0
                 - box-shadow: none
                 - padding: 16px 8px
               grid:
@@ -617,6 +618,7 @@ filter:
                       ]]]
                     styles:
                       card:
+                        - border: 0
                         - box-shadow: none
                         - margin-bottom: 3px
                       icon:
@@ -679,7 +681,7 @@ filter:
                 card_mod:
                   style:
                     .: |
-                      ha-card { border-radius: 0px; box-shadow: none; }
+                      ha-card { border-radius: 0px; border: 0; box-shadow: none; }
                       ha-markdown { padding: 16px 0px 0px !important; }
                     ha-markdown$: >
                       table { width: 100%; border-collapse: separate;
@@ -742,7 +744,7 @@ filter:
                 card_mod:
                   style:
                     .: |
-                      ha-card { border-radius: 0px; box-shadow: none; }
+                      ha-card { border-radius: 0px; border: 0; box-shadow: none; }
                       ha-markdown { padding: 16px 0px 0px !important; }
                     ha-markdown$: >
                       table { width: 100%; border-collapse: separate;
@@ -779,7 +781,7 @@ filter:
                     card_mod:
                       style:
                         .: |
-                          ha-card { border-radius: 0px; box-shadow: none; }
+                          ha-card { border-radius: 0px; border: 0; box-shadow: none; }
                           ha-markdown { padding: 16px 0px 0px !important; }
                         ha-markdown$: >
                           table { width: 100%; border-collapse: separate;
@@ -1010,6 +1012,7 @@ filter:
                 padding-top: 25px; font-size: smaller; }
               styles:
                 card:
+                  - border: 0
                   - box-shadow: none
                   - padding: 16px 8px
                 grid:
@@ -1108,7 +1111,7 @@ filter:
                   card_mod:
                     style:
                       .: |
-                        ha-card { border-radius: 0px; box-shadow: none; }
+                        ha-card { border-radius: 0px; border: 0; box-shadow: none; }
                         ha-markdown { padding: 16px 0px 0px !important; }
                       ha-markdown$: >
                         table { width: 100%; border-collapse: collapse; }
@@ -1280,6 +1283,8 @@ filter:
                 type: markdown
                 card_mod:
                   style:
+                    .: |
+                      ha-card { border: 0; box-shadow: none; }
                     ha-markdown$: >
                       table { width: 100%; border-collapse: collapse; }
 
@@ -1323,6 +1328,8 @@ filter:
                 type: markdown
                 card_mod:
                   style:
+                    .: |
+                      ha-card { border: 0; box-shadow: none; }
                     ha-markdown$: >
                       table { width: 100%; border-collapse: collapse; }
 
