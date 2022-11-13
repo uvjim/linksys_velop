@@ -195,8 +195,8 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             CONF_COORDINATOR_MESH
         ]
         try:
-            tracker_details: Device = await mesh.async_get_device_from_id(
-                device_id=self._device.unique_id,
+            tracker_details: List[Device] = await mesh.async_get_device_from_id(
+                device_id=[self._device.unique_id],
                 force_refresh=True,
             )
         except (MeshConnectionError, MeshTimeoutError) as err:
@@ -235,7 +235,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             return
 
         self._intensive_action = None
-        self._device = tracker_details
+        self._device = tracker_details[0]
         if evt is not None:  # here because the listener fired
             _LOGGER.debug(
                 self._log_formatter.format("%s is now being marked offline"),
