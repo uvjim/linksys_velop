@@ -4,7 +4,7 @@
 import dataclasses
 import logging
 from abc import ABC
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.switch import (
@@ -31,11 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the switch description."""
 
-    extra_attributes: Optional[Callable] = None
-    icon_off: Optional[str] = None
-    icon_on: Optional[str] = None
-    turn_off_args: Optional[dict] = dict
-    turn_on_args: Optional[dict] = dict
+    extra_attributes: Callable | None = None
+    icon_off: str | None = None
+    icon_on: str | None = None
+    turn_off_args: dict | None = dict
+    turn_on_args: dict | None = dict
 
 
 @dataclasses.dataclass
@@ -177,7 +177,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
             await self.async_update_ha_state()
 
     @property
-    def icon(self) -> Optional[str]:
+    def icon(self) -> str | None:
         """Get the icon."""
         if self.entity_description.icon_on and self.is_on:
             return self.entity_description.icon_on
@@ -185,6 +185,6 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         return self.entity_description.icon_off
 
     @property
-    def is_on(self) -> Optional[bool]:
+    def is_on(self) -> bool | None:
         """Get the current state of the switch."""
         return self._value

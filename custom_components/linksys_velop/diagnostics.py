@@ -3,7 +3,7 @@
 # region #-- imports --#
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.config_entries import ConfigEntry
@@ -40,8 +40,8 @@ async def async_get_config_entry_diagnostics(
     mesh_attributes: Dict = getattr(mesh, "_mesh_attributes")
 
     # region #-- non-serialisable objects --#
-    devices: Optional[List[Device]] = mesh_attributes.pop("devices", None)
-    nodes: Optional[List[Node]] = mesh_attributes.pop("nodes", None)
+    devices: List[Device] | None = mesh_attributes.pop("devices", None)
+    nodes: List[Node] | None = mesh_attributes.pop("nodes", None)
     # endregion
 
     # region #-- create generic details --#

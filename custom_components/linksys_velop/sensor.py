@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping
 
 from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.sensor import (
@@ -45,8 +45,8 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the sensor description."""
 
-    extra_attributes: Optional[Callable] = None
-    state_value: Optional[Callable] = None
+    extra_attributes: Callable | None = None
+    state_value: Callable | None = None
 
 
 @dataclasses.dataclass

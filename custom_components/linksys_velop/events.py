@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from homeassistant.backports.enum import StrEnum
 from homeassistant.config_entries import ConfigEntry
@@ -37,7 +37,7 @@ def build_payload(
     config_entry: ConfigEntry,
     event: EventSubType,
     hass: HomeAssistant,
-    device: Optional[Device | Node] = None,
+    device: Device | Node | None = None,
 ) -> Dict[str, Any]:
     """Build the payload for the fired events."""
     event_properties: List[str] = []
