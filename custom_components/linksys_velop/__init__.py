@@ -6,7 +6,7 @@ from __future__ import annotations
 import datetime
 import logging
 from datetime import timedelta
-from typing import Any, Callable, Dict, List, Mapping, Optional, Set
+from typing import Any, Callable, Dict, List, Mapping, Set
 
 import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import ConfigEntry

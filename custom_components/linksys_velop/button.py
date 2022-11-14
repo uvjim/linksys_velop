@@ -6,7 +6,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 from abc import ABC
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.button import (
@@ -40,7 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the button description."""
 
-    press_action_arguments: Optional[dict] = dataclasses.field(default_factory=dict)
+    press_action_arguments: dict = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -135,10 +135,10 @@ async def _async_button_pressed(
     action: str,
     hass: HomeAssistant,
     mesh: Mesh,
-    action_arguments: Optional[dict] = None,
+    action_arguments: dict | None = None,
 ):
     """Carry out the button press action."""
-    action: Optional[Callable] = getattr(mesh, action, None)
+    action: Callable | None = getattr(mesh, action, None)
     signal: str = action_arguments.pop("signal", None)
     if action and isinstance(action, Callable):
         if action_arguments is None:

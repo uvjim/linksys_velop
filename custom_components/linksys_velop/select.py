@@ -6,7 +6,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 from abc import ABC
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
@@ -26,7 +26,7 @@ from .const import CONF_COORDINATOR, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-def _get_device_details(mesh: Mesh, device_name: str) -> Optional[dict]:
+def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
     """Get the properties for a device with the given name."""
     # -- return all properties from the Device object for use --#
     required_properties: List[str] = [
@@ -54,8 +54,8 @@ class OptionalLinksysVelopDescription:
     custom_options: Callable[[Any], list[str]] | list[str] = dataclasses.field(
         default_factory=list
     )
-    extra_attributes_args: Optional[dict] = dataclasses.field(default_factory=dict)
-    extra_attributes: Optional[Callable[[Any], dict]] = None
+    extra_attributes_args: dict | None = dataclasses.field(default_factory=dict)
+    extra_attributes: Callable[[Any], dict] | None = None
 
 
 @dataclasses.dataclass
@@ -126,7 +126,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         await self.async_update_ha_state()
 
     @property
-    def extra_state_attributes(self) -> Optional[Mapping[str, Any]]:
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes."""
         if self.entity_description.extra_attributes and isinstance(
             self.entity_description.extra_attributes, Callable
