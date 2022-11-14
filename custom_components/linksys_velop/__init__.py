@@ -29,7 +29,13 @@ from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshException, MeshTimeoutError
+from pyvelop.exceptions import (
+    MeshConnectionError,
+    MeshDeviceNotFoundResponse,
+    MeshException,
+    MeshInvalidOutput,
+    MeshTimeoutError,
+)
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node, NodeType
 
@@ -60,7 +66,11 @@ from .const import (
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .events import EVENT_TYPE, EventSubType, build_payload
-from .helpers import dr_nodes_for_mesh
+from .helpers import (
+    dr_nodes_for_mesh,
+    mesh_intensive_action_running,
+    stop_tracking_device,
+)
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
 
@@ -199,6 +209,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     _LOGGER.debug(log_formatter.format("preparing memory storage"))
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
+    hass.data[DOMAIN][config_entry.entry_id]["intensive_running"] = None
     # endregion
 
     # region #-- setup the coordinator for data updates --#
@@ -425,7 +436,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass=hass,
         logger=_LOGGER,
         name=coordinator_name,
-        update_interval=timedelta(seconds=config_entry.options[CONF_SCAN_INTERVAL]),
+        update_interval=timedelta(
+            seconds=config_entry.options.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL)
+        ),
         update_method=_async_get_mesh_data,
     )
     await coordinator.async_config_entry_first_refresh()
@@ -472,21 +485,75 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
         Uses the _ variable to ignore IDE checking for unused variables
 
-        Gets the device list from the mesh before dispatching the message
+        Gets the device status from the mesh before dispatching the message
 
         :param _: datetime object for when the event was fired
         :return: None
         """
-        async_dispatcher_send(hass, SIGNAL_UPDATE_DEVICE_TRACKER)
+        mesh: Mesh = coordinator.data
+        if mesh is not None:
+            devices: List[Device] = []
+            try:
+                devices = await mesh.async_get_device_from_id(
+                    device_id=config_entry.options.get(CONF_DEVICE_TRACKERS),
+                    force_refresh=True,
+                )
+            except (MeshConnectionError, MeshTimeoutError) as err:
+                # check if an intensive action is running so we can suppress warnings
+                is_running, action = mesh_intensive_action_running(
+                    config_entry=config_entry, hass=hass
+                )
+                if is_running:
+                    if (
+                        hass.data[DOMAIN][config_entry.entry_id]["intensive_running"]
+                        is None
+                    ):
+                        hass.data[DOMAIN][config_entry.entry_id][
+                            "intensive_running"
+                        ] = is_running
+                        _LOGGER.warning(
+                            log_formatter.format(
+                                "%s is running. Ignoring errors at this time."
+                            ),
+                            action,
+                        )
+                else:
+                    _LOGGER.warning(log_formatter.format("%s"), err)
+                    hass.data[DOMAIN][config_entry.entry_id]["intensive_running"] = None
+                    return
+            except MeshDeviceNotFoundResponse as err:
+                # remove missing device trackers because they don't exist anymore
+                _LOGGER.warning(
+                    log_formatter.format("stop tracking %s as %s exist anymore"),
+                    err.devices,
+                    "they don't" if len(err.devices) != 1 else "it doesn't",
+                )
+                stop_tracking_device(
+                    config_entry=config_entry, device_id=err.devices, hass=hass
+                )
+            except MeshInvalidOutput:
+                _LOGGER.warning(
+                    log_formatter.format(
+                        "Invalid output received when checking device tracker status."
+                    )
+                )
+                return
+
+            # dispatch a message for the ones that were found
+            device: Device
+            for device in devices:
+                async_dispatcher_send(
+                    hass,
+                    f"{SIGNAL_UPDATE_DEVICE_TRACKER}_{device.unique_id}",
+                    device,
+                )
 
     # region #-- set up the timer for checking device trackers --#
-    if config_entry.options[
-        CONF_DEVICE_TRACKERS
-    ]:  # only do setup if device trackers were selected
+    if config_entry.options.get(CONF_DEVICE_TRACKERS, None):
+        # only do setup if device trackers were selected
         _LOGGER.debug(log_formatter.format("setting up device trackers"))
-        await device_tracker_update(
-            datetime.datetime.now()
-        )  # update before setting the timer
+        # update before setting the timer
+        await device_tracker_update(datetime.datetime.now())
         scan_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
         )
@@ -495,6 +562,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 hass, device_tracker_update, timedelta(seconds=scan_interval)
             )
         )
+    else:
+        _LOGGER.debug(log_formatter.format("no device trackers set"))
     # endregion
 
     _LOGGER.debug(log_formatter.format("exited"))

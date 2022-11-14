@@ -3,9 +3,8 @@
 # region #-- imports --#
 from __future__ import annotations
 
-import copy
 import logging
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
@@ -25,17 +24,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
-from pyvelop.exceptions import (
-    MeshConnectionError,
-    MeshDeviceNotFoundResponse,
-    MeshInvalidOutput,
-    MeshTimeoutError,
-)
 from pyvelop.mesh import Mesh
 
 from .const import (
@@ -48,7 +40,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .helpers import dr_mesh_for_config_entry, mesh_intensive_action_running
+from .helpers import dr_mesh_for_config_entry, stop_tracking_device
 from .logger import Logger
 
 # endregion
@@ -82,24 +74,21 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._attr_should_poll = False
 
         self._config: ConfigEntry = config_entry
-        self._listener_consider_home: Optional[Callable] = None
+        self._listener_consider_home: Callable | None = None
         if self._config.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
             self._log_formatter: Logger = Logger(unique_id=self._config.unique_id)
         else:
             self._log_formatter: Logger = Logger()
-        self._device: Optional[Device] = None
-        self._hass: HomeAssistant = hass
-        self._intensive_action: str | None = None
+        self._device: Device | None = None
         self._ip: str = ""
         self._is_connected: bool = False
         self._mac: str = ""
 
-        # region #-- get the device specific info --#
-        mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][
-            CONF_COORDINATOR_MESH
-        ]
+        self.hass = hass
+
+        mesh: Mesh = hass.data[DOMAIN][self._config.entry_id][CONF_COORDINATOR_MESH]
         device: Device
-        for device in mesh.devices:
+        for device in mesh.devices:  # get the device specific info
             if device.unique_id == device_id:
                 self._device = device
                 self._is_connected = device.status
@@ -113,15 +102,14 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 except AttributeError:
                     self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
                 break
-        else:  # got to the end and didn't find it
-            _LOGGER.warning(
-                self._log_formatter.format(
-                    "%s not found on the mesh. Removing it from being tracked."
-                ),
+        else:  # device not found so stop tracking
+            _LOGGER.debug(
+                self._log_formatter.format("stop tracking %s as it doesn't exist"),
                 device_id,
             )
-            self._stop_tracking(unique_id=device_id)
-        # endregion
+            stop_tracking_device(
+                config_entry=self._config, device_id=device_id, hass=self.hass
+            )
 
     def _get_device_adapter_info(self) -> None:
         """Gather the network details about the device tracker."""
@@ -130,124 +118,12 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
             self._mac = dr.format_mac(adapter[0].get("mac", ""))
             self._ip = adapter[0].get("ip", "")
 
-    def _get_mesh_from_registry(self) -> Mesh | None:
-        """Retrieve the Mesh device from the registry."""
-        dr_mesh: Mesh = dr_mesh_for_config_entry(
-            config=self._config, device_registry=dr.async_get(hass=self._hass)
-        )
-        if dr_mesh is None:
-            return None
-
-        return dr_mesh
-
-    def _stop_tracking(self, unique_id: str) -> None:
-        """Stop monitoring the tracker."""
-        new_options = copy.deepcopy(
-            dict(**self._config.options)
-        )  # deepcopy a dict copy so we get all the options
-        trackers: List[str]
-        if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
-            trackers.remove(unique_id)
-            new_options[CONF_DEVICE_TRACKERS] = trackers
-            self._hass.config_entries.async_update_entry(
-                entry=self._config, options=new_options
-            )
-
-    def _update_mesh_device_connections(self) -> None:
-        """Update the `connections` property for the Mesh.
-
-        N.B.  HASS versions prior to 2022.2 do not have the `merge_connections` parameter
-        so fall back to using `_attr_device_info` (should do this in HASS 2022.2 and later)
-        """
-        if not self._mac:
-            return
-
-        if (
-            dr_mesh := dr_mesh_for_config_entry(
-                config=self._config, device_registry=dr.async_get(hass=self._hass)
-            )
-        ) is None:
-            return
-
-        if not {(dr.CONNECTION_NETWORK_MAC, self._mac)}.issubset(dr_mesh.connections):
-            dev_reg: DeviceRegistry = dr.async_get(hass=self._hass)
-            try:
-                dev_reg.async_update_device(
-                    device_id=dr_mesh.id,
-                    merge_connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
-                )
-            except TypeError:  # TODO: remove when bumping min HASS version to 2022.2
-                self._attr_device_info: DeviceInfo = DeviceInfo(
-                    connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
-                    identifiers={(DOMAIN, self._config.entry_id)},
-                )
-                dev_reg.async_load()  # reload the device registry so the entity is immediately available
-
-    async def _async_get_device_info(
-        self, evt: Optional[dt_util.dt.datetime] = None
-    ) -> None:
-        """Retrieve the current status of the device and update the status if need be."""
-        if self._device is None:
-            return
-
-        mark_online: bool = False
-        mesh: Mesh = self._hass.data[DOMAIN][self._config.entry_id][
-            CONF_COORDINATOR_MESH
-        ]
-        try:
-            tracker_details: List[Device] = await mesh.async_get_device_from_id(
-                device_id=[self._device.unique_id],
-                force_refresh=True,
-            )
-        except (MeshConnectionError, MeshTimeoutError) as err:
-            is_running, action = mesh_intensive_action_running(
-                config_entry=self._config, hass=self.hass
-            )
-            if is_running:
-                if self._intensive_action is None:
-                    self._intensive_action = action
-                    _LOGGER.warning(
-                        self._log_formatter.format(
-                            "%s is running. Ignoring errors at this time."
-                        ),
-                        self._intensive_action,
-                    )
-            else:
-                _LOGGER.warning(self._log_formatter.format("%s"), err)
-                self._intensive_action = None
-            return
-        except MeshDeviceNotFoundResponse:
-            _LOGGER.warning(
-                self._log_formatter.format(
-                    "%s is no longer on the mesh. Removing it from being tracked."
-                ),
-                self._device.name,
-            )
-            self._stop_tracking(unique_id=self._device.unique_id)
-            return
-        except MeshInvalidOutput:
-            _LOGGER.warning(
-                self._log_formatter.format(
-                    "Invalid output received when checking for %s on the mesh."
-                ),
-                self._device.name,
-            )
-            return
-
-        self._intensive_action = None
-        self._device = tracker_details[0]
-        if evt is not None:  # here because the listener fired
-            _LOGGER.debug(
-                self._log_formatter.format("%s is now being marked offline"),
-                self._device.name,
-            )
-            self._is_connected = False
-            self._listener_consider_home = None
-            await self.async_update_ha_state()
-            return
-
-        if self._is_connected != self._device.status:  # status changed
-            if not self._device.status:  # just disconnected so start the listener
+    async def _async_process_device_info(self, device_info: Device) -> None:
+        """Process the data passed in by the signal."""
+        _LOGGER.debug(self._log_formatter.format("entered, %s"), device_info)
+        self._device = device_info
+        if self._is_connected != device_info.status:  # status changed
+            if not device_info.status:  # disconnected
                 if self._listener_consider_home is None:
                     fire_at: dt_util.dt.datetime = dt_util.dt.datetime.fromtimestamp(
                         int(self._device.results_time)
@@ -262,33 +138,25 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                         self._device.name,
                         fire_at,
                     )
-                    # noinspection PyTypeChecker
                     self._listener_consider_home = async_track_point_in_time(
-                        hass=self._hass,
-                        action=self._async_get_device_info,
+                        hass=self.hass,
+                        action=self._async_mark_offline,
                         point_in_time=fire_at,
                     )
-            else:
+            else:  # connected
                 _LOGGER.debug(
                     self._log_formatter.format("%s: back online"), self._device.name
                 )
                 self._is_connected = True
-                mark_online = True
+                await self.async_update_ha_state()
         else:
-            self._is_connected = self._device.status
-            if self._is_connected and self._listener_consider_home is not None:
+            if self._listener_consider_home is not None:
                 _LOGGER.debug(
                     self._log_formatter.format(
                         "%s: back online in consider_home period"
                     ),
                     self._device.name,
                 )
-                mark_online = True
-
-        if mark_online:
-            if (
-                self._listener_consider_home is not None
-            ):  # just connected so cancel the listener
                 _LOGGER.debug(
                     self._log_formatter.format("%s: cancelling consider home listener"),
                     self._device.name,
@@ -296,26 +164,58 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._listener_consider_home()
                 self._listener_consider_home = None
 
-            self._get_device_adapter_info()
-            self._update_mesh_device_connections()
-            await self.async_update_ha_state()
+    def _update_mesh_device_connections(self) -> None:
+        """Update the `connections` property for the Mesh."""
+        _LOGGER.debug(self._log_formatter.format("entered"))
+
+        if self._mac:
+            if not self.find_device_entry():
+                dev_reg: DeviceRegistry = dr.async_get(hass=self.hass)
+                dr_mesh = dr_mesh_for_config_entry(
+                    config=self._config, device_registry=dev_reg
+                )
+                if dr_mesh is not None:
+                    _LOGGER.debug(
+                        self._log_formatter.format("updating Mesh connections for %s"),
+                        self._mac,
+                    )
+                    dev_reg.async_update_device(
+                        device_id=dr_mesh.id,
+                        merge_connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
+                    )
+            else:
+                _LOGGER.debug(
+                    self._log_formatter.format("%s already a known connection"),
+                    self._mac,
+                )
+
+        _LOGGER.debug(self._log_formatter.format("exited"))
+
+    async def _async_mark_offline(self, _: dt_util.dt.datetime) -> None:
+        """Mark the device tracker as offline."""
+        _LOGGER.debug(
+            self._log_formatter.format("%s is now being marked offline"),
+            self._device.name,
+        )
+        self._is_connected = False
+        self._listener_consider_home = None
+        await self.async_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Create listeners."""
-        self.async_on_remove(
-            async_dispatcher_connect(
-                hass=self.hass,
-                signal=SIGNAL_UPDATE_DEVICE_TRACKER,
-                target=self._async_get_device_info,
+        if self._device is not None:
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    hass=self.hass,
+                    signal=f"{SIGNAL_UPDATE_DEVICE_TRACKER}_{self._device.unique_id}",
+                    target=self._async_process_device_info,
+                )
             )
-        )
 
     async def async_will_remove_from_hass(self) -> None:
         """Cancel listeners."""
-        # region #-- cancel the listeners --#
         if self._listener_consider_home is not None:
             self._listener_consider_home()
-        # endregion
 
     @property
     def ip_address(self) -> str | None:
@@ -338,7 +238,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         return SOURCE_TYPE_ROUTER
 
     @property
-    def unique_id(self) -> Optional[str]:
+    def unique_id(self) -> str | None:
         """Get the unique_id."""
         if self._device is not None:
             return (
@@ -346,3 +246,5 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 f"{ENTITY_DOMAIN.lower()}::"
                 f"{self._device.unique_id}"
             )
+
+        return None
