@@ -3,6 +3,8 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import copy
+
 from typing import List, Tuple
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,6 +18,8 @@ from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
+
+from .const import CONF_DEVICE_TRACKERS
 
 # endregion
 
@@ -97,3 +101,21 @@ def mesh_intensive_action_running(
         ret = (False, "")
 
     return ret
+
+
+def stop_tracking_device(
+    config_entry: ConfigEntry, device_id: List[str] | str, hass: HomeAssistant
+) -> None:
+    """Stop tracking the given device."""
+    if not isinstance(device_id, list):
+        device_id = [device_id]
+
+    new_options = copy.deepcopy(
+        dict(**config_entry.options)
+    )  # deepcopy a dict copy so we get all the options
+    trackers: List[str]
+    if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
+        for tracker_id in device_id:
+            trackers.remove(tracker_id)
+        new_options[CONF_DEVICE_TRACKERS] = trackers
+        hass.config_entries.async_update_entry(entry=config_entry, options=new_options)
