@@ -853,21 +853,26 @@ filter:
               for (let entity_id in states) {
                 if (entity_id.startsWith(entity_prefix) && states[entity_id] != undefined) {
                   let entity_action = states[entity_id].attributes.friendly_name.replace(vars['ROOM_NAME'], '').replace(/velop|:/gi, '').trim()
-                  let entity_name = vars['ROOM_NAME']
-                  ret.push({
-                    'entity': entity_id,
-                    'name': entity_action,
-                    'tap_action': {
-                        'action': 'call-service',
-                        'service': 'linksys_velop.' + entity_action.toLowerCase() + '_node',
-                        'service_data': {
-                          'node_name': entity_name,
-                        },
-                        'confirmation': {
-                          'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
+                  let config_entry = this.hass.entities[entity_id].config_entry_id
+                  let mesh_object = Object.entries(this.hass.devices).filter(([device_id, device_details]) => device_details.config_entries.indexOf(config_entry) != -1 && device_details.model.startsWith("pyvelop"))
+                  if (mesh_object) {
+                    let entity_name = vars['ROOM_NAME']
+                    ret.push({
+                      'entity': entity_id,
+                      'name': entity_action,
+                      'tap_action': {
+                          'action': 'call-service',
+                          'service': 'linksys_velop.' + entity_action.toLowerCase() + '_node',
+                          'service_data': {
+                            'mesh': mesh_object[0][0],
+                            'node_name': entity_name,
+                          },
+                          'confirmation': {
+                            'text': 'Are you sure you want to reboot the ' + entity_name + ' node?'
+                        }
                       }
-                    }
-                  })
+                    })
+                  }
                 }
               }
               return ret
@@ -1110,8 +1115,10 @@ filter:
                   content: ${CONNECTED_DEVICES_TEXT(ID_CONNECTED_DEVICES)}
                   card_mod:
                     style:
-                      .: |
-                        ha-card { border-radius: 0px; border: 0; box-shadow: none; }
+                      .: >
+                        ha-card { border-radius: 0px; border: 0; box-shadow:
+                        none; }
+
                         ha-markdown { padding: 16px 0px 0px !important; }
                       ha-markdown$: >
                         table { width: 100%; border-collapse: collapse; }
