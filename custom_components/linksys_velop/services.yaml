@@ -14,31 +14,31 @@ check_updates:
           manufacturer: uvjim
 
 delete_device:
-    name: Delete Device
-    description:
-      Delete a device from the mesh Device List (only a single device can be deleted at a time).
-      The mesh will reject the request if the device is not marked as offline.
-    fields:
-      mesh:
-        name: Mesh
-        description: The Mesh that the action should be executed on
-        required: true
-        selector:
-          device:
-            integration: linksys_velop
-            manufacturer: uvjim
-      device_id:
-        name: Device ID
-        description: The device ID for the device to delete
-        required: false
-        selector:
-          text:
-      device_name:
-        name: Device Name
-        description: The name of the device to delete
-        required: false
-        selector:
-          text:
+  name: Delete Device
+  description:
+    Delete a device from the mesh Device List (only a single device can be deleted at a time).
+    The mesh will reject the request if the device is not marked as offline.
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device_id:
+      name: Device ID
+      description: The device ID for the device to delete
+      required: false
+      selector:
+        text:
+    device_name:
+      name: Device Name
+      description: The name of the device to delete
+      required: false
+      selector:
+        text:
 
 reboot_node:
   name: "Reboot Node"
@@ -66,6 +66,31 @@ reboot_node:
       required: false
       selector:
         boolean:
+
+rename_device:
+  name: Rename Device
+  description: Rename a device on the Mesh
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device:
+      name: Device
+      description: The name or identifier of the device to rename
+      required: true
+      selector:
+        text:
+    new_name:
+      name: New Name
+      description: The new name for the device
+      required: true
+      selector:
+        text:
 
 start_speedtest:
   name: Execute Speedtest

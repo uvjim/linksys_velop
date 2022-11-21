@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import List
 
 import voluptuous as vol
@@ -54,6 +55,15 @@ class LinksysVelopServiceHandler:
                     vol.Required("mesh"): str,
                     vol.Required("node_name"): str,
                     vol.Optional("is_primary"): bool,
+                }
+            )
+        },
+        "rename_device": {
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                    vol.Required("device"): str,
+                    vol.Required("new_name"): str,
                 }
             )
         },
@@ -184,6 +194,31 @@ class LinksysVelopServiceHandler:
         await self._mesh.async_reboot_node(
             node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False)
         )
+
+        _LOGGER.debug(self._log_formatter.format("exited"))
+
+    async def rename_device(self, **kwargs) -> None:
+        """Rename a device on the Mesh."""
+        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+        device_id: str | None = None
+        try:
+            _ = uuid.UUID(kwargs.get("device"))
+            device_id = kwargs.get("device")
+        except ValueError:
+            for device in self._mesh.devices:
+                if device.name.lower() == kwargs.get("device", "").lower():
+                    device_id = device.unique_id
+                    break
+            else:
+                raise ValueError(
+                    f"Unknown device: {kwargs.get('device', '')}"
+                ) from None
+
+        if device_id is not None:
+            _LOGGER.debug(self._log_formatter.format("renaming device: %s"), device_id)
+            await self._mesh.async_rename_device(
+                device_id=device_id, name=kwargs.get("new_name")
+            )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
