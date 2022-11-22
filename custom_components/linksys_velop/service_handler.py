@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
 from .const import (
@@ -44,8 +45,7 @@ class LinksysVelopServiceHandler:
             "schema": vol.Schema(
                 {
                     vol.Required("mesh"): str,
-                    vol.Optional("device_id"): str,
-                    vol.Optional("device_name"): str,
+                    vol.Optional("device"): str,
                 }
             )
         },
@@ -81,6 +81,22 @@ class LinksysVelopServiceHandler:
         self._hass: HomeAssistant = hass
         self._log_formatter: Logger = Logger()
         self._mesh: Mesh | None = None
+
+    def _get_device_by_name(self, name: str) -> List[Device] | None:
+        """Get a device from the mesh by name.
+
+        N.B. this uses the devices from the last poll to retrieve
+        details.
+        """
+        ret: List[Device] = None
+        if isinstance(self._mesh, Mesh):
+            ret = [
+                device
+                for device in self._mesh.devices
+                if device.name.lower() == name.lower()
+            ]
+
+        return ret or None
 
     def _get_mesh(self, mesh_id: str) -> Mesh | None:
         """Get the Mesh class for the service call to operate against.
@@ -172,12 +188,11 @@ class LinksysVelopServiceHandler:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        if kwargs.get("device_id"):
-            await self._mesh.async_delete_device_by_id(device=kwargs.get("device_id"))
-        elif kwargs.get("device_name"):
-            await self._mesh.async_delete_device_by_name(
-                device=kwargs.get("device_name")
-            )
+        try:
+            _ = uuid.UUID(kwargs.get("device"))
+            await self._mesh.async_delete_device_by_id(device=kwargs.get("device"))
+        except ValueError:
+            await self._mesh.async_delete_device_by_name(device=kwargs.get("device"))
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
@@ -205,14 +220,15 @@ class LinksysVelopServiceHandler:
             _ = uuid.UUID(kwargs.get("device"))
             device_id = kwargs.get("device")
         except ValueError:
-            for device in self._mesh.devices:
-                if device.name.lower() == kwargs.get("device", "").lower():
-                    device_id = device.unique_id
-                    break
-            else:
+            device: List[Device] | None = self._get_device_by_name(
+                name=kwargs.get("device", "")
+            )
+            if device is None:
                 raise ValueError(
                     f"Unknown device: {kwargs.get('device', '')}"
                 ) from None
+
+            device_id = device[0].unique_id
 
         if device_id is not None:
             _LOGGER.debug(self._log_formatter.format("renaming device: %s"), device_id)
