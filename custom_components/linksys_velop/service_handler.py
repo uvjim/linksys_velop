@@ -34,24 +34,6 @@ class LinksysVelopServiceHandler:
     """Define and action serice calls."""
 
     SERVICES = {
-        "allow_internet_access": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                    vol.Optional("overwrite"): bool,
-                }
-            )
-        },
-        "block_internet_access": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                    vol.Optional("overwrite"): bool,
-                }
-            )
-        },
         "check_updates": {
             "schema": vol.Schema(
                 {
@@ -64,6 +46,16 @@ class LinksysVelopServiceHandler:
                 {
                     vol.Required("mesh"): str,
                     vol.Optional("device"): str,
+                }
+            )
+        },
+        "device_internet_access": {
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                    vol.Required("device"): str,
+                    vol.Required("block"): bool,
+                    vol.Optional("overwrite"): bool,
                 }
             )
         },
@@ -150,30 +142,6 @@ class LinksysVelopServiceHandler:
 
         return ret
 
-    async def _async_internet_access_state(
-        self, device: str, state: bool, overwrite: bool = False
-    ) -> None:
-        """Execute the internet access state change."""
-        _LOGGER.debug(self._log_formatter.format("entered"))
-
-        device_id: str | None = None
-        try:
-            _ = uuid.UUID(device)
-            device_id = device
-        except ValueError:
-            device: List[Device] | None = self._get_device_by_name(name=device)
-            if device is None:
-                raise ValueError(f"Unknown device: {device}") from None
-
-            device_id = device[0].unique_id
-
-        if device_id is not None:
-            await self._mesh.async_device_internet_access_state(
-                device_id=device_id, state=state, overwrite=overwrite
-            )
-
-        _LOGGER.debug(self._log_formatter.format("exited"))
-
     async def _async_service_call(self, call: ServiceCall) -> None:
         """Call the required method based on the given argument.
 
@@ -212,22 +180,6 @@ class LinksysVelopServiceHandler:
         for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
-    async def allow_internet_access(self, **kwargs) -> None:
-        """Allow internet access for a given device."""
-        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
-        await self._async_internet_access_state(
-            device=kwargs.get("device"), state=True, overwrite=kwargs.get("overwrite")
-        )
-        _LOGGER.debug(self._log_formatter.format("exited"))
-
-    async def block_internet_access(self, **kwargs) -> None:
-        """Block internet access for a given device."""
-        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
-        await self._async_internet_access_state(
-            device=kwargs.get("device"), state=False, overwrite=kwargs.get("overwrite")
-        )
-        _LOGGER.debug(self._log_formatter.format("exited"))
-
     async def check_updates(self) -> None:
         """Instruct the mesh to check for updates.
 
@@ -251,6 +203,32 @@ class LinksysVelopServiceHandler:
             await self._mesh.async_delete_device_by_id(device=kwargs.get("device"))
         except ValueError:
             await self._mesh.async_delete_device_by_name(device=kwargs.get("device"))
+
+        _LOGGER.debug(self._log_formatter.format("exited"))
+
+    async def device_internet_access(self, **kwargs) -> None:
+        """Change state of Internet access for a device."""
+        _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
+
+        device_id: str | None = None
+        try:
+            _ = uuid.UUID(kwargs.get("device", ""))
+            device_id = kwargs.get("device", "")
+        except ValueError:
+            device: List[Device] | None = self._get_device_by_name(
+                name=kwargs.get("device", "")
+            )
+            if device is None:
+                raise ValueError(f"Unknown device: {device}") from None
+
+            device_id = device[0].unique_id
+
+        if device_id is not None:
+            await self._mesh.async_device_internet_access_state(
+                device_id=device_id,
+                state=not kwargs.get("block", False),
+                overwrite=kwargs.get("overwrite", False),
+            )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
