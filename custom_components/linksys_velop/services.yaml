@@ -27,16 +27,10 @@ delete_device:
         device:
           integration: linksys_velop
           manufacturer: uvjim
-    device_id:
-      name: Device ID
-      description: The device ID for the device to delete
-      required: false
-      selector:
-        text:
-    device_name:
-      name: Device Name
-      description: The name of the device to delete
-      required: false
+    device:
+      name: Device
+      description: The name or identifier of the device to rename
+      required: true
       selector:
         text:
 
