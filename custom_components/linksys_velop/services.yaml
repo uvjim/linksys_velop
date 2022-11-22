@@ -1,5 +1,55 @@
 # Linksys Velop services
 
+allow_internet_access:
+  name: Allow Internet Access
+  description: Allow a device to access the Internet via the Mesh
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device:
+      name: Device
+      description: The name or identifier of the device to allow
+      required: true
+      selector:
+        text:
+    overwrite:
+      name: Overwrite
+      description: When enabled all other schedules related to this device will be removed
+      selector:
+        boolean:
+
+block_internet_access:
+  name: Block Internet Access
+  description: Block a device from accessing the Internet via the Mesh
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device:
+      name: Device
+      description: The name or identifier of the device to block
+      required: true
+      selector:
+        text:
+    overwrite:
+      name: Overwrite
+      description:
+        When enabled all other schedules related to this device will be removed.
+        Only the block will remain.
+      selector:
+        boolean:
+
 check_updates:
   name: Check for Updates
   description: Instruct the mesh to check for firmware updates
