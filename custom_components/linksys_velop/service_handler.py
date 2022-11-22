@@ -45,7 +45,7 @@ class LinksysVelopServiceHandler:
             "schema": vol.Schema(
                 {
                     vol.Required("mesh"): str,
-                    vol.Optional("device"): str,
+                    vol.Required("device"): str,
                 }
             )
         },
@@ -115,13 +115,11 @@ class LinksysVelopServiceHandler:
         :return: the Mesh class or None
         """
         config_entry: ConfigEntry | None = None
-        device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
-        device: List[dr.DeviceEntry] = [
-            d for i, d in device_registry.devices.items() if i == mesh_id
-        ]
         config_entry_id: str | None = None
+        device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
+        device: dr.DeviceEntry | None = device_registry.async_get(device_id=mesh_id)
         if device:
-            for config_entry_id in device[0].config_entries:
+            for config_entry_id in device.config_entries:
                 config_entry = self._hass.config_entries.async_get_entry(
                     entry_id=config_entry_id
                 )
