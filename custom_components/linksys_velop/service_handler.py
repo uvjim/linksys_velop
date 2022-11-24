@@ -124,18 +124,18 @@ class LinksysVelopServiceHandler:
         self._log_formatter: Logger = Logger()
         self._mesh: Mesh | None = None
 
-    def _get_device_by_name(self, name: str) -> List[Device] | None:
-        """Get a device from the mesh by name.
+    def _get_device(self, attribute: str, value: str) -> List[Device] | None:
+        """Get a device from the Mesh using the given attribute.
 
         N.B. this uses the devices from the last poll to retrieve
         details.
         """
-        ret: List[Device] = None
+        ret: List[Device] | None = None
         if isinstance(self._mesh, Mesh):
             ret = [
                 device
                 for device in self._mesh.devices
-                if device.name.lower() == name.lower()
+                if getattr(device, attribute, "").lower() == value.lower()
             ]
 
         return ret or None
@@ -246,8 +246,8 @@ class LinksysVelopServiceHandler:
             _ = uuid.UUID(kwargs.get("device", ""))
             device_id = kwargs.get("device", "")
         except ValueError:
-            device: List[Device] | None = self._get_device_by_name(
-                name=kwargs.get("device", "")
+            device: List[Device] | None = self._get_device(
+                attribute="name", value=kwargs.get("device", "")
             )
             if device is None:
                 raise ValueError(f"Unknown device: {device}") from None
@@ -282,25 +282,26 @@ class LinksysVelopServiceHandler:
     async def rename_device(self, **kwargs) -> None:
         """Rename a device on the Mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
-        device_id: str | None = None
         try:
             _ = uuid.UUID(kwargs.get("device"))
-            device_id = kwargs.get("device")
-        except ValueError:
-            device: List[Device] | None = self._get_device_by_name(
-                name=kwargs.get("device", "")
+            device: List[Device] | None = self._get_device(
+                attribute="unique_id", value=kwargs.get("device", "")
             )
-            if device is None:
-                raise ValueError(
-                    f"Unknown device: {kwargs.get('device', '')}"
-                ) from None
+        except ValueError:
+            device: List[Device] | None = self._get_device(
+                attribute="name", value=kwargs.get("device", "")
+            )
 
-            device_id = device[0].unique_id
+        if device is None:
+            raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        if device_id is not None:
-            _LOGGER.debug(self._log_formatter.format("renaming device: %s"), device_id)
+        # only make the request to rename if they are different
+        if device[0].name != kwargs.get("new_name"):
+            _LOGGER.debug(
+                self._log_formatter.format("renaming device: %s"), device[0].unique_id
+            )
             await self._mesh.async_rename_device(
-                device_id=device_id, name=kwargs.get("new_name")
+                device_id=device[0].unique_id, name=kwargs.get("new_name")
             )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
