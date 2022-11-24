@@ -14,9 +14,16 @@ class Logger:
         self._unique_id: str = unique_id
         self._prefix: str = prefix
 
-    def format(self, message: str, include_lineno: bool = False) -> str:
+    def format(
+        self, message: str, include_caller: bool = True, include_lineno: bool = False
+    ) -> str:
         """Format a log message in the correct format."""
-        caller: inspect.FrameInfo = inspect.stack()[1]
-        line_no = f" --> line: {caller.lineno}" if include_lineno else ""
-        unique_id = f" ({self._unique_id})" if self._unique_id else ""
-        return f"{self._prefix}{caller.function}{unique_id}{line_no} --> {message}"
+        caller: str = ""
+        if include_caller:
+            caller_frame: inspect.FrameInfo = inspect.stack()[1]
+            caller = caller_frame.function
+        line_no: str = f" --> line: {caller.lineno}" if include_lineno else ""
+        unique_id: str = f" ({self._unique_id})" if self._unique_id else ""
+        if any([self._prefix, caller, unique_id, line_no]):
+            message = f" --> {message}"
+        return f"{self._prefix}{caller}{unique_id}{line_no}{message}"
