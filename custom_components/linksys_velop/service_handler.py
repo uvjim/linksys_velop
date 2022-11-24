@@ -241,25 +241,24 @@ class LinksysVelopServiceHandler:
         """Change state of Internet access for a device."""
         _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
 
-        device_id: str | None = None
         try:
-            _ = uuid.UUID(kwargs.get("device", ""))
-            device_id = kwargs.get("device", "")
+            _ = uuid.UUID(kwargs.get("device"))
+            device: List[Device] | None = self._get_device(
+                attribute="unique_id", value=kwargs.get("device", "")
+            )
         except ValueError:
             device: List[Device] | None = self._get_device(
                 attribute="name", value=kwargs.get("device", "")
             )
-            if device is None:
-                raise ValueError(f"Unknown device: {device}") from None
 
-            device_id = device[0].unique_id
+        if device is None:
+            raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        if device_id is not None:
-            await self._mesh.async_device_internet_access_state(
-                device_id=device_id,
-                state=not kwargs.get("block", False),
-                overwrite=kwargs.get("overwrite", False),
-            )
+        await self._mesh.async_device_internet_access_state(
+            device_id=device[0].unique_id,
+            state=not kwargs.get("block", False),
+            overwrite=kwargs.get("overwrite", False),
+        )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
