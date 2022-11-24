@@ -3,6 +3,7 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import functools
 import logging
 import uuid
 from typing import List
@@ -28,6 +29,37 @@ from .logger import Logger
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def deprectated_service(solution: str):
+    """Mark a service as deprecated."""
+
+    def deprecated_decorator(func):
+        """Decorate the function."""
+
+        @functools.wraps(func)
+        def deprecated_wrapper(self, *args, **kwargs):
+            """Wrap for the original function."""
+            logger = logging.getLogger(func.__module__)
+            log_formatter = getattr(self, "_log_formatter", None)
+            if log_formatter is not None:
+                logger.warning(
+                    log_formatter.format(
+                        "The service %s.%s has been deprecated. %s",
+                        include_caller=False,
+                    ),
+                    DOMAIN,
+                    func.__name__,
+                    solution,
+                )
+            else:
+                pass
+
+            return func(self, *args, **kwargs)
+
+        return deprecated_wrapper
+
+    return deprecated_decorator
 
 
 class LinksysVelopServiceHandler:
@@ -178,6 +210,7 @@ class LinksysVelopServiceHandler:
         for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
+    @deprectated_service(solution="Use the associated button.press native service.")
     async def check_updates(self) -> None:
         """Instruct the mesh to check for updates.
 
@@ -272,6 +305,7 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
+    @deprectated_service(solution="Use the associated button.press native service.")
     async def start_speedtest(self) -> None:
         """Start a Speedtest on the mesh.
 
