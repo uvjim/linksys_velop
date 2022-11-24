@@ -86,13 +86,20 @@ available.
 #### Buttons
 
 * Mesh: Check for Updates
-* Mesh: Start Channel Scanning &ast; _(interval: 40s)_
-* Mesh: Start Speedtest &ast; _(interval: 1s)_
+* Mesh: Start Channel Scanning _(interval: 40s)_
+* Mesh: Start Speedtest _(interval: 1s)_
 * Node: Reboot
 
-> &ast; These buttons start a long running task. When they are pressed or the
-  corresponding `binary_sensor` realises that the task is running a secondary
-  timer is started, using the interval in brackets above.
+> **N.B.** Buttons with an in terval in brackets start a long running task.
+  When they are pressed or the corresponding `binary_sensor` realises that the
+  task is running a secondary timer is started, using the specified interval.
+>
+> **N.B.** There is deliberately no button provided to restart the Primary node.
+  Restarting the Primary node will cause all nodes in the Mesh to reboot and
+  I consider this to be quite a destructive action. There is no confirmation in
+  the HASS UI when a button is pressed so there is no time to warn anyone. If
+  you'd like to reboot the Primary you node you must use the
+  [service](#services) with the `is_primary` flag provided.
 
 #### Device Trackers
 
@@ -283,14 +290,24 @@ as per the following screenshot.
 The following services are available. Each service is described in metadata
 so paramters are described in the Home Assistant Services page.
 
-* Check for Updates
-* Delete Device
-* Execute Speedtest &ast;
-* Reboot Node
+* Check for Updates ^ - check if there are firmware updates for the nodes.
+* Control Internet Access for a Device - allow/block access to the Internet
+  for a device.
+* Delete Device - delete a device from the Mesh device list.
+* Execute Speedtest &ast;^ - carry out a Speedtest from the Primary node.
+* Reboot Node - reboot the given node.
+* Rename Device - rename the given device in the Mesh device list.
 
-> &ast; these are considered long-running tasks. When the binary sensors spot
-  these tasks are running an additional timer is set up that polls at intervals
-  to get updates and updates the relevant attributes for that sensor.
+All services require that you select the Mesh device that the request should be
+directed to. Other requirements by the services should be self-explanatory.
+
+> **&ast;** these are considered long-running tasks. When the binary sensors
+  spot these tasks are running an additional timer is set up that polls at
+  intervals to get updates and updates the relevant attributes for that
+  sensor.
+>
+> **^** these are deprecated services. A warning will be displayed in the HASS
+  log when they are used. They are subject to removal at any time.
 
 ## Setup
 
@@ -404,6 +421,9 @@ Example output: -
 * [Configuration Entry and Mesh](examples/config_entry_and_mesh_diagnostics.json)
 
 # Example Lovelace UI
+
+**The UI elements provided in this section are examples only. They may not show
+all functionality of the integration.**
 
 ## Main UI
 
@@ -1431,8 +1451,10 @@ filter:
 
 # Example Automations
 
-Below are some example automations. I'm aware some of these could be more
-generic or even done in a better way but these are for example purposes only.
+Below are some example automations.
+
+**I'm aware some of these could be more generic or even done in a better way but
+these are for example purposes only.**
 
 <details>
   <summary>Notify when a node goes offline or comes online</summary>
