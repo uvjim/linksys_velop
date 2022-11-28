@@ -86,8 +86,7 @@ class LinksysVelopServiceHandler:
                 {
                     vol.Required("mesh"): str,
                     vol.Required("device"): str,
-                    vol.Required("block"): bool,
-                    vol.Optional("overwrite"): bool,
+                    vol.Required("pause"): bool,
                 }
             )
         },
@@ -256,8 +255,7 @@ class LinksysVelopServiceHandler:
 
         await self._mesh.async_device_internet_access_state(
             device_id=device[0].unique_id,
-            state=not kwargs.get("block", False),
-            overwrite=kwargs.get("overwrite", False),
+            state=not kwargs.get("pause", False),
         )
 
         _LOGGER.debug(self._log_formatter.format("exited"))

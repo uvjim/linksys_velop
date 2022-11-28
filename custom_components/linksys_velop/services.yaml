@@ -36,7 +36,7 @@ delete_device:
 
 device_internet_access:
   name: Control Internet Access for a Device
-  description: Allow/Block a device's access to the Internet via the Mesh
+  description: Pause/Resume a device's access to the Internet via the Mesh
   fields:
     mesh:
       name: Mesh
@@ -48,19 +48,14 @@ device_internet_access:
           manufacturer: uvjim
     device:
       name: Device
-      description: The name or identifier of the device to allow/block
+      description: The name or identifier of the device to pause/resume
       required: true
       selector:
         text:
-    block:
-      name: Block Access
-      description: Enable to block Internet access for the device
+    pause:
+      name: Pause Access
+      description: Enable to pause Internet access for the device
       required: true
-      selector:
-        boolean:
-    overwrite:
-      name: Overwrite
-      description: When enabled all other schedules related to this device will be removed
       selector:
         boolean:
 
