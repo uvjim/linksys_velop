@@ -182,7 +182,11 @@ class LinksysVelopServiceHandler:
         args = call.data.copy()
         self._mesh = self._get_mesh(mesh_id=args.pop("mesh", ""))
         if not self._mesh:
-            _LOGGER.warning("Unknown Mesh specified")
+            _LOGGER.warning(
+                self._log_formatter.format(
+                    "Unknown Mesh specified", include_caller=False
+                )
+            )
         else:
             _LOGGER.debug(self._log_formatter.format("Using %s"), self._mesh)
             method = getattr(self, call.service, None)
@@ -190,7 +194,9 @@ class LinksysVelopServiceHandler:
                 try:
                     await method(**args)
                 except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.warning(self._log_formatter.format("%s"), err)
+                    _LOGGER.warning(
+                        self._log_formatter.format("%s", include_caller=False), err
+                    )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
