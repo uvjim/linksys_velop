@@ -76,6 +76,12 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     ),
     LinksysVelopBinarySensorDescription(
         entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {"reservations": m.dhcp_reservations},
+        key="dhcp_enabled",
+        name="DHCP Server",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
         key="homekit_enabled",
         name="HomeKit Integration",
     ),
