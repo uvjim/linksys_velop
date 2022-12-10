@@ -631,6 +631,7 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         """Initialise Mesh entity."""
         super().__init__(coordinator=coordinator)
         self._config = config_entry
+        self._log_formatter: Logger = Logger(unique_id=config_entry.unique_id)
         self._mesh: Mesh = coordinator.data
 
         self.entity_description = description
@@ -678,10 +679,23 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
-        if hasattr(self.entity_description, "extra_attributes") and isinstance(
-            self.entity_description.extra_attributes, Callable
-        ):
-            return self.entity_description.extra_attributes(self._mesh)
+        if hasattr(self.entity_description, "extra_attributes"):
+            if isinstance(self.entity_description.extra_attributes, Callable):
+                return self.entity_description.extra_attributes(self._mesh)
+
+            if isinstance(self.entity_description.extra_attributes, str):
+                if (
+                    esa := getattr(self._mesh, self.entity_description.extra_attributes)
+                ) is not None:
+                    if not isinstance(esa, dict):
+                        _LOGGER.debug(
+                            self._log_formatter.format(
+                                "%s is not a dictionary or None"
+                            ),
+                            self.entity_description.extra_attributes,
+                        )
+                    else:
+                        return esa
 
         return None
 
