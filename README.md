@@ -70,7 +70,6 @@ available.
 * Mesh: Channel Scanning
 * Mesh: Client Steering _(disabled by default)_
 * Mesh: DHCP Server _(disabled by default)_
-  * list of reservations
 * Mesh: HomeKit Integration _(disabled by default)_
 * Mesh: HomeKit Integration Paired _(disabled by default)_
 * Mesh: MAC Filtering _(disabled by default)_
@@ -117,6 +116,8 @@ install time and from reconfiguring the integration.
 
 #### Sensors
 
+* Mesh: DHCP Reservations _(disabled by default)_
+  * list of DHCP reservations on the mesh
 * Mesh: Number of Offline Devices
   * list of device objects containing names and unique ID of devices that are
     offline

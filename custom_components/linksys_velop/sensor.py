@@ -78,6 +78,15 @@ SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
     LinksysVelopSensorDescription(
         entity_registry_enabled_default=False,
         extra_attributes=lambda m: {
+            "reservations": m.dhcp_reservations,
+        },
+        key="dhcp_reservations",
+        name="DHCP Reservations",
+        state_value=lambda m: len(m.dhcp_reservations),
+    ),
+    LinksysVelopSensorDescription(
+        entity_registry_enabled_default=False,
+        extra_attributes=lambda m: {
             "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
         },
         key="guest_devices",
