@@ -76,6 +76,7 @@ available.
 * Mesh: MAC Filtering _(disabled by default)_
   * mode, address list
 * Mesh: Node Steering _(disabled by default)_
+* Mesh: SIP _(disabled by default)_
 * Mesh: Speedtest state
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
 * Mesh: WAN Status

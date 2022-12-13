@@ -109,6 +109,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
         name="Node Steering",
     ),
     LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="sip_enabled",
+        name="SIP",
+    ),
+    LinksysVelopBinarySensorDescription(
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         extra_attributes=lambda m: {
             "ip": m.wan_ip,
