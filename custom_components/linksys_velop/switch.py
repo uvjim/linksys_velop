@@ -1,6 +1,8 @@
 """Switches for the mesh."""
 
 # region #-- imports --#
+from __future__ import annotations
+
 import dataclasses
 import logging
 from abc import ABC
