@@ -114,6 +114,21 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
         name="SIP",
     ),
     LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="upnp_allow_change_settings",
+        name="UPnP Allow Users to Configure",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="upnp_allow_disable_internet",
+        name="UPnP Allow Users to Disable Internet",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
+        key="upnp_enabled",
+        name="UPnP",
+    ),
+    LinksysVelopBinarySensorDescription(
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         extra_attributes=lambda m: {
             "ip": m.wan_ip,
