@@ -81,6 +81,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
     ),
     LinksysVelopBinarySensorDescription(
         entity_registry_enabled_default=False,
+        key="express_forwarding_enabled",
+        name="Express Forwarding",
+    ),
+    LinksysVelopBinarySensorDescription(
+        entity_registry_enabled_default=False,
         key="homekit_enabled",
         name="HomeKit Integration",
     ),
