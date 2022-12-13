@@ -79,6 +79,9 @@ available.
 * Mesh: SIP _(disabled by default)_
 * Mesh: Speedtest state
   * current stage of the Speedtest, e.g. Detecting server, Checking latency
+* Mesh: UPnP _(disabled by default)_
+* Mesh: UPnP Allow Users to Configure _(disabled by default)_
+* Mesh: UPnP Allow Users to Disable Internet _(disabled by default)_
 * Mesh: WAN Status
   * IP, DNS, MAC
 * Mesh: WPS _(disabled by default)_
