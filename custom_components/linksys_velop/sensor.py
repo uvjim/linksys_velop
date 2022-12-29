@@ -294,8 +294,10 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     node=node,
                     description=LinksysVelopSensorDescription(
+                        device_class=SensorDeviceClass.ENUM,
                         key="type",
                         name="Type",
+                        options=["primary", "secondary"],
                         state_value=lambda n: n.type.value,
                         translation_key="node_type",
                     ),
