@@ -141,8 +141,8 @@ install time and from reconfiguring the integration.
   * list of names, IP addresses, type of connection and guest network state for
     the connected devices
 * Node: Backhaul (RSSI value in dBm)
-  * backhaul information (speed in Mbps, last checked time and textual
-  representation of RSSI)
+  * backhaul information (last checked time and textual representation of RSSI)
+* Node: Connection Speed
 * Node: Connection Type
 * Node: Current Firmware Version (only if HASS < 2022.4.0)
 * Node: Last Update Check _(disabled by default)_
