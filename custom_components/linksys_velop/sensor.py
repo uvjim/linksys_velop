@@ -56,6 +56,12 @@ class OptionalLinksysVelopDescription:
 
     extra_attributes: Callable | None = None
     state_value: Callable | None = None
+    # TODO: remove when minimum version is 2023.1.0
+    if not hasattr(SensorEntityDescription, "options"):
+        options: List[str] | None = None
+    # TODO: remove when minimum version is 2023.1.0
+    if not hasattr(SensorEntityDescription, "translation_key"):
+        translation_key: str | None = None
 
 
 @dataclasses.dataclass
@@ -304,8 +310,11 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
-                        device_class=SensorDeviceClass.ENUM,
+                    # TODO: remove pylint disables when minimum version is 2023.1.0
+                    description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+                        device_class=SensorDeviceClass.ENUM  # pylint: disable=no-member
+                        if hasattr(SensorDeviceClass, "ENUM")
+                        else "",
                         key="type",
                         name="Type",
                         options=["primary", "secondary"],
@@ -352,7 +361,10 @@ async def async_setup_entry(
                         coordinator=coordinator,
                         node=node,
                         description=LinksysVelopSensorDescription(
-                            device_class=SensorDeviceClass.DATA_RATE,
+                            # TODO: remove pylint disables when minimum version is 2023.1.0
+                            device_class=SensorDeviceClass.DATA_RATE  # pylint: disable=no-member
+                            if hasattr(SensorDeviceClass, "DATA_RATE")
+                            else "",
                             key="",
                             name="Backhaul Speed",
                             state_value=lambda n: n.backhaul.get("speed_mbps"),
@@ -363,8 +375,11 @@ async def async_setup_entry(
                         config_entry=config_entry,
                         coordinator=coordinator,
                         node=node,
-                        description=LinksysVelopSensorDescription(
-                            device_class=SensorDeviceClass.ENUM,
+                        # TODO: remove pylint disables when minimum version is 2023.1.0
+                        description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+                            device_class=SensorDeviceClass.ENUM  # pylint: disable=no-member
+                            if hasattr(SensorDeviceClass, "ENUM")
+                            else "",
                             icon="mdi:lan-connect"
                             if node.backhaul.get("connection", "").lower() == "wired"
                             else "mdi:wifi",
