@@ -15,6 +15,15 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+
+# TODO: remove try/except when minimum version is 2023.1.0
+try:
+    from homeassistant.const import UnitOfDataRate
+
+    DATA_RATE_MEGABITS_PER_SECOND = UnitOfDataRate.MEGABITS_PER_SECOND
+except ImportError:
+    from homeassistant.const import DATA_RATE_MEGABITS_PER_SECOND
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
@@ -317,7 +326,7 @@ async def async_setup_entry(
                             extra_attributes=lambda n: {
                                 k: v
                                 for k, v in n.backhaul.items()
-                                if k not in ("connection", "rssi_dbm")
+                                if k not in ("connection", "rssi_dbm", "speed_mbps")
                             },
                             icon="mdi:lan-connect"
                             if node.backhaul.get("connection", "").lower() == "wired"
@@ -326,6 +335,18 @@ async def async_setup_entry(
                             name="Backhaul",
                             native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                             state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                        ),
+                    ),
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.DATA_RATE,
+                            key="",
+                            name="Connection Speed",
+                            state_value=lambda n: n.backhaul.get("speed_mbps"),
+                            native_unit_of_measurement=DATA_RATE_MEGABITS_PER_SECOND,
                         ),
                     ),
                     LinksysVelopNodeSensor(
