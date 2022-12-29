@@ -337,32 +337,6 @@ async def async_setup_entry(
                         coordinator=coordinator,
                         node=node,
                         description=LinksysVelopSensorDescription(
-                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                            extra_attributes=lambda n: {
-                                k: v
-                                for k, v in n.backhaul.items()
-                                if k
-                                not in (
-                                    "connection",
-                                    "last_checked",
-                                    "rssi_dbm",
-                                    "speed_mbps",
-                                )
-                            },
-                            icon="mdi:lan-connect"
-                            if node.backhaul.get("connection", "").lower() == "wired"
-                            else None,
-                            key="",
-                            name="Backhaul Signal Strength",
-                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                            state_value=lambda n: n.backhaul.get("rssi_dbm"),
-                        ),
-                    ),
-                    LinksysVelopNodeSensor(
-                        config_entry=config_entry,
-                        coordinator=coordinator,
-                        node=node,
-                        description=LinksysVelopSensorDescription(
                             device_class=SensorDeviceClass.TIMESTAMP,
                             key="",
                             name="Connection Last Checked",
@@ -405,6 +379,45 @@ async def async_setup_entry(
                     ),
                 ]
             )
+            # only add the backhaul signal strength if wireless, remove it otherwise
+            if node.backhaul.get("connection", "").lower() == "wireless":
+                sensors.append(
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                            extra_attributes=lambda n: {
+                                k: v
+                                for k, v in n.backhaul.items()
+                                if k
+                                not in (
+                                    "connection",
+                                    "last_checked",
+                                    "rssi_dbm",
+                                    "speed_mbps",
+                                )
+                            },
+                            key="",
+                            name="Backhaul Signal Strength",
+                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                            state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                        ),
+                    )
+                )
+            else:
+                node_sensors_to_remove.append(
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            key="",
+                            name="Backhaul Signal Strength",
+                        ),
+                    )
+                )
 
     if (
         UPDATE_DOMAIN is None
