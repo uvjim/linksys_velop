@@ -53,6 +53,16 @@
             "new_primary_node": "Primary node changed"
         }
     },
+    "entity": {
+        "sensor": {
+            "node_type": {
+                "state": {
+                    "primary": "Primary",
+                    "secondary": "Secondary"
+                }
+            }
+        }
+    },
     "options": {
         "step": {
             "device_trackers": {

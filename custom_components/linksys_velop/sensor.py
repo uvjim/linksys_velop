@@ -297,6 +297,7 @@ async def async_setup_entry(
                         key="type",
                         name="Type",
                         state_value=lambda n: n.type.value,
+                        translation_key="node_type",
                     ),
                 ),
             ]
@@ -318,8 +319,8 @@ async def async_setup_entry(
                         else None,
                         key="",
                         name="Backhaul",
-                        state_value=lambda n: n.backhaul.get("rssi_dbm"),
                         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                        state_value=lambda n: n.backhaul.get("rssi_dbm"),
                     ),
                 )
             )
