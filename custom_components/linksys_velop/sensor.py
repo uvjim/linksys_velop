@@ -326,7 +326,13 @@ async def async_setup_entry(
                             extra_attributes=lambda n: {
                                 k: v
                                 for k, v in n.backhaul.items()
-                                if k not in ("connection", "rssi_dbm", "speed_mbps")
+                                if k
+                                not in (
+                                    "connection",
+                                    "last_checked",
+                                    "rssi_dbm",
+                                    "speed_mbps",
+                                )
                             },
                             icon="mdi:lan-connect"
                             if node.backhaul.get("connection", "").lower() == "wired"
@@ -335,6 +341,21 @@ async def async_setup_entry(
                             name="Backhaul",
                             native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                             state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                        ),
+                    ),
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.TIMESTAMP,
+                            key="",
+                            name="Connection Last Checked",
+                            state_value=lambda n: dt_util.parse_datetime(
+                                n.backhaul.get("last_checked")
+                            )
+                            if n.backhaul.get("last_checked")
+                            else None,
                         ),
                     ),
                     LinksysVelopNodeSensor(
