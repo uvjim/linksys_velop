@@ -339,7 +339,7 @@ async def async_setup_entry(
                         description=LinksysVelopSensorDescription(
                             device_class=SensorDeviceClass.TIMESTAMP,
                             key="",
-                            name="Connection Last Checked",
+                            name="Backhaul Last Checked",
                             state_value=lambda n: dt_util.parse_datetime(
                                 n.backhaul.get("last_checked")
                             )
@@ -354,7 +354,7 @@ async def async_setup_entry(
                         description=LinksysVelopSensorDescription(
                             device_class=SensorDeviceClass.DATA_RATE,
                             key="",
-                            name="Connection Speed",
+                            name="Backhaul Speed",
                             state_value=lambda n: n.backhaul.get("speed_mbps"),
                             native_unit_of_measurement=DATA_RATE_MEGABITS_PER_SECOND,
                         ),
@@ -369,7 +369,7 @@ async def async_setup_entry(
                             if node.backhaul.get("connection", "").lower() == "wired"
                             else "mdi:wifi",
                             key="",
-                            name="Connection Type",
+                            name="Backhaul Type",
                             options=["wired", "wireless"],
                             state_value=lambda n: n.backhaul.get(
                                 "connection", ""
