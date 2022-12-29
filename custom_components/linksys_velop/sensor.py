@@ -306,25 +306,47 @@ async def async_setup_entry(
         )
 
         if node.type is not NodeType.PRIMARY:
-            sensors.append(
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                        extra_attributes=lambda n: {
-                            k: v for k, v in n.backhaul.items() if k != "rssi_dbm"
-                        },
-                        icon="mdi:lan-connect"
-                        if node.backhaul.get("connection", "").lower() == "wired"
-                        else None,
-                        key="",
-                        name="Backhaul",
-                        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                        state_value=lambda n: n.backhaul.get("rssi_dbm"),
+            sensors.extend(
+                [
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                            extra_attributes=lambda n: {
+                                k: v
+                                for k, v in n.backhaul.items()
+                                if k not in ("connection", "rssi_dbm")
+                            },
+                            icon="mdi:lan-connect"
+                            if node.backhaul.get("connection", "").lower() == "wired"
+                            else None,
+                            key="",
+                            name="Backhaul",
+                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                            state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                        ),
                     ),
-                )
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.ENUM,
+                            icon="mdi:lan-connect"
+                            if node.backhaul.get("connection", "").lower() == "wired"
+                            else "mdi:wifi",
+                            key="",
+                            name="Connection Type",
+                            options=["wired", "wireless"],
+                            state_value=lambda n: n.backhaul.get(
+                                "connection", ""
+                            ).lower(),
+                            translation_key="connection_type",
+                        ),
+                    ),
+                ]
             )
 
     if (

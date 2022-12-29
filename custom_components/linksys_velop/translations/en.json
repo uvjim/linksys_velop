@@ -55,6 +55,12 @@
     },
     "entity": {
         "sensor": {
+            "connection_type": {
+                "state": {
+                    "wired": "Wired",
+                    "wireless": "Wireless"
+                }
+            },
             "node_type": {
                 "state": {
                     "primary": "Primary",
