@@ -140,7 +140,7 @@ install time and from reconfiguring the integration.
 * Node: Number of Connected Devices
   * list of names, IP addresses, type of connection and guest network state for
     the connected devices
-* Node: Backhaul (RSSI value in dBm)
+* Node: Backhaul Signal Strength
   * textual representation of RSSI
 * Node: Connection Last Checked
 * Node: Connection Speed

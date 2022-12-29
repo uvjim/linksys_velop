@@ -194,6 +194,8 @@ async def async_setup_entry(
     node: Node
     sensors_versions: List[LinksysVelopNodeSensor] = []
     sensors_images: List[LinksysVelopNodeSensor] = []
+    node_sensors_to_remove: List[LinksysVelopNodeSensor] = []
+
     for node in mesh.nodes:
         # -- build the sensors for showing version numbers for each node --#
         sensors_versions.extend(
@@ -315,6 +317,19 @@ async def async_setup_entry(
         )
 
         if node.type is not NodeType.PRIMARY:
+            node_sensors_to_remove.extend(
+                [
+                    LinksysVelopNodeSensor(
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=LinksysVelopSensorDescription(
+                            key="",
+                            name="Backhaul",
+                        ),
+                    ),
+                ]
+            )
             sensors.extend(
                 [
                     LinksysVelopNodeSensor(
@@ -338,7 +353,7 @@ async def async_setup_entry(
                             if node.backhaul.get("connection", "").lower() == "wired"
                             else None,
                             key="",
-                            name="Backhaul",
+                            name="Backhaul Signal Strength",
                             native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                             state_value=lambda n: n.backhaul.get("rssi_dbm"),
                         ),
@@ -414,6 +429,9 @@ async def async_setup_entry(
         config_entry.options.get(CONF_NODE_IMAGES) is None
     ):  # remove the entity pic sensor if a path isn't configured
         sensors_to_remove.extend(sensors_images)
+
+    if node_sensors_to_remove:  # node sensors that need removing
+        sensors_to_remove.extend(node_sensors_to_remove)
 
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
