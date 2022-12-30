@@ -125,7 +125,7 @@ class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
         """Retrieve the entity picture for the node."""
         ret = None
         parent_path = self._config.options.get(CONF_NODE_IMAGES)
-        if parent_path is not None:
+        if parent_path:
             ret = f"{parent_path.rstrip('/ ').strip()}/{self._node.model}.png"
 
         return ret

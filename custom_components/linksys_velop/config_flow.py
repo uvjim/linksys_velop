@@ -41,6 +41,7 @@ from .const import (
     CONF_LOGGING_MODE,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
+    CONF_NODE_IMAGES,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SUBTYPE,
     CONF_TITLE_PLACEHOLDERS,
@@ -61,6 +62,7 @@ from .logger import Logger
 
 # endregion
 
+STEP_ADVANCED_OPTIONS: str = "advanced_options"
 STEP_DEVICE_TRACKERS: str = "device_trackers"
 STEP_INIT: str = "init"
 STEP_LOGGING: str = "logging"
@@ -205,6 +207,15 @@ async def _async_build_schema_with_user_input(
                     )
                 }
             )
+    elif step == STEP_ADVANCED_OPTIONS:
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_NODE_IMAGES,
+                    default=user_input.get(CONF_NODE_IMAGES, ""),
+                ): selector.TextSelector(),
+            }
+        )
 
     return schema
 
@@ -453,7 +464,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 for node in nodes:
                     if node.type == "primary":
                         unique_id = node.serial
-            # end region
+            # endregion
 
             # region #-- do we have matching host? --#
             # didn't always have unique_id so let's look for it by host and set it if we can then abort
@@ -581,6 +592,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             # endregion
 
             self._options.update(user_input)
+            if self.show_advanced_options:
+                return await self.async_step_advanced_options()
+
             return await self.async_step_logging()
 
         mesh = Mesh(
@@ -602,9 +616,18 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
         """First Step."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug(
+            self._log_formatter.format("show advanced options: %s"),
+            self.show_advanced_options,
+        )
+
+        menu_options: list[str] = [STEP_TIMERS, STEP_DEVICE_TRACKERS, STEP_LOGGING]
+        if self.show_advanced_options:
+            menu_options.insert(-1, STEP_ADVANCED_OPTIONS)
+
         return self.async_show_menu(
             step_id=STEP_INIT,
-            menu_options=[STEP_TIMERS, STEP_DEVICE_TRACKERS, STEP_LOGGING],
+            menu_options=menu_options,
         )
 
     async def async_step_logging(self, user_input=None) -> data_entry_flow.FlowResult:
@@ -652,6 +675,27 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                     "\nIt is required for logging modes to be available.___"
                 )
             },
+            errors=self._errors,
+            last_step=False,
+        )
+
+    async def async_step_advanced_options(
+        self, user_input=None
+    ) -> data_entry_flow.FlowResult:
+        """Manage the advanced options for the configuration."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            if user_input.get(CONF_NODE_IMAGES) == "*":
+                user_input[CONF_NODE_IMAGES] = ""
+            self._options.update(user_input)
+            return await self.async_step_logging()
+
+        return self.async_show_form(
+            step_id=STEP_ADVANCED_OPTIONS,
+            data_schema=await _async_build_schema_with_user_input(
+                STEP_ADVANCED_OPTIONS, self._options
+            ),
             errors=self._errors,
             last_step=False,
         )
