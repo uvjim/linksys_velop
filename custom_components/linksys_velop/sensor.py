@@ -54,6 +54,8 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the sensor description."""
 
+    if not hasattr(SensorEntityDescription, "entity_picture"):
+        entity_picture: str | None = None
     extra_attributes: Callable | None = None
     state_value: Callable | None = None
     # TODO: remove when minimum version is 2023.1.0
@@ -294,8 +296,15 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
-                        key="model", name="Model"
+                    # TODO: remove if SensorEntityDescription ever includes entity_picture natively
+                    description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+                        entity_picture=(
+                            f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{node.model}.png"
+                        )
+                        if config_entry.options.get(CONF_NODE_IMAGES, "")
+                        else None,
+                        key="model",
+                        name="Model",
                     ),
                 ),
                 LinksysVelopNodeSensor(

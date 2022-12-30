@@ -716,6 +716,9 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         self.entity_description = description
         if not getattr(self, "entity_description", None):
             self.entity_domain: str = ""
+        else:
+            if hasattr(self.entity_description, "entity_picture"):
+                self._attr_entity_picture = self.entity_description.entity_picture
 
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
