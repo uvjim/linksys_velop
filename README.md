@@ -146,10 +146,11 @@ install time and from reconfiguring the integration.
 * Node: Backhaul Speed
 * Node: Backhaul Type
 * Node: Current Firmware Version (only if HASS < 2022.4.0)
-* Node: Image _(the URL to the image to use for the node, see
-  [here](#advanced-options))_
+* Node: Image _(disabled by default. Only available if `node_images` are
+  configured, see [here](#advanced-options))_
 * Node: Last Update Check _(disabled by default)_
-* Node: Model Number
+* Node: Model Number _(The `entity_picture` attribute will be set if
+  `node_images` are configured, see [here](#advanced-options))_
 * Node: Newest Firmware Version (only if HASS < 2022.4.0)
 * Node: Parent Name
   * IP address of the parent
