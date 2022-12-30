@@ -368,6 +368,7 @@ async def async_setup_entry(
                         node=node,
                         description=LinksysVelopSensorDescription(
                             device_class=SensorDeviceClass.TIMESTAMP,
+                            entity_registry_enabled_default=False,
                             key="",
                             name="Backhaul Last Checked",
                             state_value=lambda n: dt_util.parse_datetime(
