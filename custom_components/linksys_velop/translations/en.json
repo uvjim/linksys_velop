@@ -94,7 +94,8 @@
                     "device_trackers": "Device Trackers",
                     "logging": "Logging",
                     "timers": "Timers"
-                }
+                },
+                "title": "Linksys Velop"
             },
             "logging": {
                 "data": {
