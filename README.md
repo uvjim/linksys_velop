@@ -146,6 +146,8 @@ install time and from reconfiguring the integration.
 * Node: Backhaul Speed
 * Node: Backhaul Type
 * Node: Current Firmware Version (only if HASS < 2022.4.0)
+* Node: Image _(the URL to the image to use for the node, see
+  [here](#advanced-options))_
 * Node: Last Update Check _(disabled by default)_
 * Node: Model Number
 * Node: Newest Firmware Version (only if HASS < 2022.4.0)
@@ -365,10 +367,12 @@ It is possible to configure the following options for the integration.
 **user. See**
 **[here](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).**
 
+![Configure Advanced Options](images/config_advanced_options.png)
+
 * `Node image path`: the path to the folder location containing the images to
-  use for nodes. This is currently used for the to set the entity picture
-  for the `update` entity.  This relies on the `http` integration from HASS,
-  details of which can be found
+  use for nodes. This is currently used for to set the entity picture for the
+  `update` entity.  This relies on the `http` integration from HASS, details of
+  which can be found
   [here](https://www.home-assistant.io/integrations/http), and more specifically
   [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
   path to place the files in.
