@@ -230,8 +230,8 @@ async def async_setup_entry(
         )
 
         # -- build sensor for entity pic if needed --#
-        sensors_images.extend(
-            [
+        if config_entry.options.get(CONF_NODE_IMAGES):
+            sensors_images.append(
                 LinksysVelopNodeSensor(
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -244,8 +244,19 @@ async def async_setup_entry(
                         ),
                     ),
                 )
-            ]
-        )
+            )
+        else:  # remove the sensor if not needed anymore
+            node_sensors_to_remove.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        key="",
+                        name="Image",
+                    ),
+                )
+            )
 
         # -- build the additional sensors --#
         sensors.extend(

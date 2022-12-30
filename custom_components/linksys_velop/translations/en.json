@@ -71,6 +71,16 @@
     },
     "options": {
         "step": {
+            "advanced_options": {
+                "data": {
+                    "node_images": "Node image path"
+                },
+                "data_description": {
+                    "node_images": "Path to the node images, e.g. /local/velop_images.\nUse * to remove the value."
+                },
+                "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
+                "title": "Linksys Velop"
+            },
             "device_trackers": {
                 "data": {
                     "tracked": "Available devices"
@@ -80,6 +90,7 @@
             },
             "init": {
                 "menu_options": {
+                    "advanced_options": "Advanced Options",
                     "device_trackers": "Device Trackers",
                     "logging": "Logging",
                     "timers": "Timers"

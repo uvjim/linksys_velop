@@ -27,8 +27,8 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 * [Configurable Options](#configurable-options)
   * [Timers](#timers)
   * [Device Trackers](#device-trackers-1)
+  * [Advanced Options](#advanced-options)
   * [Logging](#logging)
-* [Advanced Options](#advanced-options)
 * [Troubleshooting](#troubleshooting)
   * [Debug Logging](#debug-logging)
   * [Diagnostics Integration](#diagnostics-integration)
@@ -359,6 +359,20 @@ It is possible to configure the following options for the integration.
   This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
 
+### Advanced Options
+
+**This section is only available if "Advanced Mode" is enabled for the current**
+**user. See**
+**[here](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).**
+
+* `Node image path`: the path to the folder location containing the images to
+  use for nodes. This is currently used for the to set the entity picture
+  for the `update` entity.  This relies on the `http` integration from HASS,
+  details of which can be found
+  [here](https://www.home-assistant.io/integrations/http), and more specifically
+  [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
+  path to place the files in.
+
 ### Logging
 
 ![Configure Logging](images/config_logging.png)
@@ -381,19 +395,6 @@ enabled in `configuration.yaml`.
   * `off`: disable debug logging
   * `Single poll`: only enable debug logging for a single poll requesting
   information from the Mesh.
-
-## Advanced Options
-
-This section details the options that cannot be configured in the UI but are
-still available of you configure them in the underlying HASS config files.
-
-* `node_images`: the path to the folder location containing the images to
-  use for nodes. This is currently used in the card and also for the
-  `update` entity, e.g. `/local/velop_nodes` _(the default)_.  This relies on
-  the `http` integration from HASS, details of which can be found
-  [here](https://www.home-assistant.io/integrations/http), and more specifically
-  [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
-  path to place the files in.
 
 ## Troubleshooting
 
