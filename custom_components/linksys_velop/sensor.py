@@ -239,6 +239,7 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     node=node,
                     description=LinksysVelopSensorDescription(
+                        entity_registry_enabled_default=False,
                         key="",
                         name="Image",
                         state_value=lambda n: (
