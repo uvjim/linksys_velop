@@ -67,7 +67,8 @@
                     "device_trackers": "Śledzenie urządzeń",
                     "logging": "Logowanie",
                     "timers": "Czasomierze"
-                }
+                },
+                "title": "Linksys Velop"
             },
             "logging": {
                 "data": {
