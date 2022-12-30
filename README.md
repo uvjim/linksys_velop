@@ -142,7 +142,7 @@ install time and from reconfiguring the integration.
     the connected devices
 * Node: Backhaul Signal Strength
   * textual representation of RSSI
-* Node: Backhaul Last Checked
+* Node: Backhaul Last Checked _(disabled by default)_
 * Node: Backhaul Speed
 * Node: Backhaul Type
 * Node: Current Firmware Version (only if HASS < 2022.4.0)
