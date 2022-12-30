@@ -85,7 +85,7 @@
                 "data": {
                     "tracked": "Available devices"
                 },
-                "description": "Select the devices you would like to use for presence tracking",
+                "description": "Select the devices you would like to use for presence tracking.",
                 "title": "Linksys Velop"
             },
             "init": {
@@ -102,7 +102,10 @@
                     "logging_jnap_response": "Include query responses in debug logs",
                     "logging_serial": "Include the serial number in debug logs"
                 },
-                "description": "Configure logging details and state.\n\n{logging_mode_warning}",
+                "data_description": {
+                    "logging_mode": "The mode setting has no effect if logging for the integration is defined in configuration.yaml"
+                },
+                "description": "Configure logging details and state.{logging_mode_warning}",
                 "title": "Linksys Velop"
             },
             "timers": {
@@ -112,7 +115,7 @@
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
-                "description": "Set the various timers for the integration",
+                "description": "Set the various timers for the integration.",
                 "title": "Linksys Velop"
             }
         }

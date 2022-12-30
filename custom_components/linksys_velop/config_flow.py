@@ -654,12 +654,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 data_schema=await _async_build_schema_with_user_input(
                     STEP_LOGGING, self._options, logging_mode=True
                 ),
-                description_placeholders={
-                    "logging_mode_warning": (
-                        "___The mode setting has no effect if logging for the integration "
-                        "is defined in configuration.yaml___"
-                    )
-                },
+                description_placeholders={"logging_mode_warning": ""},
                 errors=self._errors,
                 last_step=False,
             )
@@ -671,7 +666,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             ),
             description_placeholders={
                 "logging_mode_warning": (
-                    "___The [`logger`](https://www.home-assistant.io/integrations/logger/) integration is not enabled."
+                    "\n\n___The [`logger`](https://www.home-assistant.io/integrations/logger/) integration "
+                    "is not enabled."
                     "\nIt is required for logging modes to be available.___"
                 )
             },
