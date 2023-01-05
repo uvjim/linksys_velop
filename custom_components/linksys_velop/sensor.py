@@ -83,62 +83,6 @@ class LinksysVelopSensorDescription(
 # endregion
 
 
-SENSOR_DESCRIPTIONS: tuple[LinksysVelopSensorDescription, ...] = (
-    LinksysVelopSensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {"partitions": m.storage_available or None},
-        icon="mdi:nas",
-        key="available_storage",
-        name="Available Storage",
-        state_value=lambda m: len(m.storage_available),
-    ),
-    LinksysVelopSensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {
-            "reservations": m.dhcp_reservations,
-        },
-        key="dhcp_reservations",
-        name="DHCP Reservations",
-        state_value=lambda m: len(m.dhcp_reservations),
-    ),
-    LinksysVelopSensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {
-            "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
-        },
-        key="guest_devices",
-        name="Guest Devices",
-        state_value=lambda m: len(
-            [d for d in get_devices(mesh=m) if d.get("guest_network")]
-        ),
-    ),
-    LinksysVelopSensorDescription(
-        extra_attributes=(
-            lambda m: {
-                "devices": [
-                    {"name": d.get("name", ""), "id": d.get("id", "")}
-                    for d in get_devices(mesh=m, state=False)
-                ]
-            }
-        ),
-        key="offline_devices",
-        name="Offline Devices",
-        state_value=lambda m: len(get_devices(mesh=m, state=False)),
-    ),
-    LinksysVelopSensorDescription(
-        extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
-        key="online_devices",
-        name="Online Devices",
-        state_value=lambda m: len(get_devices(mesh=m)),
-    ),
-    LinksysVelopSensorDescription(
-        icon="mdi:ip-network-outline",
-        key="wan_ip",
-        name="WAN IP",
-    ),
-)
-
-
 # region #-- general functions for nodes and the mesh --#
 def get_devices(mesh: Mesh, state: bool = True) -> List[Dict[str, Any]]:
     """Get the matching devices from the Mesh."""
@@ -170,19 +114,76 @@ async def async_setup_entry(
     """Set up the sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-
     sensors: List[
         LinksysVelopMeshSensor
         | LinksysVelopNodeSensor
         | LinksysVelopMeshSpeedtestLatestSensor
-    ] = [
-        LinksysVelopMeshSensor(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=sensor_description,
+    ] = []
+    sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
+
+    # region #-- Mesh sensors --#
+    mesh_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...] = (
+        LinksysVelopSensorDescription(
+            entity_registry_enabled_default=False,
+            extra_attributes=lambda m: {"partitions": m.storage_available or None},
+            icon="mdi:nas",
+            key="available_storage",
+            name="Available Storage",
+            state_value=lambda m: len(m.storage_available),
+        ),
+        LinksysVelopSensorDescription(
+            entity_registry_enabled_default=False,
+            extra_attributes=lambda m: {
+                "reservations": m.dhcp_reservations,
+            },
+            key="dhcp_reservations",
+            name="DHCP Reservations",
+            state_value=lambda m: len(m.dhcp_reservations),
+        ),
+        LinksysVelopSensorDescription(
+            entity_registry_enabled_default=False,
+            extra_attributes=lambda m: {
+                "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
+            },
+            key="guest_devices",
+            name="Guest Devices",
+            state_value=lambda m: len(
+                [d for d in get_devices(mesh=m) if d.get("guest_network")]
+            ),
+        ),
+        LinksysVelopSensorDescription(
+            extra_attributes=(
+                lambda m: {
+                    "devices": [
+                        {"name": d.get("name", ""), "id": d.get("id", "")}
+                        for d in get_devices(mesh=m, state=False)
+                    ]
+                }
+            ),
+            key="offline_devices",
+            name="Offline Devices",
+            state_value=lambda m: len(get_devices(mesh=m, state=False)),
+        ),
+        LinksysVelopSensorDescription(
+            extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
+            key="online_devices",
+            name="Online Devices",
+            state_value=lambda m: len(get_devices(mesh=m)),
+        ),
+        LinksysVelopSensorDescription(
+            icon="mdi:ip-network-outline",
+            key="wan_ip",
+            name="WAN IP",
+        ),
+    )
+    for sensor_description in mesh_sensor_descriptions:
+        sensors.append(
+            LinksysVelopMeshSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=sensor_description,
+            )
         )
-        for sensor_description in SENSOR_DESCRIPTIONS
-    ]
 
     sensors.extend(
         [
@@ -197,71 +198,12 @@ async def async_setup_entry(
             )
         ]
     )
+    # endregion
 
-    # region #-- node sensors --#
+    # region #-- Node sensors --#
     node: Node
-    sensors_versions: List[LinksysVelopNodeSensor] = []
-    sensors_images: List[LinksysVelopNodeSensor] = []
-    node_sensors_to_remove: List[LinksysVelopNodeSensor] = []
-
     for node in mesh.nodes:
-        # -- build the sensors for showing version numbers for each node --#
-        sensors_versions.extend(
-            [
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        key="",
-                        name="Newest Version",
-                        state_value=lambda n: n.firmware.get("latest_version", None),
-                    ),
-                ),
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        key="",
-                        name="Version",
-                        state_value=lambda n: n.firmware.get("version", None),
-                    ),
-                ),
-            ]
-        )
-
-        # -- build sensor for entity pic if needed --#
-        if config_entry.options.get(CONF_NODE_IMAGES):
-            sensors_images.append(
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        entity_registry_enabled_default=False,
-                        key="",
-                        name="Image",
-                        state_value=lambda n: (
-                            f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
-                        ),
-                    ),
-                )
-            )
-        else:  # remove the sensor if not needed anymore
-            node_sensors_to_remove.append(
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        key="",
-                        name="Image",
-                    ),
-                )
-            )
-
-        # -- build the additional sensors --#
+        # region #-- standard sensors --#
         sensors.extend(
             [
                 LinksysVelopNodeSensor(
@@ -345,9 +287,11 @@ async def async_setup_entry(
                 ),
             ]
         )
+        # endregion
 
+        # region #-- backhaul sensors --#
         if node.type is not NodeType.PRIMARY:
-            node_sensors_to_remove.extend(
+            sensors_to_remove.extend(  # remove the old backhaul sensor
                 [
                     LinksysVelopNodeSensor(
                         config_entry=config_entry,
@@ -444,7 +388,7 @@ async def async_setup_entry(
                     )
                 )
             else:
-                node_sensors_to_remove.append(
+                sensors_to_remove.append(
                     LinksysVelopNodeSensor(
                         config_entry=config_entry,
                         coordinator=coordinator,
@@ -455,33 +399,71 @@ async def async_setup_entry(
                         ),
                     )
                 )
+        # endregion
 
-    if (
-        UPDATE_DOMAIN is None
-    ):  # create the version sensors if the update entity isn't available
-        sensors.extend(sensors_versions)
+        # region #-- image path sensor --#
+        if config_entry.options.get(CONF_NODE_IMAGES):
+            sensors.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        entity_registry_enabled_default=False,
+                        key="",
+                        name="Image",
+                        state_value=lambda n: (
+                            f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
+                        ),
+                    ),
+                )
+            )
+        else:  # remove the sensor if not needed anymore
+            sensors_to_remove.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        key="",
+                        name="Image",
+                    ),
+                )
+            )
+        # endregion
 
-    if (
-        config_entry.options.get(CONF_NODE_IMAGES) is not None
-    ):  # create the entity pic sensor if a path is configured
-        sensors.extend(sensors_images)
+        # region #-- version sensors if needed --#
+        sensors_versions: List[LinksysVelopNodeSensor] = [
+            LinksysVelopNodeSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopSensorDescription(
+                    key="",
+                    name="Newest Version",
+                    state_value=lambda n: n.firmware.get("latest_version", None),
+                ),
+            ),
+            LinksysVelopNodeSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopSensorDescription(
+                    key="",
+                    name="Version",
+                    state_value=lambda n: n.firmware.get("version", None),
+                ),
+            ),
+        ]
+        if UPDATE_DOMAIN is None:
+            sensors.extend(sensors_versions)
+        else:
+            sensors_to_remove.extend(sensors_versions)
+        # endregion
+
     # endregion
 
     async_add_entities(sensors)
-
-    sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
-    if (
-        UPDATE_DOMAIN is not None
-    ):  # remove the existing version sensors if the update entity is available
-        sensors_to_remove.extend(sensors_versions)
-
-    if (
-        config_entry.options.get(CONF_NODE_IMAGES) is None
-    ):  # remove the entity pic sensor if a path isn't configured
-        sensors_to_remove.extend(sensors_images)
-
-    if node_sensors_to_remove:  # node sensors that need removing
-        sensors_to_remove.extend(node_sensors_to_remove)
 
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
