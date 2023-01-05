@@ -66,19 +66,17 @@ async def async_setup_entry(
     # region #-- node sensors --#
     node: Node
     for node in mesh.nodes:
-        update_entities.extend(
-            [
-                LinksysVelopNodeUpdate(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopUpdateDescription(
-                        device_class=UpdateDeviceClass.FIRMWARE,
-                        key="",
-                        name="Update",
-                    ),
+        update_entities.append(
+            LinksysVelopNodeUpdate(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopUpdateDescription(
+                    device_class=UpdateDeviceClass.FIRMWARE,
+                    key="",
+                    name="Update",
                 ),
-            ]
+            ),
         )
     # endregion
 
