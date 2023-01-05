@@ -60,51 +60,6 @@ class LinksysVelopSwitchDescription(
 # endregion
 
 
-SWITCH_DESCRIPTIONS: tuple[LinksysVelopSwitchDescription, ...] = (
-    LinksysVelopSwitchDescription(
-        extra_attributes=lambda m: {
-            f"network {idx}": network
-            for idx, network in enumerate(m.guest_wifi_details)
-        },
-        icon_off="hass:wifi-off",
-        icon_on="hass:wifi",
-        key="guest_wifi_enabled",
-        name="Guest Wi-Fi",
-        turn_off="async_set_guest_wifi_state",
-        turn_off_args={
-            "state": False,
-        },
-        turn_on="async_set_guest_wifi_state",
-        turn_on_args={
-            "state": True,
-        },
-    ),
-    LinksysVelopSwitchDescription(
-        extra_attributes=lambda m: (
-            {
-                "rules": {
-                    device.name: device.parental_control_schedule
-                    for device in m.devices
-                    if device.parental_control_schedule
-                }
-            }
-        ),
-        icon_off="hass:account-off",
-        icon_on="hass:account",
-        key="parental_control_enabled",
-        name="Parental Control",
-        turn_off="async_set_parental_control_state",
-        turn_off_args={
-            "state": False,
-        },
-        turn_on="async_set_parental_control_state",
-        turn_on_args={
-            "state": True,
-        },
-    ),
-)
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -112,19 +67,66 @@ async def async_setup_entry(
 ) -> None:
     """Set up the switches from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    switches: List[LinksysVelopMeshSwitch] = []
+    switches_to_remove: List[LinksysVelopMeshSwitch] = []
 
-    switches: List[LinksysVelopMeshSwitch] = [
-        LinksysVelopMeshSwitch(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=switch_description,
+    # region #-- Mesh switches --#
+    mesh_switch_descriptions: tuple[LinksysVelopSwitchDescription, ...] = (
+        LinksysVelopSwitchDescription(
+            extra_attributes=lambda m: {
+                f"network {idx}": network
+                for idx, network in enumerate(m.guest_wifi_details)
+            },
+            icon_off="hass:wifi-off",
+            icon_on="hass:wifi",
+            key="guest_wifi_enabled",
+            name="Guest Wi-Fi",
+            turn_off="async_set_guest_wifi_state",
+            turn_off_args={
+                "state": False,
+            },
+            turn_on="async_set_guest_wifi_state",
+            turn_on_args={
+                "state": True,
+            },
+        ),
+        LinksysVelopSwitchDescription(
+            extra_attributes=lambda m: (
+                {
+                    "rules": {
+                        device.name: device.parental_control_schedule
+                        for device in m.devices
+                        if device.parental_control_schedule
+                    }
+                }
+            ),
+            icon_off="hass:account-off",
+            icon_on="hass:account",
+            key="parental_control_enabled",
+            name="Parental Control",
+            turn_off="async_set_parental_control_state",
+            turn_off_args={
+                "state": False,
+            },
+            turn_on="async_set_parental_control_state",
+            turn_on_args={
+                "state": True,
+            },
+        ),
+    )
+
+    for switch_description in mesh_switch_descriptions:
+        switches.append(
+            LinksysVelopMeshSwitch(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=switch_description,
+            )
         )
-        for switch_description in SWITCH_DESCRIPTIONS
-    ]
+    # endregion
 
     async_add_entities(switches)
 
-    switches_to_remove: List = []
     if switches_to_remove:
         entity_cleanup(
             config_entry=config_entry, entities=switches_to_remove, hass=hass
