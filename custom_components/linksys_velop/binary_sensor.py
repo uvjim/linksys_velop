@@ -68,84 +68,6 @@ class LinksysVelopBinarySensorDescription(
 # endregion
 
 
-BINARY_SENSOR_DESCRIPTIONS: tuple[LinksysVelopBinarySensorDescription, ...] = (
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="client_steering_enabled",
-        name="Client Steering",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="dhcp_enabled",
-        name="DHCP Server",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="express_forwarding_enabled",
-        name="Express Forwarding",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="homekit_enabled",
-        name="HomeKit Integration",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="homekit_paired",
-        name="HomeKit Integration Paired",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        extra_attributes=lambda m: {
-            "mode": m.mac_filtering_mode,
-            "addresses": m.mac_filtering_addresses,
-        },
-        key="mac_filtering_enabled",
-        name="MAC Filtering",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="node_steering_enabled",
-        name="Node Steering",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="sip_enabled",
-        name="SIP",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="upnp_allow_change_settings",
-        name="UPnP Allow Users to Configure",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="upnp_allow_disable_internet",
-        name="UPnP Allow Users to Disable Internet",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="upnp_enabled",
-        name="UPnP",
-    ),
-    LinksysVelopBinarySensorDescription(
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        extra_attributes=lambda m: {
-            "ip": m.wan_ip,
-            "dns": m.wan_dns or None,
-            "mac": m.wan_mac,
-        },
-        key="wan_status",
-        name="WAN Status",
-    ),
-    LinksysVelopBinarySensorDescription(
-        entity_registry_enabled_default=False,
-        key="wps_state",
-        name="WPS",
-    ),
-)
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -154,20 +76,106 @@ async def async_setup_entry(
     """Set up the binary sensors from a config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-
     binary_sensors: List[
         LinksysVelopMeshBinarySensor
         | LinksysVelopNodeBinarySensor
         | LinksysVelopMeshRecurringBinarySensor
-    ] = [
-        LinksysVelopMeshBinarySensor(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=binary_sensor_description,
-        )
-        for binary_sensor_description in BINARY_SENSOR_DESCRIPTIONS
-    ]
+    ] = []
+    binary_sensors_to_remove: List[
+        LinksysVelopMeshBinarySensor
+        | LinksysVelopNodeBinarySensor
+        | LinksysVelopMeshRecurringBinarySensor
+    ] = []
 
+    # region #-- Mesh binary sensors --#
+    mesh_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...] = (
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="client_steering_enabled",
+            name="Client Steering",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="dhcp_enabled",
+            name="DHCP Server",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="express_forwarding_enabled",
+            name="Express Forwarding",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="homekit_enabled",
+            name="HomeKit Integration",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="homekit_paired",
+            name="HomeKit Integration Paired",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            extra_attributes=lambda m: {
+                "mode": m.mac_filtering_mode,
+                "addresses": m.mac_filtering_addresses,
+            },
+            key="mac_filtering_enabled",
+            name="MAC Filtering",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="node_steering_enabled",
+            name="Node Steering",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="sip_enabled",
+            name="SIP",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="upnp_allow_change_settings",
+            name="UPnP Allow Users to Configure",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="upnp_allow_disable_internet",
+            name="UPnP Allow Users to Disable Internet",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="upnp_enabled",
+            name="UPnP",
+        ),
+        LinksysVelopBinarySensorDescription(
+            device_class=BinarySensorDeviceClass.CONNECTIVITY,
+            extra_attributes=lambda m: {
+                "ip": m.wan_ip,
+                "dns": m.wan_dns or None,
+                "mac": m.wan_mac,
+            },
+            key="wan_status",
+            name="WAN Status",
+        ),
+        LinksysVelopBinarySensorDescription(
+            entity_registry_enabled_default=False,
+            key="wps_state",
+            name="WPS",
+        ),
+    )
+
+    for binary_sensor_description in mesh_binary_sensor_descriptions:
+        binary_sensors.append(
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=binary_sensor_description,
+            )
+        )
+    # endregion
+
+    # region #-- Mesh recurring binary sensors --#
     binary_sensors.extend(
         [
             LinksysVelopMeshRecurringBinarySensor(
@@ -201,28 +209,34 @@ async def async_setup_entry(
             ),
         ]
     )
+    # endregion
 
-    binary_sensors_update: List[LinksysVelopNodeBinarySensor] = []
+    # region #-- Node binary sensors --#
     for node in mesh.nodes:
-        # -- build the binary sensor for showing an update available for each node --#
-        binary_sensors_update.extend(
-            [
-                LinksysVelopNodeBinarySensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopBinarySensorDescription(
-                        device_class=BinarySensorDeviceClass.UPDATE,
-                        key="update_available",
-                        name="Update Available",
-                        state_value=lambda n: n.firmware.get("version")
-                        != n.firmware.get("latest_version"),
-                    ),
+        # region #-- update binary sensor for older versions --#
+        # -- need to keep this here for upgrading from older HASS versions --#
+        binary_sensor_update: LinksysVelopNodeBinarySensor = (
+            LinksysVelopNodeBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                node=node,
+                description=LinksysVelopBinarySensorDescription(
+                    device_class=BinarySensorDeviceClass.UPDATE,
+                    key="update_available",
+                    name="Update Available",
+                    state_value=lambda n: n.firmware.get("version")
+                    != n.firmware.get("latest_version"),
                 ),
-            ]
+            )
         )
 
-        # -- build the additional binary sensors --#
+        if UPDATE_DOMAIN is None:
+            binary_sensors.append(binary_sensor_update)
+        else:
+            binary_sensors_to_remove.append(binary_sensor_update)
+        # endregion
+
+        # region #-- build the additional binary sensors --#
         binary_sensors.extend(
             [
                 LinksysVelopNodeBinarySensor(
@@ -240,15 +254,13 @@ async def async_setup_entry(
                 ),
             ]
         )
-
-    if (
-        UPDATE_DOMAIN is None
-    ):  # if the update entity isn't available create the update available binary sensors
-        binary_sensors.extend(binary_sensors_update)
+        # endregion
+    # endregion
 
     async_add_entities(binary_sensors)
 
-    binary_sensors_to_remove: List = [
+    binary_sensors_to_remove.append(
+        # -- an old binary sensor that needs to be removed --#
         LinksysVelopMeshBinarySensor(
             config_entry=config_entry,
             coordinator=coordinator,
@@ -257,11 +269,7 @@ async def async_setup_entry(
                 name="Check for Updates Status",
             ),
         )
-    ]
-    if (
-        UPDATE_DOMAIN is not None
-    ):  # if the update entity is available remove any existing update available sensor
-        binary_sensors_to_remove.extend(binary_sensors_update)
+    )
 
     if binary_sensors_to_remove:
         entity_cleanup(
