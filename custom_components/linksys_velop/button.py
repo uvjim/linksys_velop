@@ -62,30 +62,6 @@ class LinksysVelopButtonDescription(
 # endregion
 
 
-BUTTON_DESCRIPTIONS: tuple[LinksysVelopButtonDescription, ...] = (
-    LinksysVelopButtonDescription(
-        icon="hass:update",
-        key="",
-        name="Check for Updates",
-        press_action="async_check_for_updates",
-    ),
-    LinksysVelopButtonDescription(
-        icon="mdi:wifi-sync",
-        key="",
-        name="Start Channel Scan",
-        press_action="async_start_channel_scan",
-        press_action_arguments={"signal": SIGNAL_UPDATE_CHANNEL_SCANNING},
-    ),
-    LinksysVelopButtonDescription(
-        icon="hass:refresh",
-        key="",
-        name="Start Speedtest",
-        press_action="async_start_speedtest",
-        press_action_arguments={"signal": SIGNAL_UPDATE_SPEEDTEST_STATUS},
-    ),
-)
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -94,17 +70,45 @@ async def async_setup_entry(
     """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
+    buttons: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = []
+    buttons_to_remove: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = []
 
-    buttons: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = [
-        LinksysVelopMeshButton(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=button_description,
+    # region #-- Mesh buttons --#
+    mesh_button_descriptions: tuple[LinksysVelopButtonDescription, ...] = (
+        LinksysVelopButtonDescription(
+            icon="hass:update",
+            key="",
+            name="Check for Updates",
+            press_action="async_check_for_updates",
+        ),
+        LinksysVelopButtonDescription(
+            icon="mdi:wifi-sync",
+            key="",
+            name="Start Channel Scan",
+            press_action="async_start_channel_scan",
+            press_action_arguments={"signal": SIGNAL_UPDATE_CHANNEL_SCANNING},
+        ),
+        LinksysVelopButtonDescription(
+            icon="hass:refresh",
+            key="",
+            name="Start Speedtest",
+            press_action="async_start_speedtest",
+            press_action_arguments={"signal": SIGNAL_UPDATE_SPEEDTEST_STATUS},
+        ),
+    )
+
+    for button_description in mesh_button_descriptions:
+        buttons.append(
+            LinksysVelopMeshButton(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=button_description,
+            )
         )
-        for button_description in BUTTON_DESCRIPTIONS
-    ]
 
-    # region #-- node buttons --#
+    # endregion
+
+    # region #-- Node buttons --#
     node: Node
     for node in mesh.nodes:
         if node.type.lower() != "primary":
@@ -126,7 +130,6 @@ async def async_setup_entry(
 
     async_add_entities(buttons)
 
-    buttons_to_remove: List = []
     if buttons_to_remove:
         entity_cleanup(config_entry=config_entry, entities=buttons_to_remove, hass=hass)
 
