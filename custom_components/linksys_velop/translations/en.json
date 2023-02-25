@@ -57,6 +57,7 @@
         "sensor": {
             "connection_type": {
                 "state": {
+                    "unknown": "Unknown",
                     "wired": "Wired",
                     "wireless": "Wireless"
                 }
