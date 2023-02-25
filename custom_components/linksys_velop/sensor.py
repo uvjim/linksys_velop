@@ -351,9 +351,9 @@ async def async_setup_entry(
                             else "mdi:wifi",
                             key="",
                             name="Backhaul Type",
-                            options=["wired", "wireless"],
+                            options=["unknown", "wired", "wireless"],
                             state_value=lambda n: n.backhaul.get(
-                                "connection", ""
+                                "connection", "unknown"
                             ).lower(),
                             translation_key="connection_type",
                         ),
