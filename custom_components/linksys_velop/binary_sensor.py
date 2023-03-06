@@ -106,11 +106,6 @@ async def async_setup_entry(
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
-            key="homekit_enabled",
-            name="HomeKit Integration",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
             key="homekit_paired",
             name="HomeKit Integration Paired",
         ),
@@ -262,6 +257,15 @@ async def async_setup_entry(
                 description=LinksysVelopBinarySensorDescription(
                     key="",
                     name="Check for Updates Status",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopBinarySensorDescription(
+                    entity_registry_enabled_default=False,
+                    key="homekit_enabled",
+                    name="HomeKit Integration",
                 ),
             ),
             LinksysVelopMeshBinarySensor(

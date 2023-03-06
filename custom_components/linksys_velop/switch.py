@@ -91,6 +91,18 @@ async def async_setup_entry(
             },
         ),
         LinksysVelopSwitchDescription(
+            key="homekit_enabled",
+            name="HomeKit Integration",
+            turn_off="async_set_homekit_state",
+            turn_off_args={
+                "state": False,
+            },
+            turn_on="async_set_homekit_state",
+            turn_on_args={
+                "state": True,
+            },
+        ),
+        LinksysVelopSwitchDescription(
             extra_attributes=lambda m: (
                 {
                     "rules": {
