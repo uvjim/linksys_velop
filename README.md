@@ -78,7 +78,6 @@ available.
 * Mesh: UPnP Allow Users to Disable Internet _(disabled by default)_
 * Mesh: WAN Status
   * IP, DNS, MAC
-* Mesh: WPS _(disabled by default)_
 * Node: Status
   * IP, MAC, guest network
 * Node: Update Available (only if HASS < 2022.4.0)
@@ -157,6 +156,7 @@ install time and from reconfiguring the integration.
   * list of guest networks available
 * Mesh: Parental Control state
   * list of the rules being applied
+* Mesh: WPS
 
 #### Update (only if HASS > 2022.4.0)
 
