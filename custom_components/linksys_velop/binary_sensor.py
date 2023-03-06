@@ -158,11 +158,6 @@ async def async_setup_entry(
             key="wan_status",
             name="WAN Status",
         ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="wps_state",
-            name="WPS",
-        ),
     )
 
     for binary_sensor_description in mesh_binary_sensor_descriptions:
@@ -259,16 +254,25 @@ async def async_setup_entry(
 
     async_add_entities(binary_sensors)
 
-    binary_sensors_to_remove.append(
-        # -- an old binary sensor that needs to be removed --#
-        LinksysVelopMeshBinarySensor(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=LinksysVelopBinarySensorDescription(
-                key="",
-                name="Check for Updates Status",
+    binary_sensors_to_remove.extend(
+        [
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopBinarySensorDescription(
+                    key="",
+                    name="Check for Updates Status",
+                ),
             ),
-        )
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopBinarySensorDescription(
+                    key="wps_state",
+                    name="WPS",
+                ),
+            ),
+        ]
     )
 
     if binary_sensors_to_remove:
