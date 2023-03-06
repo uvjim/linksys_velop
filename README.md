@@ -65,7 +65,6 @@ available.
 * Mesh: Client Steering _(disabled by default)_
 * Mesh: DHCP Server _(disabled by default)_
 * Mesh: Express Forwarding _(disabled by default)_
-* Mesh: HomeKit Integration _(disabled by default)_
 * Mesh: HomeKit Integration Paired _(disabled by default)_
 * Mesh: MAC Filtering _(disabled by default)_
   * mode, address list
@@ -154,6 +153,7 @@ install time and from reconfiguring the integration.
 
 * Mesh: Guest Wi-Fi state
   * list of guest networks available
+* Mesh: HomeKit Integration
 * Mesh: Parental Control state
   * list of the rules being applied
 * Mesh: WPS
