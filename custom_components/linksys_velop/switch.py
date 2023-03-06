@@ -113,6 +113,18 @@ async def async_setup_entry(
                 "state": True,
             },
         ),
+        LinksysVelopSwitchDescription(
+            key="wps_state",
+            name="WPS",
+            turn_off="async_set_wps_state",
+            turn_off_args={
+                "state": False,
+            },
+            turn_on="async_set_wps_state",
+            turn_on_args={
+                "state": True,
+            },
+        ),
     )
 
     for switch_description in mesh_switch_descriptions:
