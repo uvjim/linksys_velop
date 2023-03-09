@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Any, Callable, Dict, List, Mapping
-
+from typing import Any, Callable, Dict, List
 from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -21,8 +20,12 @@ try:
     from homeassistant.const import UnitOfDataRate
 
     DATA_RATE_MEGABITS_PER_SECOND = UnitOfDataRate.MEGABITS_PER_SECOND
+    DATA_RATE_KILOBITS_PER_SECOND = UnitOfDataRate.KILOBITS_PER_SECOND
 except ImportError:
-    from homeassistant.const import DATA_RATE_MEGABITS_PER_SECOND
+    from homeassistant.const import (
+        DATA_RATE_MEGABITS_PER_SECOND,
+        DATA_RATE_KILOBITS_PER_SECOND,
+    )
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -185,19 +188,77 @@ async def async_setup_entry(
             )
         )
 
+    # region #-- Speedtest sensors --#
+    sensors_to_remove.append(
+        LinksysVelopMeshSpeedtestLatestSensor(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=LinksysVelopSensorDescription(
+                key="",
+                name="Speedtest Latest",
+            ),
+        )
+    )
     sensors.extend(
         [
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 description=LinksysVelopSensorDescription(
-                    device_class=SensorDeviceClass.TIMESTAMP,
-                    key="",
-                    name="Speedtest Latest",
+                    device_class=SensorDeviceClass.DATA_RATE,
+                    entity_registry_enabled_default=False,
+                    icon="mdi:cloud-download-outline",
+                    key="download_bandwidth",
+                    name="Speedtest Download Bandwidth",
+                    native_unit_of_measurement=DATA_RATE_KILOBITS_PER_SECOND,
                 ),
-            )
+            ),
+            LinksysVelopMeshSpeedtestLatestSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopSensorDescription(
+                    entity_registry_enabled_default=False,
+                    icon="mdi:keyboard-return",
+                    key="exit_code",
+                    name="Speedtest Result",
+                ),
+            ),
+            LinksysVelopMeshSpeedtestLatestSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopSensorDescription(
+                    device_class=SensorDeviceClass.TIMESTAMP,
+                    entity_registry_enabled_default=False,
+                    key="timestamp",
+                    name="Speedtest Last Run",
+                ),
+            ),
+            LinksysVelopMeshSpeedtestLatestSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopSensorDescription(
+                    entity_registry_enabled_default=False,
+                    icon="mdi:timer-sync-outline",
+                    key="latency",
+                    name="Speedtest Latency",
+                    native_unit_of_measurement="ms",
+                ),
+            ),
+            LinksysVelopMeshSpeedtestLatestSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopSensorDescription(
+                    device_class=SensorDeviceClass.DATA_RATE,
+                    entity_registry_enabled_default=False,
+                    icon="mdi:cloud-upload-outline",
+                    key="upload_bandwidth",
+                    name="Speedtest Upload Bandwidth",
+                    native_unit_of_measurement=DATA_RATE_KILOBITS_PER_SECOND,
+                ),
+            ),
         ]
     )
+    # endregion
     # endregion
 
     # region #-- Node sensors --#
@@ -529,7 +590,7 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
 
 
 class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
-    """Representation of the sensor the latest Speedtest results."""
+    """Representation of a Speedtest sensor."""
 
     _value: Dict = {}
 
@@ -561,20 +622,12 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
         )
 
     @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Set the additional attributes for the sensor."""
+    def native_value(self) -> StateType:
+        """Set the value of the sensor."""
         ret = None
         if self._value:
-            ret = self._value.copy()
-            ret.pop("timestamp")
+            ret = self._value.get(self.entity_description.key)
+            if self.entity_description.device_class == SensorDeviceClass.TIMESTAMP:
+                ret = dt_util.parse_datetime(ret)
 
-        return ret
-
-    @property
-    def native_value(self) -> dt_util.dt.datetime:
-        """Set the value of the sensor to the time the results were generated."""
-        ret = None
-
-        if self._value:
-            ret = dt_util.parse_datetime(self._value.get("timestamp"))
         return ret
