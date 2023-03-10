@@ -123,8 +123,11 @@ install time and from reconfiguring the integration.
     types and guest network state for the online devices
 * Mesh: Number of Guest Devices _(disabled by default)_
   * list of device names, IP addresses, adapter types etc
-* Mesh: Date of Latest Speedtest
-  * Exit code, Latency, Download/Upload bandwidth, Result ID
+* Mesh: Speedtest Download Bandwidth _(disabled by default)_
+* Mesh: Speedtest Last Run _(disabled by default)_
+* Mesh: Speedtest Latency _(disabled by default)_
+* Mesh: Speedtest Result _(disabled by default)_
+* Mesh: Speedtest Upload Bandwidth _(disabled by default)_
 * Mesh: Number of Available Storage Partitions _(disabled by default)_
   * list of the available partitions including the following information: IP,
     label, available Kb, used Kb, used %age and last checked time
