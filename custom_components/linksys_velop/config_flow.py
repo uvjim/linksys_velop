@@ -35,6 +35,7 @@ from pyvelop.mesh import Mesh, Node
 from . import async_logging_state
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
+    CONF_DEVICE_CREATED,
     CONF_DEVICE_TRACKERS,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
@@ -63,6 +64,7 @@ from .logger import Logger
 # endregion
 
 STEP_ADVANCED_OPTIONS: str = "advanced_options"
+STEP_DEVICE_CREATE: str = "device_create"
 STEP_DEVICE_TRACKERS: str = "device_trackers"
 STEP_INIT: str = "init"
 STEP_LOGGING: str = "logging"
@@ -154,6 +156,28 @@ async def _async_build_schema_with_user_input(
                         CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
                     ),
                 ): cv.positive_float,
+            }
+        )
+    elif step == STEP_DEVICE_CREATE:
+        valid_devices = [
+            device
+            for device in user_input.get(CONF_DEVICE_CREATED, [])
+            if device in kwargs["multi_select_contents"].keys()
+        ]
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_DEVICE_CREATED, default=valid_devices
+                ): selector.SelectSelector(
+                    config=selector.SelectSelectorConfig(
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                        options=[
+                            {"label": label, "value": value}
+                            for value, label in kwargs["multi_select_contents"].items()
+                        ],
+                    )
+                )
             }
         )
     elif step == STEP_DEVICE_TRACKERS:
@@ -557,6 +581,33 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._options: dict = dict(config_entry.options)
         self._log_formatter: Logger = Logger()
 
+    async def async_step_device_create(
+        self, user_input=None
+    ) -> data_entry_flow.FlowResult:
+        """Manage the devices that should be created in the UI."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            self._options.update(user_input)
+            if self.show_advanced_options:
+                return await self.async_step_advanced_options()
+
+        mesh = Mesh(
+            node=self._config_entry.options[CONF_NODE],
+            password=self._config_entry.options[CONF_PASSWORD],
+            session=async_get_clientsession(hass=self.hass),
+        )
+        devices: dict = await _async_get_devices(mesh=mesh)
+
+        return self.async_show_form(
+            step_id=STEP_DEVICE_CREATE,
+            data_schema=await _async_build_schema_with_user_input(
+                STEP_DEVICE_CREATE, self._options, multi_select_contents=devices
+            ),
+            errors=self._errors,
+            last_step=False,
+        )
+
     async def async_step_device_trackers(
         self, user_input=None
     ) -> data_entry_flow.FlowResult:
@@ -593,7 +644,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
             self._options.update(user_input)
             if self.show_advanced_options:
-                return await self.async_step_advanced_options()
+                return await self.async_step_device_create()
 
             return await self.async_step_logging()
 
@@ -621,7 +672,12 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             self.show_advanced_options,
         )
 
-        menu_options: list[str] = [STEP_TIMERS, STEP_DEVICE_TRACKERS, STEP_LOGGING]
+        menu_options: list[str] = [
+            STEP_TIMERS,
+            STEP_DEVICE_TRACKERS,
+            STEP_DEVICE_CREATE,
+            STEP_LOGGING,
+        ]
         if self.show_advanced_options:
             menu_options.insert(-1, STEP_ADVANCED_OPTIONS)
 
