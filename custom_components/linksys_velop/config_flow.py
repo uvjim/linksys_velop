@@ -18,6 +18,7 @@ from homeassistant.components.logger import (
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -588,6 +589,22 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
+            # region #-- remove devices that are no longer needed --#
+            prev_devices = set(self._config_entry.options.get(CONF_DEVICE_CREATED, []))
+            sel_devices = set(user_input.get(CONF_DEVICE_CREATED, []))
+            rem_devices = list(prev_devices - sel_devices)
+            if len(rem_devices) != 0:
+                _LOGGER.debug(
+                    self._log_formatter.format("removing devices: %s"), rem_devices
+                )
+                device_registry = dr.async_get(hass=self.hass)
+                for dev in rem_devices:
+                    dr_dev: dr.DeviceEntry | None = device_registry.async_get_device(
+                        identifiers={(DOMAIN, dev)}
+                    )
+                    if dr_dev is not None:
+                        device_registry.async_remove_device(device_id=dr_dev.id)
+            # endregion
             self._options.update(user_input)
             if self.show_advanced_options:
                 return await self.async_step_advanced_options()
