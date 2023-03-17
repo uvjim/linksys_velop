@@ -32,6 +32,7 @@ from .const import (
     CONF_COORDINATOR,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
+    SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
     UPDATE_DOMAIN,
@@ -184,15 +185,13 @@ async def async_setup_entry(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 description=LinksysVelopBinarySensorDescription(
-                    extra_attributes=lambda r: {
-                        "status": r,
-                    },
                     key="",
                     name="Speedtest Status",
                     state_value=lambda m: m.speedtest_status != "",
                 ),
                 recurrence_interval=1,
                 recurrence_post_signal=SIGNAL_UPDATE_SPEEDTEST_RESULTS,
+                recurrence_progress_signal=SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
                 recurrence_trigger=SIGNAL_UPDATE_SPEEDTEST_STATUS,
                 state_method="async_get_speedtest_state",
                 state_processor=lambda s: s != "",
@@ -358,6 +357,7 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         state_method: str,
         state_processor: Callable[..., bool],
         recurrence_post_signal: str | None = None,
+        recurrence_progress_signal: str | None = None,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
@@ -370,6 +370,7 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         self._recurrence_interval: int = recurrence_interval
         self._recurrence_trigger: str = recurrence_trigger
         self._recurrence_post_signal: str | None = recurrence_post_signal
+        self._recurrence_progress_signal: str | None = recurrence_progress_signal
         self._state_method: str = state_method
         self._state_processor: Callable[..., bool] = state_processor
 
@@ -413,6 +414,12 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         state_method_results: Any = await state_method()
         if isinstance(self.entity_description.extra_attributes, Callable):
             self._esa = self.entity_description.extra_attributes(state_method_results)
+
+        if self._recurrence_progress_signal is not None:
+            async_dispatcher_send(
+                self.hass, self._recurrence_progress_signal, state_method_results
+            )
+
         temp_state: bool = self._state_processor(state_method_results)
         if temp_state:
             if self._remove_action_interval is None:
