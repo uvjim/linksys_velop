@@ -38,9 +38,15 @@ from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node, NodeType
 
-from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from . import (
+    LinksysVelopDeviceEntity,
+    LinksysVelopMeshEntity,
+    LinksysVelopNodeEntity,
+    entity_cleanup,
+)
 from .const import (
     CONF_COORDINATOR,
+    CONF_DEVICE_CREATED,
     CONF_NODE_IMAGES,
     DOMAIN,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
@@ -124,6 +130,109 @@ async def async_setup_entry(
         | LinksysVelopMeshSpeedtestLatestSensor
     ] = []
     sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
+
+    # region #-- Device sensors --#
+    device_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...]
+    for device_id in config_entry.options.get(CONF_DEVICE_CREATED, []):
+        device_sensor_descriptions = (
+            LinksysVelopSensorDescription(
+                extra_attributes=lambda d: {
+                    "sites": d.parental_control_schedule.get("blocked_sites", [])
+                },
+                key="",
+                name="Blocked Sites",
+                state_value=lambda d: len(
+                    d.parental_control_schedule.get("blocked_sites", [])
+                ),
+            ),
+            LinksysVelopSensorDescription(
+                key="description",
+                name="Description",
+            ),
+            LinksysVelopSensorDescription(
+                key="",
+                name="Friendly Signal Strength",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "signal_strength"
+                ),
+            ),
+            LinksysVelopSensorDescription(
+                key="",
+                name="IP",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "ip", ""
+                ),
+            ),
+            LinksysVelopSensorDescription(
+                key="",
+                name="IPv6",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "ipv6", ""
+                ),
+            ),
+            LinksysVelopSensorDescription(
+                key="",
+                name="MAC",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "mac", ""
+                ),
+            ),
+            LinksysVelopSensorDescription(
+                key="manufacturer",
+                name="Manufacturer",
+            ),
+            LinksysVelopSensorDescription(
+                key="model",
+                name="Model",
+            ),
+            LinksysVelopSensorDescription(
+                key="operating_system",
+                name="Operating System",
+            ),
+            LinksysVelopSensorDescription(
+                icon="hass:family-tree",
+                key="parent_name",
+                name="Parent",
+            ),
+            LinksysVelopSensorDescription(
+                icon="hass:barcode",
+                key="serial",
+                name="Serial",
+            ),
+            LinksysVelopSensorDescription(
+                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                key="",
+                name="Signal Strength",
+                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
+            ),
+            LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+                entity_picture=(
+                    lambda d: (
+                        f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{d.ui_type.lower()}.png"
+                    )
+                )
+                if config_entry.options.get(CONF_NODE_IMAGES, "")
+                else None,
+                key="ui_type",
+                name="UI Type",
+            ),
+            LinksysVelopSensorDescription(
+                key="unique_id",
+                name="ID",
+            ),
+        )
+
+        for sensor_description in device_sensor_descriptions:
+            sensors.append(
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=sensor_description,
+                    device_id=device_id,
+                )
+            )
+    # endregion
 
     # region #-- Mesh sensors --#
     mesh_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...] = (
@@ -538,6 +647,38 @@ async def async_setup_entry(
 
     if sensors_to_remove:
         entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
+
+
+class LinksysVelopDeviceSensor(LinksysVelopDeviceEntity, SensorEntity):
+    """Representation of a sensor related to the Device."""
+
+    entity_description: LinksysVelopSensorDescription
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description: LinksysVelopSensorDescription,
+        device_id: str,
+    ) -> None:
+        """Initialise Device sensor."""
+        self.entity_domain = ENTITY_DOMAIN
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            device_id=device_id,
+        )
+
+    @property
+    def native_value(self) -> StateType:
+        """Get the state of the sensor."""
+        if self.entity_description.state_value:
+            return self.entity_description.state_value(self._device)
+
+        return getattr(self._device, self.entity_description.key, None)
 
 
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
