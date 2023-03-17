@@ -43,6 +43,7 @@ from .const import (
     CONF_COORDINATOR,
     CONF_NODE_IMAGES,
     DOMAIN,
+    SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
     UPDATE_DOMAIN,
 )
@@ -201,6 +202,15 @@ async def async_setup_entry(
     )
     sensors.extend(
         [
+            LinsysVelopMeshSpeedtestCurrentStatusSensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=LinksysVelopSensorDescription(
+                    entity_registry_enabled_default=False,
+                    key="",
+                    name="Speedtest Progress",
+                ),
+            ),
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
@@ -631,3 +641,30 @@ class LinksysVelopMeshSpeedtestLatestSensor(LinksysVelopMeshSensor):
                 ret = dt_util.parse_datetime(ret)
 
         return ret
+
+
+class LinsysVelopMeshSpeedtestCurrentStatusSensor(LinksysVelopMeshSensor):
+    """Representation of the Speedtest current status sensor."""
+
+    _value: str = ""
+
+    async def _set_value(self, progress: str) -> None:
+        """Set the value of the sensor to the status given by the signal."""
+        self._value = progress
+        self.async_schedule_update_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Register for callbacks and set initial value."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                hass=self.hass,
+                signal=SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
+                target=self._set_value,
+            )
+        )
+
+    @property
+    def native_value(self) -> StateType:
+        """Set the value of the sensor."""
+        return self._value
