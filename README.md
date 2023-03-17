@@ -71,7 +71,6 @@ available.
 * Mesh: Node Steering _(disabled by default)_
 * Mesh: SIP _(disabled by default)_
 * Mesh: Speedtest state
-  * current stage of the Speedtest, e.g. Detecting server, Checking latency
 * Mesh: UPnP _(disabled by default)_
 * Mesh: UPnP Allow Users to Configure _(disabled by default)_
 * Mesh: UPnP Allow Users to Disable Internet _(disabled by default)_
@@ -126,6 +125,8 @@ install time and from reconfiguring the integration.
 * Mesh: Speedtest Download Bandwidth _(disabled by default)_
 * Mesh: Speedtest Last Run _(disabled by default)_
 * Mesh: Speedtest Latency _(disabled by default)_
+* Mesh: Speedtest Progress  _(disabled by default)_, e.g. Detecting server,
+  Checking latency
 * Mesh: Speedtest Result _(disabled by default)_
 * Mesh: Speedtest Upload Bandwidth _(disabled by default)_
 * Mesh: Number of Available Storage Partitions _(disabled by default)_
