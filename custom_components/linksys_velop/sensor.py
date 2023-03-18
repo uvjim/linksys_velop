@@ -211,10 +211,11 @@ async def async_setup_entry(
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
             ),
             LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
-                entity_picture=(
-                    lambda d: (
-                        f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{d.ui_type.lower()}.png"
-                    )
+                extra_attributes=(
+                    lambda d: {
+                        "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
+                        f"{d.ui_type.lower()}.png"
+                    }
                 )
                 if config_entry.options.get(CONF_NODE_IMAGES, "")
                 else None,
