@@ -47,7 +47,7 @@ from . import (
 )
 from .const import (
     CONF_COORDINATOR,
-    CONF_DEVICE_CREATED,
+    CONF_DEVICE_UI,
     CONF_NODE_IMAGES,
     DOMAIN,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
@@ -134,7 +134,7 @@ async def async_setup_entry(
 
     # region #-- Device sensors --#
     device_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...]
-    for device_id in config_entry.options.get(CONF_DEVICE_CREATED, []):
+    for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
         device_sensor_descriptions = (
             LinksysVelopSensorDescription(
                 extra_attributes=lambda d: {

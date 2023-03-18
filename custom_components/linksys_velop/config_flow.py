@@ -36,7 +36,7 @@ from pyvelop.mesh import Mesh, Node
 from . import async_logging_state
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
-    CONF_DEVICE_CREATED,
+    CONF_DEVICE_UI,
     CONF_DEVICE_TRACKERS,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
@@ -65,7 +65,7 @@ from .logger import Logger
 # endregion
 
 STEP_ADVANCED_OPTIONS: str = "advanced_options"
-STEP_DEVICE_CREATE: str = "device_create"
+STEP_DEVICE_CREATE: str = "device_ui"
 STEP_DEVICE_TRACKERS: str = "device_trackers"
 STEP_INIT: str = "init"
 STEP_LOGGING: str = "logging"
@@ -162,13 +162,13 @@ async def _async_build_schema_with_user_input(
     elif step == STEP_DEVICE_CREATE:
         valid_devices = [
             device
-            for device in user_input.get(CONF_DEVICE_CREATED, [])
+            for device in user_input.get(CONF_DEVICE_UI, [])
             if device in kwargs["multi_select_contents"].keys()
         ]
         schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_DEVICE_CREATED, default=valid_devices
+                    CONF_DEVICE_UI, default=valid_devices
                 ): selector.SelectSelector(
                     config=selector.SelectSelectorConfig(
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -582,16 +582,14 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._options: dict = dict(config_entry.options)
         self._log_formatter: Logger = Logger()
 
-    async def async_step_device_create(
-        self, user_input=None
-    ) -> data_entry_flow.FlowResult:
+    async def async_step_device_ui(self, user_input=None) -> data_entry_flow.FlowResult:
         """Manage the devices that should be created in the UI."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
             # region #-- remove devices that are no longer needed --#
-            prev_devices = set(self._config_entry.options.get(CONF_DEVICE_CREATED, []))
-            sel_devices = set(user_input.get(CONF_DEVICE_CREATED, []))
+            prev_devices = set(self._config_entry.options.get(CONF_DEVICE_UI, []))
+            sel_devices = set(user_input.get(CONF_DEVICE_UI, []))
             rem_devices = list(prev_devices - sel_devices)
             if len(rem_devices) != 0:
                 _LOGGER.debug(
@@ -661,7 +659,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
             self._options.update(user_input)
             if self.show_advanced_options:
-                return await self.async_step_device_create()
+                return await self.async_step_device_ui()
 
             return await self.async_step_logging()
 

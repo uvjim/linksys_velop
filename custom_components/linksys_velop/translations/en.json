@@ -90,7 +90,7 @@
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
                 "title": "Linksys Velop"
             },
-            "device_create": {
+            "device_ui": {
                 "data": {
                     "": "Available devices"
                 },
@@ -107,7 +107,7 @@
             "init": {
                 "menu_options": {
                     "advanced_options": "Advanced Options",
-                    "device_create": "Create Devices",
+                    "device_ui": "UI Devices",
                     "device_trackers": "Device Trackers",
                     "logging": "Logging",
                     "timers": "Timers"

@@ -35,7 +35,7 @@ from . import (
 )
 from .const import (
     CONF_COORDINATOR,
-    CONF_DEVICE_CREATED,
+    CONF_DEVICE_UI,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
@@ -98,7 +98,7 @@ async def async_setup_entry(
 
     # region #-- Device binary sensors --#
     device_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...]
-    for device_id in config_entry.options.get(CONF_DEVICE_CREATED, []):
+    for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
         device_binary_sensor_descriptions = (
             LinksysVelopBinarySensorDescription(
                 extra_attributes=lambda d: d.parental_control_schedule.get(
