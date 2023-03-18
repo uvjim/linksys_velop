@@ -163,23 +163,17 @@ async def async_setup_entry(
             LinksysVelopSensorDescription(
                 key="",
                 name="IP",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "ip", ""
-                ),
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get("ip"),
             ),
             LinksysVelopSensorDescription(
                 key="",
                 name="IPv6",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "ipv6", ""
-                ),
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get("ipv6"),
             ),
             LinksysVelopSensorDescription(
                 key="",
                 name="MAC",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "mac", ""
-                ),
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get("mac"),
             ),
             LinksysVelopSensorDescription(
                 key="manufacturer",
