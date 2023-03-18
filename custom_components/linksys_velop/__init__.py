@@ -690,6 +690,12 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
         ret = DeviceInfo(
+            connections={
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    next(iter(self._device.connected_adapters), {}).get("mac", ""),
+                )
+            },
             identifiers={(DOMAIN, self._device_id)},
             manufacturer=self._device.manufacturer or "",
             model=self._device.model or "",
