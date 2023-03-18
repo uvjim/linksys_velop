@@ -67,6 +67,7 @@ from .logger import Logger
 STEP_ADVANCED_OPTIONS: str = "advanced_options"
 STEP_DEVICE_CREATE: str = "device_ui"
 STEP_DEVICE_TRACKERS: str = "device_trackers"
+STEP_FINALISE: str = "finalise"
 STEP_INIT: str = "init"
 STEP_LOGGING: str = "logging"
 STEP_USER: str = "user"
@@ -588,25 +589,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
-            # region #-- remove devices that are no longer needed --#
-            prev_devices = set(self._config_entry.options.get(CONF_DEVICE_UI, []))
-            sel_devices = set(user_input.get(CONF_DEVICE_UI, []))
-            rem_devices = list(prev_devices - sel_devices)
-            if len(rem_devices) != 0:
-                _LOGGER.debug(
-                    self._log_formatter.format("removing devices: %s"), rem_devices
-                )
-                device_registry = dr.async_get(hass=self.hass)
-                for dev in rem_devices:
-                    dr_dev: dr.DeviceEntry | None = device_registry.async_get_device(
-                        identifiers={(DOMAIN, dev)}
-                    )
-                    if dr_dev is not None:
-                        device_registry.async_remove_device(device_id=dr_dev.id)
-            # endregion
             self._options.update(user_input)
             if self.show_advanced_options:
                 return await self.async_step_advanced_options()
+            return await self.async_step_logging()
 
         if self._devices is None:
             mesh = Mesh(
@@ -632,38 +618,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
-            # region #-- remove any device trackers that are no longer needed --#
-            entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
-            config_entry_entities: List[
-                er.RegistryEntry
-            ] = er.async_entries_for_config_entry(
-                registry=entity_registry, config_entry_id=self._config_entry.entry_id
-            )
-            device_tracker_entities: List[er.RegistryEntry] = [
-                device_tracker
-                for device_tracker in config_entry_entities
-                if device_tracker.unique_id.startswith(
-                    f"{self._config_entry.entry_id}::device_tracker::"
-                )
-            ]
-
-            for device_tracker in device_tracker_entities:
-                uid: str = device_tracker.unique_id.split("::")[-1]
-                if uid not in user_input.get(CONF_DEVICE_TRACKERS):
-                    _LOGGER.debug(
-                        self._log_formatter.format(
-                            "removing the device tracker entity for %s"
-                        ),
-                        device_tracker.name or device_tracker.original_name,
-                    )
-                    entity_registry.async_remove(entity_id=device_tracker.entity_id)
-            # endregion
-
             self._options.update(user_input)
-            if self.show_advanced_options:
-                return await self.async_step_device_ui()
-
-            return await self.async_step_logging()
+            return await self.async_step_device_ui()
 
         if self._devices is None:
             mesh = Mesh(
@@ -681,6 +637,56 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             errors=self._errors,
             last_step=False,
         )
+
+    async def async_step_finalise(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Run the final pieces of the flow."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        # region #-- remove any device trackers that are no longer needed --#
+        entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
+        config_entry_entities: List[
+            er.RegistryEntry
+        ] = er.async_entries_for_config_entry(
+            registry=entity_registry, config_entry_id=self._config_entry.entry_id
+        )
+        device_tracker_entities: List[er.RegistryEntry] = [
+            device_tracker
+            for device_tracker in config_entry_entities
+            if device_tracker.unique_id.startswith(
+                f"{self._config_entry.entry_id}::device_tracker::"
+            )
+        ]
+
+        for device_tracker in device_tracker_entities:
+            uid: str = device_tracker.unique_id.split("::")[-1]
+            if uid not in self._options.get(CONF_DEVICE_TRACKERS):
+                _LOGGER.debug(
+                    self._log_formatter.format(
+                        "removing the device tracker entity for %s"
+                    ),
+                    device_tracker.name or device_tracker.original_name,
+                )
+                entity_registry.async_remove(entity_id=device_tracker.entity_id)
+        # endregion
+
+        # region #-- remove devices that are no longer needed --#
+        prev_devices = set(self._config_entry.options.get(CONF_DEVICE_UI, []))
+        sel_devices = set(self._options.get(CONF_DEVICE_UI, []))
+        rem_devices = list(prev_devices - sel_devices)
+        if len(rem_devices) != 0:
+            _LOGGER.debug(
+                self._log_formatter.format("removing devices: %s"), rem_devices
+            )
+            device_registry = dr.async_get(hass=self.hass)
+            for dev in rem_devices:
+                dr_dev: dr.DeviceEntry | None = device_registry.async_get_device(
+                    identifiers={(DOMAIN, dev)}
+                )
+                if dr_dev is not None:
+                    device_registry.async_remove_device(device_id=dr_dev.id)
+        # endregion
+
+        return self.async_create_entry(title="", data=self._options)
 
     async def async_step_init(self, user_input=None) -> data_entry_flow.FlowResult:
         """First Step."""
@@ -717,7 +723,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                     log_formatter=self._log_formatter,
                     state=False,
                 )
-            return self.async_create_entry(title="", data=self._options)
+            return await self.async_step_finalise()
 
         # -- check logging enabled --#
         if self.hass.services.has_service(
