@@ -62,6 +62,14 @@
                     "wireless": "Wireless"
                 }
             },
+            "friendly_signal_strength": {
+                "state": {
+                    "excellent": "Excellent",
+                    "fair": "Fair",
+                    "good": "Good",
+                    "weak": "Weak"
+                }
+            },
             "node_type": {
                 "state": {
                     "primary": "Primary",

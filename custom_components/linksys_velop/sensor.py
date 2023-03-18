@@ -152,9 +152,11 @@ async def async_setup_entry(
             LinksysVelopSensorDescription(
                 key="",
                 name="Friendly Signal Strength",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "signal_strength"
-                ),
+                state_value=lambda d: next(iter(d.connected_adapters), {})
+                .get("signal_strength", "")
+                .lower()
+                or None,
+                translation_key="friendly_signal_strength",
             ),
             LinksysVelopSensorDescription(
                 key="",
