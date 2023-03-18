@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT
@@ -141,6 +142,7 @@ async def async_setup_entry(
                 },
                 key="",
                 name="Blocked Sites",
+                state_class=SensorStateClass.MEASUREMENT,
                 state_value=lambda d: len(
                     d.parental_control_schedule.get("blocked_sites", [])
                 ),
