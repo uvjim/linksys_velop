@@ -82,10 +82,10 @@
         "step": {
             "advanced_options": {
                 "data": {
-                    "node_images": "Node image path"
+                    "node_images": "Velop image path"
                 },
                 "data_description": {
-                    "node_images": "Path to the node images, e.g. /local/velop_images.\nUse * to remove the value."
+                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value."
                 },
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
                 "title": "Linksys Velop"
