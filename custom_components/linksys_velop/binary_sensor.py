@@ -27,9 +27,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from . import (
+    LinksysVelopDeviceEntity,
+    LinksysVelopMeshEntity,
+    LinksysVelopNodeEntity,
+    entity_cleanup,
+)
 from .const import (
     CONF_COORDINATOR,
+    CONF_DEVICE_UI,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
@@ -81,12 +87,64 @@ async def async_setup_entry(
         LinksysVelopMeshBinarySensor
         | LinksysVelopNodeBinarySensor
         | LinksysVelopMeshRecurringBinarySensor
+        | LinksysVelopDeviceBinarySensor
     ] = []
     binary_sensors_to_remove: List[
         LinksysVelopMeshBinarySensor
         | LinksysVelopNodeBinarySensor
         | LinksysVelopMeshRecurringBinarySensor
+        | LinksysVelopDeviceBinarySensor
     ] = []
+
+    # region #-- Device binary sensors --#
+    device_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...]
+    for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
+        device_binary_sensor_descriptions = (
+            LinksysVelopBinarySensorDescription(
+                extra_attributes=lambda d: d.parental_control_schedule.get(
+                    "blocked_internet_access"
+                ),
+                key="",
+                name="Blocked Times",
+                state_value=lambda d: d.parental_control_schedule is not None
+                and d.parental_control_schedule.get("blocked_internet_access")
+                is not None
+                and any(
+                    d.parental_control_schedule.get("blocked_internet_access").values()
+                ),
+            ),
+            LinksysVelopBinarySensorDescription(
+                key="",
+                name="Guest Network",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "guest_network"
+                ),
+            ),
+            LinksysVelopBinarySensorDescription(
+                key="",
+                name="Reserved IP",
+                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                    "reservation"
+                ),
+            ),
+            LinksysVelopBinarySensorDescription(
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                extra_attributes={"device": True},
+                key="status",
+                name="Status",
+            ),
+        )
+
+        for binary_sensor_description in device_binary_sensor_descriptions:
+            binary_sensors.append(
+                LinksysVelopDeviceBinarySensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=binary_sensor_description,
+                    device_id=device_id,
+                )
+            )
+    # endregion
 
     # region #-- Mesh binary sensors --#
     mesh_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...] = (
@@ -282,6 +340,37 @@ async def async_setup_entry(
         entity_cleanup(
             config_entry=config_entry, entities=binary_sensors_to_remove, hass=hass
         )
+
+
+class LinksysVelopDeviceBinarySensor(LinksysVelopDeviceEntity, BinarySensorEntity):
+    """Representation of a device binary sensor."""
+
+    entity_description: LinksysVelopBinarySensorDescription
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description: LinksysVelopBinarySensorDescription,
+        device_id: str,
+    ) -> None:
+        """Initialise Device sensor."""
+        self.entity_domain = ENTITY_DOMAIN
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            device_id=device_id,
+        )
+
+    @property
+    def is_on(self) -> bool | None:
+        """Get the state of the binary sensor."""
+        if self.entity_description.state_value:
+            return self.entity_description.state_value(self._device)
+        return getattr(self._device, self.entity_description.key, None)
 
 
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):

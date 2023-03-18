@@ -619,6 +619,119 @@ async def _async_update_listener(
 
 
 # region #-- base entities --#
+class LinksysVelopDeviceEntity(CoordinatorEntity):
+    """Representation of a device on the Mesh."""
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description,
+        device_id: str,
+    ) -> None:
+        """Initialise Device entity."""
+        super().__init__(coordinator=coordinator)
+        self._config = config_entry
+        self._log_formatter: Logger = Logger(unique_id=config_entry.unique_id)
+        self._mesh: Mesh = coordinator.data
+        self._device_id: str = device_id
+        self._device: Device | None = self._get_device()
+
+        self.entity_description = description
+
+        if not getattr(self, "entity_domain", None):
+            self.entity_domain: str = ""
+
+        if hasattr(self.entity_description, "entity_picture"):
+            if isinstance(self.entity_description.entity_picture, Callable):
+                self._attr_entity_picture = self.entity_description.entity_picture(
+                    self._device
+                )
+            else:
+                self._attr_entity_picture = self.entity_description.entity_picture
+
+        try:
+            _ = self.has_entity_name
+            self._attr_has_entity_name = True
+            self._attr_name = self.entity_description.name
+        except AttributeError:
+            self._attr_name = f"{ENTITY_SLUG} Device: {self.entity_description.name}"
+
+        self._attr_unique_id = (
+            f"{self._device.unique_id}::"
+            f"{self.entity_domain.lower()}::"
+            f"{slugify(self.entity_description.name)}"
+        )
+
+    def _get_device(self) -> Device | None:
+        """Get the device from the mesh."""
+        devices: List[Device] = [
+            _dev for _dev in self._mesh.devices if _dev.unique_id == self._device_id
+        ]
+        if len(devices):
+            return devices[0]
+
+        return None
+
+    def _handle_coordinator_update(self) -> None:
+        """Update the information when the coordinator updates."""
+        if self.coordinator.data is not None:
+            self._mesh = self.coordinator.data
+            if (device := self._get_device()) is not None:
+                self._device = device
+                self._attr_available = True
+            else:
+                self._attr_available = False
+        else:
+            self._attr_available = False
+        super()._handle_coordinator_update()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device information of the entity."""
+        ret = DeviceInfo(
+            connections={
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    next(iter(self._device.connected_adapters), {}).get("mac", ""),
+                )
+            },
+            identifiers={(DOMAIN, self._device_id)},
+            manufacturer=self._device.manufacturer or "",
+            model=self._device.model or "",
+            name=self._device.name,
+        )
+        return ret
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Additional attributes for the entity."""
+        if hasattr(self.entity_description, "extra_attributes"):
+            if isinstance(self.entity_description.extra_attributes, Callable):
+                return self.entity_description.extra_attributes(self._device)
+
+            if isinstance(self.entity_description.extra_attributes, dict):
+                return self.entity_description.extra_attributes
+
+            if isinstance(self.entity_description.extra_attributes, str):
+                if (
+                    esa := getattr(
+                        self._device, self.entity_description.extra_attributes
+                    )
+                ) is not None:
+                    if not isinstance(esa, dict):
+                        _LOGGER.debug(
+                            self._log_formatter.format(
+                                "%s is not a dictionary or None"
+                            ),
+                            self.entity_description.extra_attributes,
+                        )
+                    else:
+                        return esa
+
+        return None
+
+
 class LinksysVelopMeshEntity(CoordinatorEntity):
     """Representation of a Mesh entity."""
 

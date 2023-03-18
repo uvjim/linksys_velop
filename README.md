@@ -61,6 +61,11 @@ available.
 
 #### Binary Sensors
 
+* Device: Blocked Times
+  * Times of the week that are blocked
+* Device: Guest Network
+* Device: Reserved IP
+* Device: Connected
 * Mesh: Channel Scanning
 * Mesh: Client Steering _(disabled by default)_
 * Mesh: DHCP Server _(disabled by default)_
@@ -112,6 +117,22 @@ install time and from reconfiguring the integration.
 
 #### Sensors
 
+* Device: Blocked Sites
+  * list of sites blocked
+* Device: Description
+* Device: Friendly Signal Strength
+* Device: ID
+* Device: IP
+* Device: IPv6
+* Device: MAC
+* Device: Manufacturer
+* Device: Model
+* Device: Operating System
+* Device: Parent
+* Device: Serial
+* Device: Signal Strength _(i.e., RSSI)_
+* Device: UI Type _(The `entity_picture` attribute will be set if
+  `node_images` are configured, see [here](#advanced-options))_
 * Mesh: DHCP Reservations _(disabled by default)_
   * list of DHCP reservations on the mesh
 * Mesh: Number of Offline Devices
