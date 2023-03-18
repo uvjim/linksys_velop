@@ -704,6 +704,9 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
             if isinstance(self.entity_description.extra_attributes, Callable):
                 return self.entity_description.extra_attributes(self._device)
 
+            if isinstance(self.entity_description.extra_attributes, dict):
+                return self.entity_description.extra_attributes
+
             if isinstance(self.entity_description.extra_attributes, str):
                 if (
                     esa := getattr(
