@@ -54,6 +54,20 @@
         }
     },
     "entity": {
+        "binary_sensor": {
+            "activeidle": {
+                "state": {
+                    "off": "Idle",
+                    "on": "Active"
+                }
+            },
+            "yesno": {
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            }
+        },
         "sensor": {
             "connection_type": {
                 "state": {

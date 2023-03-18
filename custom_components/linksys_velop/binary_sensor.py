@@ -112,6 +112,7 @@ async def async_setup_entry(
                 and any(
                     d.parental_control_schedule.get("blocked_internet_access").values()
                 ),
+                translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
                 key="",
@@ -119,6 +120,7 @@ async def async_setup_entry(
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get(
                     "guest_network"
                 ),
+                translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
                 key="",
@@ -126,6 +128,7 @@ async def async_setup_entry(
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get(
                     "reservation"
                 ),
+                translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
                 device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -167,6 +170,7 @@ async def async_setup_entry(
             entity_registry_enabled_default=False,
             key="homekit_paired",
             name="HomeKit Integration Paired",
+            translation_key="yesno",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
@@ -233,6 +237,7 @@ async def async_setup_entry(
                 description=LinksysVelopBinarySensorDescription(
                     key="is_channel_scan_running",
                     name="Channel Scanning",
+                    translation_key="activeidle",
                 ),
                 recurrence_interval=40,
                 recurrence_trigger=SIGNAL_UPDATE_CHANNEL_SCANNING,
@@ -246,6 +251,7 @@ async def async_setup_entry(
                     key="",
                     name="Speedtest Status",
                     state_value=lambda m: m.speedtest_status != "",
+                    translation_key="activeidle",
                 ),
                 recurrence_interval=1,
                 recurrence_post_signal=SIGNAL_UPDATE_SPEEDTEST_RESULTS,
