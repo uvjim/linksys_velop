@@ -215,6 +215,8 @@ async def async_setup_entry(
                     lambda d: {
                         "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
                         f"{d.ui_type.lower()}.png"
+                        if d.ui_type is not None
+                        else None
                     }
                 )
                 if config_entry.options.get(CONF_NODE_IMAGES, "")
