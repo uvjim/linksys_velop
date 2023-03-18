@@ -577,7 +577,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Intialise."""
         super().__init__()
-        self._config_entry = config_entry
+        self._config_entry: config_entries.ConfigEntry = config_entry
+        self._devices: dict | None = None
         self._errors: dict = {}
         self._options: dict = dict(config_entry.options)
         self._log_formatter: Logger = Logger()
@@ -607,17 +608,18 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             if self.show_advanced_options:
                 return await self.async_step_advanced_options()
 
-        mesh = Mesh(
-            node=self._config_entry.options[CONF_NODE],
-            password=self._config_entry.options[CONF_PASSWORD],
-            session=async_get_clientsession(hass=self.hass),
-        )
-        devices: dict = await _async_get_devices(mesh=mesh)
+        if self._devices is None:
+            mesh = Mesh(
+                node=self._config_entry.options[CONF_NODE],
+                password=self._config_entry.options[CONF_PASSWORD],
+                session=async_get_clientsession(hass=self.hass),
+            )
+            self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
             step_id=STEP_DEVICE_CREATE,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_CREATE, self._options, multi_select_contents=devices
+                STEP_DEVICE_CREATE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,
@@ -663,17 +665,18 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
             return await self.async_step_logging()
 
-        mesh = Mesh(
-            node=self._config_entry.options[CONF_NODE],
-            password=self._config_entry.options[CONF_PASSWORD],
-            session=async_get_clientsession(hass=self.hass),
-        )
-        devices: dict = await _async_get_devices(mesh=mesh)
+        if self._devices is None:
+            mesh = Mesh(
+                node=self._config_entry.options[CONF_NODE],
+                password=self._config_entry.options[CONF_PASSWORD],
+                session=async_get_clientsession(hass=self.hass),
+            )
+            self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
             step_id=STEP_DEVICE_TRACKERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=devices
+                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,
