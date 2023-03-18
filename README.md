@@ -389,10 +389,10 @@ It is possible to configure the following options for the integration.
 
 ![Configure Advanced Options](images/config_advanced_options.png)
 
-* `Node image path`: the path to the folder location containing the images to
-  use for nodes. This is currently used for to set the entity picture for the
-  `update` entity.  This relies on the `http` integration from HASS, details of
-  which can be found
+* `Velop image path`: the path to the folder location containing the images to
+  use for integration purposes. This is currently used for to set the entity
+  picture for various entities. It relies on the `http` integration from HASS,
+  details of which can be found
   [here](https://www.home-assistant.io/integrations/http), and more specifically
   [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
   path to place the files in.
