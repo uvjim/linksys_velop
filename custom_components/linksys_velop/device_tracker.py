@@ -8,16 +8,7 @@ from typing import Callable, Dict, List
 
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
-
-# TODO: remove try/except when setting min version to 2022.9
-# https://developers.home-assistant.io/blog/2022/07/29/device-tracker_source-type-deprecation
-try:
-    from homeassistant.components.device_tracker import SourceType
-
-    SOURCE_TYPE_ROUTER = SourceType.ROUTER
-except ImportError:
-    from homeassistant.components.device_tracker import SOURCE_TYPE_ROUTER
-
+from homeassistant.components.device_tracker import SourceType
 from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -235,7 +226,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     @property
     def source_type(self) -> str:
         """Get the source of the device tracker."""
-        return SOURCE_TYPE_ROUTER
+        return SourceType.ROUTER
 
     @property
     def unique_id(self) -> str | None:
