@@ -13,13 +13,14 @@ from homeassistant.config_entries import entity_registry as er
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
 from homeassistant.helpers.entity_registry import EntityRegistry
+from homeassistant.helpers import issue_registry as ir
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from .const import CONF_DEVICE_TRACKERS
+from .const import CONF_DEVICE_TRACKERS, CONF_DEVICE_UI, DOMAIN, ISSUE_MISSING_UI_DEVICE
 
 # endregion
 
@@ -104,7 +105,10 @@ def mesh_intensive_action_running(
 
 
 def stop_tracking_device(
-    config_entry: ConfigEntry, device_id: List[str] | str, hass: HomeAssistant
+    config_entry: ConfigEntry,
+    device_id: List[str] | str,
+    hass: HomeAssistant,
+    device_type: str = CONF_DEVICE_TRACKERS,
 ) -> None:
     """Stop tracking the given device."""
     if not isinstance(device_id, list):
@@ -114,8 +118,31 @@ def stop_tracking_device(
         dict(**config_entry.options)
     )  # deepcopy a dict copy so we get all the options
     trackers: List[str]
-    if (trackers := new_options.get(CONF_DEVICE_TRACKERS, None)) is not None:
+    if (trackers := new_options.get(device_type, None)) is not None:
         for tracker_id in device_id:
             trackers.remove(tracker_id)
-        new_options[CONF_DEVICE_TRACKERS] = trackers
+        new_options[device_type] = trackers
         hass.config_entries.async_update_entry(entry=config_entry, options=new_options)
+        if device_type == CONF_DEVICE_UI:
+            for dev in device_id:
+                device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
+                device_details: dr.DeviceEntry | None = (
+                    device_registry.async_get_device(identifiers={(DOMAIN, dev)})
+                )
+                if device_details is not None:
+                    ir.async_create_issue(
+                        hass=hass,
+                        data={
+                            "device_id": device_details.id,
+                            "device_name": device_details.name,
+                        },
+                        domain=DOMAIN,
+                        is_fixable=True,
+                        is_persistent=True,
+                        issue_id=ISSUE_MISSING_UI_DEVICE,
+                        severity=ir.IssueSeverity.WARNING,
+                        translation_key=ISSUE_MISSING_UI_DEVICE,
+                        translation_placeholders={
+                            "device_name": device_details.name,
+                        },
+                    )
