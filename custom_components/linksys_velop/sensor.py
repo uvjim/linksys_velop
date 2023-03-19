@@ -14,20 +14,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT
-
-# TODO: remove try/except when minimum version is 2023.1.0
-try:
-    from homeassistant.const import UnitOfDataRate
-
-    DATA_RATE_MEGABITS_PER_SECOND = UnitOfDataRate.MEGABITS_PER_SECOND
-    DATA_RATE_KILOBITS_PER_SECOND = UnitOfDataRate.KILOBITS_PER_SECOND
-except ImportError:
-    from homeassistant.const import (
-        DATA_RATE_MEGABITS_PER_SECOND,
-        DATA_RATE_KILOBITS_PER_SECOND,
-    )
-
+from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT, UnitOfDataRate
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
@@ -69,12 +56,6 @@ class OptionalLinksysVelopDescription:
         entity_picture: str | None = None
     extra_attributes: Callable | None = None
     state_value: Callable | None = None
-    # TODO: remove when minimum version is 2023.1.0
-    if not hasattr(SensorEntityDescription, "options"):
-        options: List[str] | None = None
-    # TODO: remove when minimum version is 2023.1.0
-    if not hasattr(SensorEntityDescription, "translation_key"):
-        translation_key: str | None = None
 
 
 @dataclasses.dataclass
@@ -335,7 +316,7 @@ async def async_setup_entry(
                     icon="mdi:cloud-download-outline",
                     key="download_bandwidth",
                     name="Speedtest Download Bandwidth",
-                    native_unit_of_measurement=DATA_RATE_KILOBITS_PER_SECOND,
+                    native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -378,7 +359,7 @@ async def async_setup_entry(
                     icon="mdi:cloud-upload-outline",
                     key="upload_bandwidth",
                     name="Speedtest Upload Bandwidth",
-                    native_unit_of_measurement=DATA_RATE_KILOBITS_PER_SECOND,
+                    native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
                 ),
             ),
         ]
@@ -460,9 +441,8 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    # TODO: remove pylint disables when minimum version is 2023.1.0
-                    description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
-                        device_class=SensorDeviceClass.ENUM  # pylint: disable=no-member
+                    description=LinksysVelopSensorDescription(
+                        device_class=SensorDeviceClass.ENUM
                         if hasattr(SensorDeviceClass, "ENUM")
                         else "",
                         key="type",
@@ -514,23 +494,21 @@ async def async_setup_entry(
                         coordinator=coordinator,
                         node=node,
                         description=LinksysVelopSensorDescription(
-                            # TODO: remove pylint disables when minimum version is 2023.1.0
-                            device_class=SensorDeviceClass.DATA_RATE  # pylint: disable=no-member
+                            device_class=SensorDeviceClass.DATA_RATE
                             if hasattr(SensorDeviceClass, "DATA_RATE")
                             else "",
                             key="",
                             name="Backhaul Speed",
                             state_value=lambda n: n.backhaul.get("speed_mbps"),
-                            native_unit_of_measurement=DATA_RATE_MEGABITS_PER_SECOND,
+                            native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
                         ),
                     ),
                     LinksysVelopNodeSensor(
                         config_entry=config_entry,
                         coordinator=coordinator,
                         node=node,
-                        # TODO: remove pylint disables when minimum version is 2023.1.0
-                        description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
-                            device_class=SensorDeviceClass.ENUM  # pylint: disable=no-member
+                        description=LinksysVelopSensorDescription(
+                            device_class=SensorDeviceClass.ENUM
                             if hasattr(SensorDeviceClass, "ENUM")
                             else "",
                             icon="mdi:lan-connect"
