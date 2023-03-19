@@ -243,6 +243,7 @@ async def async_setup_entry(
             icon="mdi:nas",
             key="available_storage",
             name="Available Storage",
+            state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(m.storage_available),
         ),
         LinksysVelopSensorDescription(
@@ -252,6 +253,7 @@ async def async_setup_entry(
             },
             key="dhcp_reservations",
             name="DHCP Reservations",
+            state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(m.dhcp_reservations),
         ),
         LinksysVelopSensorDescription(
@@ -261,6 +263,7 @@ async def async_setup_entry(
             },
             key="guest_devices",
             name="Guest Devices",
+            state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(
                 [d for d in get_devices(mesh=m) if d.get("guest_network")]
             ),
@@ -276,12 +279,14 @@ async def async_setup_entry(
             ),
             key="offline_devices",
             name="Offline Devices",
+            state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(get_devices(mesh=m, state=False)),
         ),
         LinksysVelopSensorDescription(
             extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
             key="online_devices",
             name="Online Devices",
+            state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(get_devices(mesh=m)),
         ),
         LinksysVelopSensorDescription(
@@ -397,6 +402,7 @@ async def async_setup_entry(
                         else {},
                         key="",
                         name="Connected devices",
+                        state_class=SensorStateClass.MEASUREMENT,
                         state_value=lambda n: len(n.connected_devices),
                     ),
                 ),
