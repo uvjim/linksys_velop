@@ -481,13 +481,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     # region #-- setup the platforms --#
     setup_platforms: List[str] = list(filter(None, PLATFORMS))
     _LOGGER.debug(log_formatter.format("setting up platforms: %s"), setup_platforms)
-    # TODO: remove try/except when minimum version is 2022.8.0
-    try:
-        await hass.config_entries.async_forward_entry_setups(
-            config_entry, setup_platforms
-        )
-    except AttributeError:
-        hass.config_entries.async_setup_platforms(config_entry, setup_platforms)
+    await hass.config_entries.async_forward_entry_setups(config_entry, setup_platforms)
     # endregion
 
     # region #-- Service Definition --#
