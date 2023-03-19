@@ -47,6 +47,8 @@ DEF_LOGGING_SERIAL: bool = False
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 
+ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
+
 LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
     {"label": "Off", "value": "off"},
     {"label": "Single poll", "value": "single"},

@@ -44,6 +44,7 @@ from .const import (
     CONF_COORDINATOR,
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
+    CONF_DEVICE_UI,
     CONF_ENTRY_RELOAD,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
@@ -233,7 +234,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
         device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
 
-        # -- get the existing devices --#
+        # region #-- get current known devices --#
         _LOGGER.debug(
             log_formatter.format("retrieving existing devices for comparison")
         )
@@ -242,8 +243,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
         except MeshException:
             previous_devices: Set[str] = {}
+        # endregion
 
-        # -- get the existing nodes --#
+        # region #-- get current known nodes --#
         _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
         if (
             previous_nodes := dr_nodes_for_mesh(
@@ -254,6 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 next(iter(prev_node.identifiers))[1]  # serial number of node
                 for prev_node in previous_nodes
             }
+        # endregion
 
         try:
             # -- gather details from the API --#
@@ -277,18 +280,22 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             _LOGGER.error(log_formatter.format(err))
             raise UpdateFailed(err) from err
         else:
-            # region #-- check for new devices --#
+            # region #-- device comparisons --#
+            current_devices: Set[str] = {device.unique_id for device in mesh.devices}
             if not previous_devices:
                 _LOGGER.debug(
                     log_formatter.format("no previous devices - ignoring comparison")
                 )
             else:
-                _LOGGER.debug(log_formatter.format("comparing devices"))
-                current_devices: Set[str] = {
-                    device.unique_id for device in mesh.devices
-                }
+                # region #-- new devices --#
+                _LOGGER.debug(log_formatter.format("looking for new devices"))
                 new_devices: Set[str] = current_devices.difference(previous_devices)
                 if new_devices:
+                    _LOGGER.debug(
+                        log_formatter.format("new device%s found: %d"),
+                        "" if len(new_devices) == 1 else "s",
+                        len(new_devices),
+                    )
                     for device in mesh.devices:
                         if device.unique_id in new_devices:
                             # -- fire the event --#
@@ -308,6 +315,23 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                                 event_data=payload,
                             )
                 _LOGGER.debug(log_formatter.format("devices compared"))
+                # endregion
+            # region #-- missing devices --#
+            missing_devices: set[str] = set(
+                config_entry.options.get(CONF_DEVICE_UI, [])
+            ).difference(current_devices)
+            if len(missing_devices) != 0:
+                _LOGGER.debug(
+                    log_formatter.format("missing devices: %s"), missing_devices
+                )
+                for device_id in missing_devices:
+                    stop_tracking_device(
+                        config_entry=config_entry,
+                        device_id=device_id,
+                        device_type=CONF_DEVICE_UI,
+                        hass=hass,
+                    )
+            # endregion
             # endregion
 
             # region #-- check for new or update nodes --#
