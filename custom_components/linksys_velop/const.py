@@ -9,11 +9,7 @@ from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOM
 from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
-
-try:
-    from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
-except ImportError:
-    UPDATE_DOMAIN = None
+from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
 
 # endregion
 
