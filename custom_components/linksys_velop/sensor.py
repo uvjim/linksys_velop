@@ -555,42 +555,58 @@ async def async_setup_entry(
             )
             # only add the backhaul signal strength if wireless, remove it otherwise
             if node.backhaul.get("connection", "").lower() == "wireless":
-                sensors.append(
-                    LinksysVelopNodeSensor(
-                        config_entry=config_entry,
-                        coordinator=coordinator,
-                        node=node,
-                        description=LinksysVelopSensorDescription(
-                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                            extra_attributes=lambda n: {
-                                k: v
-                                for k, v in n.backhaul.items()
-                                if k
-                                not in (
-                                    "connection",
-                                    "last_checked",
-                                    "rssi_dbm",
-                                    "speed_mbps",
-                                )
-                            },
-                            key="",
-                            name="Backhaul Signal Strength",
-                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                            state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                sensors.extend(
+                    [
+                        LinksysVelopNodeSensor(
+                            config_entry=config_entry,
+                            coordinator=coordinator,
+                            node=node,
+                            description=LinksysVelopSensorDescription(
+                                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                                key="",
+                                name="Backhaul Signal Strength",
+                                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                                state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                            ),
                         ),
-                    )
+                        LinksysVelopNodeSensor(
+                            config_entry=config_entry,
+                            coordinator=coordinator,
+                            node=node,
+                            description=LinksysVelopSensorDescription(
+                                key="",
+                                name="Backhaul Friendly Signal Strength",
+                                state_value=lambda n: n.backhaul.get(
+                                    "signal_strength", ""
+                                ).lower()
+                                or None,
+                                translation_key="friendly_signal_strength",
+                            ),
+                        ),
+                    ]
                 )
             else:
-                sensors_to_remove.append(
-                    LinksysVelopNodeSensor(
-                        config_entry=config_entry,
-                        coordinator=coordinator,
-                        node=node,
-                        description=LinksysVelopSensorDescription(
-                            key="",
-                            name="Backhaul Signal Strength",
+                sensors_to_remove.extend(
+                    [
+                        LinksysVelopNodeSensor(
+                            config_entry=config_entry,
+                            coordinator=coordinator,
+                            node=node,
+                            description=LinksysVelopSensorDescription(
+                                key="",
+                                name="Backhaul Signal Strength",
+                            ),
                         ),
-                    )
+                        LinksysVelopNodeSensor(
+                            config_entry=config_entry,
+                            coordinator=coordinator,
+                            node=node,
+                            description=LinksysVelopSensorDescription(
+                                key="",
+                                name="Backhaul Friendly Signal Strength",
+                            ),
+                        ),
+                    ]
                 )
         # endregion
 
