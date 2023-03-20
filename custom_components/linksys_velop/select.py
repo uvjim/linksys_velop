@@ -14,12 +14,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
 from . import LinksysVelopMeshEntity
-from .const import CONF_COORDINATOR, DOMAIN
+from .const import (
+    CONF_COORDINATOR,
+    CONF_SELECT_TEMP_UI_DEVICE,
+    DOMAIN,
+    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
+)
 
 # endregion
 
@@ -123,13 +129,23 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     async def async_select_option(self, option: str) -> None:
         """Select the option."""
         self._attr_current_option = option
+        if self._config.options.get(CONF_SELECT_TEMP_UI_DEVICE):
+            device_details = _get_device_details(mesh=self._mesh, device_name=option)
+            if device_details is not None:
+                async_dispatcher_send(
+                    self.hass,
+                    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
+                    device_details.get("unique_id"),
+                )
         await self.async_update_ha_state()
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes."""
-        if self.entity_description.extra_attributes and isinstance(
-            self.entity_description.extra_attributes, Callable
+        if (
+            self.entity_description.extra_attributes
+            and isinstance(self.entity_description.extra_attributes, Callable)
+            and not self._config.options.get(CONF_SELECT_TEMP_UI_DEVICE)
         ):
             ea_args: dict
             if self.entity_description.extra_attributes_args:

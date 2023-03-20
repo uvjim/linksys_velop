@@ -27,6 +27,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 * [Configurable Options](#configurable-options)
   * [Timers](#timers)
   * [Device Trackers](#device-trackers-1)
+  * [UI Devices](#ui-devices)
   * [Advanced Options](#advanced-options)
   * [Logging](#logging)
 * [Troubleshooting](#troubleshooting)
@@ -127,6 +128,7 @@ install time and from reconfiguring the integration.
 * Device: MAC
 * Device: Manufacturer
 * Device: Model
+* Device: Name
 * Device: Operating System
 * Device: Parent
 * Device: Serial
@@ -381,6 +383,19 @@ It is possible to configure the following options for the integration.
   This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
 
+### UI Devices
+
+A UI device is one which is available on the mesh and you would like to have
+further information available in Home Assistant. IT could be that you want to
+create automations based on a device signal strength, parent node or state
+(without using a `device tracker`).
+
+![Configure UI Devices](images/config_ui_devices.png)
+
+* `Available devices`: a multi-select list of the devices found on the mesh.
+  This list excludes any device which doesn't have a name - typically
+  displayed in the official interfaces as `Network Device`
+
 ### Advanced Options
 
 **This section is only available if "Advanced Mode" is enabled for the current**
@@ -396,6 +411,10 @@ It is possible to configure the following options for the integration.
   [here](https://www.home-assistant.io/integrations/http), and more specifically
   [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
   path to place the files in.
+* `Use a temporary device for select entity details`: creates a placeholder
+  device that will be populated with the details of the device selected in
+  the [select](#select) entity. The `select` entity will no longer have the
+  details populated to its attributes.
 
 ### Logging
 

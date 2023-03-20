@@ -109,6 +109,7 @@ def stop_tracking_device(
     device_id: List[str] | str,
     hass: HomeAssistant,
     device_type: str = CONF_DEVICE_TRACKERS,
+    raise_repair: bool = True,
 ) -> None:
     """Stop tracking the given device."""
     if not isinstance(device_id, list):
@@ -117,10 +118,11 @@ def stop_tracking_device(
     new_options = copy.deepcopy(
         dict(**config_entry.options)
     )  # deepcopy a dict copy so we get all the options
-    trackers: List[str]
+    trackers: List[str] | None
     if (trackers := new_options.get(device_type, None)) is not None:
         for tracker_id in device_id:
-            trackers.remove(tracker_id)
+            if tracker_id in trackers:
+                trackers.remove(tracker_id)
         new_options[device_type] = trackers
         hass.config_entries.async_update_entry(entry=config_entry, options=new_options)
         if device_type == CONF_DEVICE_UI:
@@ -130,19 +132,22 @@ def stop_tracking_device(
                     device_registry.async_get_device(identifiers={(DOMAIN, dev)})
                 )
                 if device_details is not None:
-                    ir.async_create_issue(
-                        hass=hass,
-                        data={
-                            "device_id": device_details.id,
-                            "device_name": device_details.name,
-                        },
-                        domain=DOMAIN,
-                        is_fixable=True,
-                        is_persistent=True,
-                        issue_id=ISSUE_MISSING_UI_DEVICE,
-                        severity=ir.IssueSeverity.WARNING,
-                        translation_key=ISSUE_MISSING_UI_DEVICE,
-                        translation_placeholders={
-                            "device_name": device_details.name,
-                        },
-                    )
+                    if raise_repair:
+                        ir.async_create_issue(
+                            hass=hass,
+                            data={
+                                "device_id": device_details.id,
+                                "device_name": device_details.name,
+                            },
+                            domain=DOMAIN,
+                            is_fixable=True,
+                            is_persistent=True,
+                            issue_id=ISSUE_MISSING_UI_DEVICE,
+                            severity=ir.IssueSeverity.WARNING,
+                            translation_key=ISSUE_MISSING_UI_DEVICE,
+                            translation_placeholders={
+                                "device_name": device_details.name,
+                            },
+                        )
+                    else:
+                        device_registry.async_remove_device(device_id=device_details.id)

@@ -36,6 +36,7 @@ from . import (
 from .const import (
     CONF_COORDINATOR,
     CONF_DEVICE_UI,
+    DEF_UI_DEVICE_ID,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
@@ -111,7 +112,9 @@ async def async_setup_entry(
                 is not None
                 and any(
                     d.parental_control_schedule.get("blocked_internet_access").values()
-                ),
+                )
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
                 translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
@@ -119,7 +122,9 @@ async def async_setup_entry(
                 name="Guest Network",
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get(
                     "guest_network"
-                ),
+                )
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
                 translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
@@ -127,14 +132,19 @@ async def async_setup_entry(
                 name="Reserved IP",
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get(
                     "reservation"
-                ),
+                )
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
                 translation_key="yesno",
             ),
             LinksysVelopBinarySensorDescription(
                 device_class=BinarySensorDeviceClass.CONNECTIVITY,
                 extra_attributes={"device": True},
-                key="status",
+                key="",
                 name="Status",
+                state_value=lambda d: d.status
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
             ),
         )
 

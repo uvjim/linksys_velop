@@ -18,7 +18,6 @@ from homeassistant.components.logger import (
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -45,6 +44,7 @@ from .const import (
     CONF_NODE,
     CONF_NODE_IMAGES,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+    CONF_SELECT_TEMP_UI_DEVICE,
     CONF_SUBTYPE,
     CONF_TITLE_PLACEHOLDERS,
     DEF_API_REQUEST_TIMEOUT,
@@ -55,6 +55,8 @@ from .const import (
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+    DEF_SELECT_TEMP_UI_DEVICE,
+    DEF_UI_DEVICE_ID,
     DOMAIN,
     LOGGING_MODE_SELECTOR,
     ST_IGD,
@@ -240,6 +242,12 @@ async def _async_build_schema_with_user_input(
                     CONF_NODE_IMAGES,
                     default=user_input.get(CONF_NODE_IMAGES, ""),
                 ): selector.TextSelector(),
+                vol.Required(
+                    CONF_SELECT_TEMP_UI_DEVICE,
+                    default=user_input.get(
+                        CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
+                    ),
+                ): selector.BooleanSelector(),
             }
         )
 
@@ -669,21 +677,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 entity_registry.async_remove(entity_id=device_tracker.entity_id)
         # endregion
 
-        # region #-- remove devices that are no longer needed --#
-        prev_devices = set(self._config_entry.options.get(CONF_DEVICE_UI, []))
-        sel_devices = set(self._options.get(CONF_DEVICE_UI, []))
-        rem_devices = list(prev_devices - sel_devices)
-        if len(rem_devices) != 0:
-            _LOGGER.debug(
-                self._log_formatter.format("removing devices: %s"), rem_devices
-            )
-            device_registry = dr.async_get(hass=self.hass)
-            for dev in rem_devices:
-                dr_dev: dr.DeviceEntry | None = device_registry.async_get_device(
-                    identifiers={(DOMAIN, dev)}
-                )
-                if dr_dev is not None:
-                    device_registry.async_remove_device(device_id=dr_dev.id)
+        # region #-- remove the placeholder device if no longer needed --#
+        if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
+            if DEF_UI_DEVICE_ID not in self._options[CONF_DEVICE_UI]:
+                self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)
         # endregion
 
         return self.async_create_entry(title="", data=self._options)
