@@ -436,17 +436,6 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     node=node,
                     description=LinksysVelopSensorDescription(
-                        extra_attributes=lambda n: {"parent_ip": n.parent_ip},
-                        icon="hass:family-tree",
-                        key="parent_name",
-                        name="Parent",
-                    ),
-                ),
-                LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
                         icon="hass:barcode", key="serial", name="Serial"
                     ),
                 ),
@@ -467,6 +456,32 @@ async def async_setup_entry(
                 ),
             ]
         )
+        if node.type is not NodeType.PRIMARY:
+            sensors.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        extra_attributes=lambda n: {"parent_ip": n.parent_ip},
+                        icon="hass:family-tree",
+                        key="parent_name",
+                        name="Parent",
+                    ),
+                )
+            )
+        else:
+            sensors_to_remove.append(
+                LinksysVelopNodeSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=LinksysVelopSensorDescription(
+                        key="parent_name",
+                        name="Parent",
+                    ),
+                )
+            )
         # endregion
 
         # region #-- backhaul sensors --#
