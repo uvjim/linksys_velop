@@ -27,6 +27,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 * [Configurable Options](#configurable-options)
   * [Timers](#timers)
   * [Device Trackers](#device-trackers-1)
+  * [UI Devices](#ui-devices)
   * [Advanced Options](#advanced-options)
   * [Logging](#logging)
 * [Troubleshooting](#troubleshooting)
@@ -377,6 +378,19 @@ It is possible to configure the following options for the integration.
 ### Device Trackers
 
 ![Configure Device Trackers](images/config_device_trackers.png)
+
+* `Available devices`: a multi-select list of the devices found on the mesh.
+  This list excludes any device which doesn't have a name - typically
+  displayed in the official interfaces as `Network Device`
+
+### UI Devices
+
+A UI device is one which is available on the mesh and you would like to have
+further information available in Home Assistant. IT could be that you want to
+create automations based on a device signal strength, parent node or state
+(without using a `device tracker`).
+
+![Configure UI Devices](images/config_ui_devices.png)
 
 * `Available devices`: a multi-select list of the devices found on the mesh.
   This list excludes any device which doesn't have a name - typically
