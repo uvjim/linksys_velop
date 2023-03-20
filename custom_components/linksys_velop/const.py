@@ -1,6 +1,7 @@
 """Constants for Linksys Velop."""
 
 # region #-- imports --#
+import uuid
 from typing import Dict, List, Optional
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
@@ -29,6 +30,7 @@ CONF_LOGGING_SERIAL: str = "logging_serial"
 CONF_NODE: str = "node"
 CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
+CONF_SELECT_TEMP_UI_DEVICE: str = "select_temp_ui_device"
 CONF_SERVICES_HANDLER: str = "services_handler"
 CONF_SUBTYPE: str = "subtype"
 CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
@@ -42,6 +44,8 @@ DEF_LOGGING_MODE: str = "off"
 DEF_LOGGING_SERIAL: bool = False
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
+DEF_SELECT_TEMP_UI_DEVICE: bool = False
+DEF_UI_DEVICE_ID: str = str(uuid.UUID(int=0))
 
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
 
@@ -62,6 +66,7 @@ PLATFORMS: List[Optional[str]] = [
 
 SIGNAL_UPDATE_CHANNEL_SCANNING: str = f"{DOMAIN}_channel_scanning"
 SIGNAL_UPDATE_DEVICE_TRACKER: str = f"{DOMAIN}_update_device_tracker"
+SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE: str = f"{DOMAIN}_update_placeholder_ui_device"
 SIGNAL_UPDATE_SPEEDTEST_PROGRESS: str = f"{DOMAIN}_update_speedtest_progress"
 SIGNAL_UPDATE_SPEEDTEST_RESULTS: str = f"{DOMAIN}_update_speedtest_results"
 SIGNAL_UPDATE_SPEEDTEST_STATUS: str = f"{DOMAIN}_update_speedtest_status"

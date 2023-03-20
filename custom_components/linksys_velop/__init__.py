@@ -16,7 +16,10 @@ from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
-from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.dispatcher import (
+    async_dispatcher_connect,
+    async_dispatcher_send,
+)
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
@@ -51,6 +54,7 @@ from .const import (
     CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+    CONF_SELECT_TEMP_UI_DEVICE,
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
     DEF_API_REQUEST_TIMEOUT,
@@ -59,11 +63,13 @@ from .const import (
     DEF_LOGGING_SERIAL,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+    DEF_UI_DEVICE_ID,
     DOMAIN,
     ENTITY_SLUG,
     LOGGING_MODE_SELECTOR,
     PLATFORMS,
     SIGNAL_UPDATE_DEVICE_TRACKER,
+    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 from .events import EVENT_TYPE, EventSubType, build_payload
@@ -259,7 +265,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         # endregion
 
         try:
-            # -- gather details from the API --#
             _LOGGER.debug(log_formatter.format("gathering details"))
             await mesh.async_gather_details()
             if mesh.speedtest_status:
@@ -320,6 +325,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             missing_devices: set[str] = set(
                 config_entry.options.get(CONF_DEVICE_UI, [])
             ).difference(current_devices)
+            # ignore the placeholder device if we need to
+            if config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE):
+                missing_devices.discard(DEF_UI_DEVICE_ID)
             if len(missing_devices) != 0:
                 _LOGGER.debug(
                     log_formatter.format("missing devices: %s"), missing_devices
@@ -330,6 +338,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                         device_id=device_id,
                         device_type=CONF_DEVICE_UI,
                         hass=hass,
+                        raise_repair=device_id != DEF_UI_DEVICE_ID,
                     )
             # endregion
             # endregion
@@ -683,6 +692,11 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
 
     def _get_device(self) -> Device | None:
         """Get the device from the mesh."""
+        if self._device_id == DEF_UI_DEVICE_ID:
+            return Device(
+                deviceID=DEF_UI_DEVICE_ID, friendlyName=f"{DOMAIN} Placeholder"
+            )
+
         devices: List[Device] = [
             _dev for _dev in self._mesh.devices if _dev.unique_id == self._device_id
         ]
@@ -704,21 +718,39 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
             self._attr_available = False
         super()._handle_coordinator_update()
 
+    def _update_device_id(self, device_id: str) -> None:
+        """Update the device id."""
+        self._device_id = device_id
+        self._handle_coordinator_update()
+
+    async def async_added_to_hass(self) -> None:
+        """Register for callbacks."""
+        await super().async_added_to_hass()
+        if self.unique_id.startswith(DEF_UI_DEVICE_ID):
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    hass=self.hass,
+                    signal=SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
+                    target=self._update_device_id,
+                )
+            )
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device information of the entity."""
         ret = DeviceInfo(
-            connections={
-                (
-                    dr.CONNECTION_NETWORK_MAC,
-                    next(iter(self._device.connected_adapters), {}).get("mac", ""),
-                )
-            },
             identifiers={(DOMAIN, self._device_id)},
             manufacturer=self._device.manufacturer or "",
             model=self._device.model or "",
             name=self._device.name,
         )
+        if self._device_id != DEF_UI_DEVICE_ID:
+            ret["connections"] = {
+                (
+                    dr.CONNECTION_NETWORK_MAC,
+                    next(iter(self._device.network), {}).get("mac", ""),
+                )
+            }
         return ret
 
     @property

@@ -109,10 +109,12 @@
         "step": {
             "advanced_options": {
                 "data": {
-                    "node_images": "Velop image path"
+                    "node_images": "Velop image path",
+                    "select_temp_ui_device": "Use a temporary device for select entity details"
                 },
                 "data_description": {
-                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value."
+                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value.",
+                    "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
                 "title": "Linksys Velop"

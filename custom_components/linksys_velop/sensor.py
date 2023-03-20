@@ -36,6 +36,7 @@ from .const import (
     CONF_COORDINATOR,
     CONF_DEVICE_UI,
     CONF_NODE_IMAGES,
+    DEF_UI_DEVICE_ID,
     DOMAIN,
     SIGNAL_UPDATE_SPEEDTEST_PROGRESS,
     SIGNAL_UPDATE_SPEEDTEST_RESULTS,
@@ -126,7 +127,9 @@ async def async_setup_entry(
                 state_class=SensorStateClass.MEASUREMENT,
                 state_value=lambda d: len(
                     d.parental_control_schedule.get("blocked_sites", [])
-                ),
+                )
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
             ),
             LinksysVelopSensorDescription(
                 key="description",
@@ -165,6 +168,13 @@ async def async_setup_entry(
                 name="Model",
             ),
             LinksysVelopSensorDescription(
+                key="",
+                name="Name",
+                state_value=lambda d: d.name
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
+            ),
+            LinksysVelopSensorDescription(
                 key="operating_system",
                 name="Operating System",
             ),
@@ -185,7 +195,7 @@ async def async_setup_entry(
                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
             ),
-            LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+            LinksysVelopSensorDescription(
                 extra_attributes=(
                     lambda d: {
                         "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
@@ -202,6 +212,9 @@ async def async_setup_entry(
             LinksysVelopSensorDescription(
                 key="unique_id",
                 name="ID",
+                state_value=lambda d: d.unique_id
+                if d.unique_id != DEF_UI_DEVICE_ID
+                else None,
             ),
         )
 
