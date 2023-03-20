@@ -127,6 +127,7 @@ install time and from reconfiguring the integration.
 * Device: MAC
 * Device: Manufacturer
 * Device: Model
+* Device: Name
 * Device: Operating System
 * Device: Parent
 * Device: Serial
@@ -396,6 +397,10 @@ It is possible to configure the following options for the integration.
   [here](https://www.home-assistant.io/integrations/http), and more specifically
   [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
   path to place the files in.
+* `Use a temporary device for select entity details`: creates a placeholder
+  device that will be populated with the details of the device selected in
+  the [select](#select) entity. The `select` entity will no longer have the
+  details populated to its attributes.
 
 ### Logging
 
