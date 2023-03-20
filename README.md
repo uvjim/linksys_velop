@@ -159,11 +159,14 @@ install time and from reconfiguring the integration.
 * Node: Number of Connected Devices
   * list of names, IP addresses, type of connection and guest network state for
     the connected devices
-* Node: Backhaul Friendly Signal Strength
-* Node: Backhaul Last Checked _(disabled by default)_
-* Node: Backhaul Signal Strength
-* Node: Backhaul Speed
-* Node: Backhaul Type
+* Node: Backhaul Friendly Signal Strength _(only if not the primary node and
+  using a wireless backhaul)_
+* Node: Backhaul Last Checked _(only if not the primary node)_
+  _(disabled by default)_
+* Node: Backhaul Signal Strength _(only if not the primary node and using a
+  wireless backhaul)_
+* Node: Backhaul Speed _(only if not the primary node)_
+* Node: Backhaul Type _(only if not the primary node)_
 * Node: Current Firmware Version (only if HASS < 2022.4.0)
 * Node: Image _(disabled by default. Only available if `node_images` are
   configured, see [here](#advanced-options))_
@@ -171,7 +174,7 @@ install time and from reconfiguring the integration.
 * Node: Model Number _(The `entity_picture` attribute will be set if
   `node_images` are configured, see [here](#advanced-options))_
 * Node: Newest Firmware Version (only if HASS < 2022.4.0)
-* Node: Parent Name
+* Node: Parent Name _(only if the node is not the primary)_
   * IP address of the parent
 * Node: Serial Number
 * Node: Type of Node, e.g. Primary Secondary
