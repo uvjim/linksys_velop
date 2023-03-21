@@ -613,18 +613,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             )
             self._devices = await _async_get_devices(mesh=mesh)
 
-        devices: dict = {}
-        if self._devices is not None:
-            devices = {
-                unique_id: device
-                for unique_id, device in self._devices.items()
-                if unique_id not in self._options.get(CONF_DEVICE_TRACKERS)
-            }
-
         return self.async_show_form(
             step_id=STEP_DEVICE_CREATE,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_CREATE, self._options, multi_select_contents=devices
+                STEP_DEVICE_CREATE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,
@@ -648,18 +640,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             )
             self._devices = await _async_get_devices(mesh=mesh)
 
-        devices: dict = {}
-        if self._devices is not None:
-            devices = {
-                unique_id: device
-                for unique_id, device in self._devices.items()
-                if unique_id not in self._config_entry.options.get(CONF_DEVICE_UI)
-            }
-
         return self.async_show_form(
             step_id=STEP_DEVICE_TRACKERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=devices
+                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,
