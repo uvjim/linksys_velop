@@ -13,7 +13,6 @@ from homeassistant.components.device_tracker.config_entry import ScannerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.device_registry import DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
@@ -31,7 +30,6 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .helpers import dr_mesh_for_config_entry  # , stop_tracking_device
 from .logger import Logger
 
 # endregion
