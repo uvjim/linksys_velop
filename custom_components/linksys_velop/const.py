@@ -22,6 +22,7 @@ CONF_COORDINATOR: str = "coordinator"
 CONF_COORDINATOR_MESH: str = "mesh"
 CONF_DEVICE_UI: str = "ui_devices"
 CONF_DEVICE_TRACKERS: str = "tracked"
+CONF_DEVICE_TRACKERS_MISSING: str = "tracked_missing"
 CONF_ENTRY_RELOAD: str = "reloading"
 CONF_FLOW_NAME: str = "name"
 CONF_LOGGING_JNAP_RESPONSE: str = "logging_jnap_response"
@@ -47,6 +48,7 @@ DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 DEF_SELECT_TEMP_UI_DEVICE: bool = False
 DEF_UI_DEVICE_ID: str = str(uuid.UUID(int=0))
 
+ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
 
 LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
@@ -57,11 +59,11 @@ LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
 PLATFORMS: List[Optional[str]] = [
     BINARY_SENSOR_DOMAIN,
     BUTTON_DOMAIN,
-    DEVICE_TRACKER_DOMAIN,
     SELECT_DOMAIN,
     SENSOR_DOMAIN,
     SWITCH_DOMAIN,
     UPDATE_DOMAIN,
+    DEVICE_TRACKER_DOMAIN,
 ]
 
 SIGNAL_UPDATE_CHANNEL_SCANNING: str = f"{DOMAIN}_channel_scanning"
