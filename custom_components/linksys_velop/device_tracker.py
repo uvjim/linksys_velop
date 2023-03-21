@@ -85,7 +85,6 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 self._is_connected = device.status
                 self._get_device_adapter_info()
                 _LOGGER.debug(self._log_formatter.format("mac: %s"), self._mac)
-                self._update_mesh_device_connections()
                 try:
                     _ = self.has_entity_name
                     self._attr_has_entity_name = True
@@ -146,33 +145,6 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 )
                 self._listener_consider_home()
                 self._listener_consider_home = None
-
-    def _update_mesh_device_connections(self) -> None:
-        """Update the `connections` property for the Mesh."""
-        _LOGGER.debug(self._log_formatter.format("entered"))
-
-        if self._mac:
-            if not self.find_device_entry():
-                dev_reg: DeviceRegistry = dr.async_get(hass=self.hass)
-                dr_mesh = dr_mesh_for_config_entry(
-                    config=self._config, device_registry=dev_reg
-                )
-                if dr_mesh is not None:
-                    _LOGGER.debug(
-                        self._log_formatter.format("updating Mesh connections for %s"),
-                        self._mac,
-                    )
-                    dev_reg.async_update_device(
-                        device_id=dr_mesh.id,
-                        merge_connections={(dr.CONNECTION_NETWORK_MAC, self._mac)},
-                    )
-            else:
-                _LOGGER.debug(
-                    self._log_formatter.format("%s already a known connection"),
-                    self._mac,
-                )
-
-        _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def _async_mark_offline(self, _: dt_util.dt.datetime) -> None:
         """Mark the device tracker as offline."""
