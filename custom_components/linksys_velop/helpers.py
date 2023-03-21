@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 
 from typing import List, Tuple
 
@@ -17,12 +18,24 @@ from homeassistant.helpers import issue_registry as ir
 from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
-from pyvelop.mesh import Mesh
-from pyvelop.node import Node
 
-from .const import CONF_DEVICE_TRACKERS, CONF_DEVICE_UI, DOMAIN, ISSUE_MISSING_UI_DEVICE
+from .const import (
+    CONF_DEVICE_TRACKERS,
+    CONF_DEVICE_TRACKERS_MISSING,
+    CONF_DEVICE_UI,
+    CONF_LOGGING_SERIAL,
+    DEF_LOGGING_SERIAL,
+    DEVICE_TRACKER_DOMAIN,
+    DOMAIN,
+    ISSUE_MISSING_DEVICE_TRACKER,
+    ISSUE_MISSING_UI_DEVICE,
+)
+from .logger import Logger
 
 # endregion
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def dr_device_is_mesh(device: DeviceEntry) -> bool:
@@ -39,7 +52,7 @@ def dr_device_is_mesh(device: DeviceEntry) -> bool:
 
 def dr_mesh_for_config_entry(
     config: ConfigEntry, device_registry: dr.DeviceRegistry
-) -> Mesh | None:
+) -> DeviceEntry | None:
     """Get the Mesh object for the ConfigEntry."""
     my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
         registry=device_registry, config_entry_id=config.entry_id
@@ -56,7 +69,7 @@ def dr_mesh_for_config_entry(
 
 def dr_nodes_for_mesh(
     config: ConfigEntry, device_registry: dr.DeviceRegistry
-) -> List[Node]:
+) -> List[DeviceEntry]:
     """Get the Nodes for a Mesh object."""
     my_devices: List[DeviceEntry] = dr.async_entries_for_config_entry(
         registry=device_registry, config_entry_id=config.entry_id
@@ -112,9 +125,21 @@ def stop_tracking_device(
     raise_repair: bool = True,
 ) -> None:
     """Stop tracking the given device."""
+    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        log_formatter = Logger(unique_id=config_entry.unique_id)
+    else:
+        log_formatter = Logger()
+
+    _LOGGER.debug(log_formatter.format("entered"))
     if not isinstance(device_id, list):
         device_id = [device_id]
 
+    _LOGGER.debug(
+        log_formatter.format("processing devices: %s of type %s, raise_repair: %s"),
+        device_id,
+        device_type,
+        raise_repair,
+    )
     new_options = copy.deepcopy(
         dict(**config_entry.options)
     )  # deepcopy a dict copy so we get all the options
@@ -122,17 +147,30 @@ def stop_tracking_device(
     if (trackers := new_options.get(device_type, None)) is not None:
         for tracker_id in device_id:
             if tracker_id in trackers:
+                _LOGGER.debug(
+                    log_formatter.format("removing %s from config key"), tracker_id
+                )
                 trackers.remove(tracker_id)
         new_options[device_type] = trackers
+        _LOGGER.debug(log_formatter.format("updating stored config key"))
         hass.config_entries.async_update_entry(entry=config_entry, options=new_options)
-        if device_type == CONF_DEVICE_UI:
-            for dev in device_id:
+        for dev in device_id:
+            _LOGGER.debug(log_formatter.format("processing %s"), dev)
+            # region #-- manage UI devices --#
+            if device_type == CONF_DEVICE_UI:
                 device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
                 device_details: dr.DeviceEntry | None = (
                     device_registry.async_get_device(identifiers={(DOMAIN, dev)})
                 )
+                _LOGGER.debug(
+                    log_formatter.format("device_details: %s"), device_details
+                )
                 if device_details is not None:
                     if raise_repair:
+                        _LOGGER.debug(
+                            log_formatter.format("raising repair for device: %s"),
+                            device_details.id,
+                        )
                         ir.async_create_issue(
                             hass=hass,
                             data={
@@ -150,4 +188,55 @@ def stop_tracking_device(
                             },
                         )
                     else:
+                        _LOGGER.debug(
+                            log_formatter.format("removing device: %s"),
+                            device_details.id,
+                        )
                         device_registry.async_remove_device(device_id=device_details.id)
+            # endregion
+            # region #-- manage device trackers --#
+            elif device_type in (CONF_DEVICE_TRACKERS, CONF_DEVICE_TRACKERS_MISSING):
+                entity_registry: er.EntityRegistry = er.async_get(hass=hass)
+                entity_details: List[
+                    er.RegistryEntry
+                ] = er.async_entries_for_config_entry(
+                    registry=entity_registry,
+                    config_entry_id=config_entry.entry_id,
+                )
+                ent: List[er.RegistryEntry] = [
+                    e
+                    for e in entity_details
+                    if e.unique_id.endswith(f"::{DEVICE_TRACKER_DOMAIN}::{dev}")
+                ]
+                _LOGGER.debug(log_formatter.format("ent: %s"), ent)
+                if len(ent) != 0:
+                    if raise_repair:
+                        _LOGGER.debug(
+                            log_formatter.format("raising repair for: %s"),
+                            ent[0].entity_id,
+                        )
+                        ir.async_create_issue(
+                            hass=hass,
+                            data={
+                                "device_id": ent[0].entity_id,
+                                "device_name": ent[0].name or ent[0].original_name,
+                            },
+                            domain=DOMAIN,
+                            is_fixable=True,
+                            is_persistent=True,
+                            issue_id=ISSUE_MISSING_DEVICE_TRACKER,
+                            severity=ir.IssueSeverity.WARNING,
+                            translation_key=ISSUE_MISSING_DEVICE_TRACKER,
+                            translation_placeholders={
+                                "device_name": ent[0].name or ent[0].original_name,
+                            },
+                        )
+                    else:
+                        _LOGGER.debug(
+                            log_formatter.format("removing entity: %s"),
+                            ent[0].entity_id,
+                        )
+                        entity_registry.async_remove(entity_id=ent[0].entity_id)
+            # endregion
+
+    _LOGGER.debug(log_formatter.format("entered"))

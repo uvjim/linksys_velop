@@ -93,6 +93,17 @@
         }
     },
     "issues": {
+        "missing_device_tracker": {
+            "title": "{device_name} is missing",
+            "fix_flow": {
+                "step": {
+                    "confirm_removal": {
+                        "title": "Remove the device tracker",
+                        "description": "{device_name} is no longer on the Mesh or it's unique ID has changed. Click submit to remove the device tracker from Home Assistant."
+                    }
+                }
+            }
+        },
         "missing_ui_device": {
             "title": "{device_name} is missing",
             "fix_flow": {

@@ -37,6 +37,7 @@ from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_UI,
     CONF_DEVICE_TRACKERS,
+    CONF_DEVICE_TRACKERS_MISSING,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
@@ -57,6 +58,7 @@ from .const import (
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
     DEF_UI_DEVICE_ID,
+    DEVICE_TRACKER_DOMAIN,
     DOMAIN,
     LOGGING_MODE_SELECTOR,
     ST_IGD,
@@ -661,20 +663,16 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             device_tracker
             for device_tracker in config_entry_entities
             if device_tracker.unique_id.startswith(
-                f"{self._config_entry.entry_id}::device_tracker::"
+                f"{self._config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::"
             )
         ]
 
-        for device_tracker in device_tracker_entities:
-            uid: str = device_tracker.unique_id.split("::")[-1]
-            if uid not in self._options.get(CONF_DEVICE_TRACKERS):
-                _LOGGER.debug(
-                    self._log_formatter.format(
-                        "removing the device tracker entity for %s"
-                    ),
-                    device_tracker.name or device_tracker.original_name,
-                )
-                entity_registry.async_remove(entity_id=device_tracker.entity_id)
+        self._options[CONF_DEVICE_TRACKERS_MISSING] = [
+            device_tracker.unique_id.split("::")[-1]
+            for device_tracker in device_tracker_entities
+            if device_tracker.unique_id.split("::")[-1]
+            not in self._options.get(CONF_DEVICE_TRACKERS)
+        ]
         # endregion
 
         # region #-- remove the placeholder device if no longer needed --#

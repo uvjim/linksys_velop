@@ -31,7 +31,7 @@ from .const import (
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
-from .helpers import dr_mesh_for_config_entry, stop_tracking_device
+from .helpers import dr_mesh_for_config_entry  # , stop_tracking_device
 from .logger import Logger
 
 # endregion
@@ -93,14 +93,6 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 except AttributeError:
                     self._attr_name = f"{ENTITY_SLUG} Mesh: {device.name}"
                 break
-        else:  # device not found so stop tracking
-            _LOGGER.debug(
-                self._log_formatter.format("stop tracking %s as it doesn't exist"),
-                device_id,
-            )
-            stop_tracking_device(
-                config_entry=self._config, device_id=device_id, hass=self.hass
-            )
 
     def _get_device_adapter_info(self) -> None:
         """Gather the network details about the device tracker."""
