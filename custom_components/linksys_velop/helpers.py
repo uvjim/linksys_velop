@@ -23,6 +23,7 @@ from .const import (
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_MISSING,
     CONF_DEVICE_UI,
+    CONF_DEVICE_UI_MISSING,
     CONF_LOGGING_SERIAL,
     DEF_LOGGING_SERIAL,
     DEVICE_TRACKER_DOMAIN,
@@ -157,13 +158,10 @@ def stop_tracking_device(
         for dev in device_id:
             _LOGGER.debug(log_formatter.format("processing %s"), dev)
             # region #-- manage UI devices --#
-            if device_type == CONF_DEVICE_UI:
+            if device_type in (CONF_DEVICE_UI, CONF_DEVICE_UI_MISSING):
                 device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
                 device_details: dr.DeviceEntry | None = (
                     device_registry.async_get_device(identifiers={(DOMAIN, dev)})
-                )
-                _LOGGER.debug(
-                    log_formatter.format("device_details: %s"), device_details
                 )
                 if device_details is not None:
                     if raise_repair:
@@ -208,7 +206,6 @@ def stop_tracking_device(
                     for e in entity_details
                     if e.unique_id.endswith(f"::{DEVICE_TRACKER_DOMAIN}::{dev}")
                 ]
-                _LOGGER.debug(log_formatter.format("ent: %s"), ent)
                 if len(ent) != 0:
                     if raise_repair:
                         _LOGGER.debug(

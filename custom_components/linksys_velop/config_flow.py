@@ -36,6 +36,7 @@ from . import async_logging_state
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_UI,
+    CONF_DEVICE_UI_MISSING,
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_MISSING,
     CONF_FLOW_NAME,
@@ -675,7 +676,18 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         ]
         # endregion
 
-        # region #-- remove the placeholder device if no longer needed --#
+        # region #-- remove ui devices if no longer needed --#
+        prev_ui_devices: set[str] = set(
+            self._config_entry.options.get(CONF_DEVICE_UI, [])
+        )
+        prev_ui_devices.discard(DEF_UI_DEVICE_ID)
+        new_ui_devices: set[str] = set(self._options.get(CONF_DEVICE_UI, []))
+        self._options[CONF_DEVICE_UI_MISSING] = list(
+            prev_ui_devices.difference(new_ui_devices)
+        )
+        # endregion
+
+        # region #-- add the placeholder ui device if needed --#
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
             if DEF_UI_DEVICE_ID not in self._options[CONF_DEVICE_UI]:
                 self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)

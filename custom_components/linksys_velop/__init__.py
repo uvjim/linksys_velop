@@ -49,6 +49,7 @@ from .const import (
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_MISSING,
     CONF_DEVICE_UI,
+    CONF_DEVICE_UI_MISSING,
     CONF_ENTRY_RELOAD,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
@@ -218,6 +219,37 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
     hass.data[DOMAIN][config_entry.entry_id]["intensive_running"] = None
+    # endregion
+
+    # region #-- old entry cleanup --#
+    # region #-- remove any device trackers that are no longer selected --#
+    if len(config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING, [])) != 0:
+        _LOGGER.debug(
+            log_formatter.format(
+                "removing device tracker entities that are no longer selected"
+            )
+        )
+        stop_tracking_device(
+            config_entry=config_entry,
+            device_id=config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING),
+            hass=hass,
+            device_type=CONF_DEVICE_TRACKERS_MISSING,
+            raise_repair=False,
+        )
+    # endregion
+    # region #-- remove ui devices that are no longer needed --#
+    if len(config_entry.options.get(CONF_DEVICE_UI_MISSING, [])) != 0:
+        _LOGGER.debug(
+            log_formatter.format("removing ui devices that are no longer selected")
+        )
+        stop_tracking_device(
+            config_entry=config_entry,
+            device_id=config_entry.options.get(CONF_DEVICE_UI_MISSING),
+            hass=hass,
+            device_type=CONF_DEVICE_UI_MISSING,
+            raise_repair=False,
+        )
+    # endregion
     # endregion
 
     # region #-- setup the coordinator for data updates --#
@@ -575,22 +607,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                     f"{SIGNAL_UPDATE_DEVICE_TRACKER}_{device.unique_id}",
                     device,
                 )
-
-    # region #-- remove any device trackers that are no longer selected --#
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING, [])) != 0:
-        _LOGGER.debug(
-            log_formatter.format(
-                "removing device tracker entities that are no longer selected"
-            )
-        )
-        stop_tracking_device(
-            config_entry=config_entry,
-            device_id=config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING),
-            hass=hass,
-            device_type=CONF_DEVICE_TRACKERS_MISSING,
-            raise_repair=False,
-        )
-    # endregion
 
     # region #-- set up the timer for checking device trackers --#
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) != 0:
