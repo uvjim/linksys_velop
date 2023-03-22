@@ -88,6 +88,7 @@ available.
 
 #### Buttons
 
+* Device: Delete
 * Mesh: Check for Updates
 * Mesh: Start Channel Scanning _(interval: 40s)_
 * Mesh: Start Speedtest _(interval: 1s)_

@@ -22,11 +22,19 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
-from . import LinksysVelopMeshEntity, LinksysVelopNodeEntity, entity_cleanup
+from . import (
+    LinksysVelopDeviceEntity,
+    LinksysVelopMeshEntity,
+    LinksysVelopNodeEntity,
+    entity_cleanup,
+)
 from .const import (
     CONF_COORDINATOR,
+    CONF_DEVICE_UI,
+    DEF_UI_DEVICE_ID,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
+    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
 
@@ -40,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 class OptionalLinksysVelopDescription:
     """Represent the optional attributes of the button description."""
 
-    press_action_arguments: dict = dataclasses.field(default_factory=dict)
+    press_action_arguments: dict | Callable = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -70,8 +78,40 @@ async def async_setup_entry(
     """Create the entities."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
     mesh: Mesh = coordinator.data
-    buttons: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = []
-    buttons_to_remove: List[LinksysVelopMeshButton | LinksysVelopNodeButton] = []
+    buttons: List[
+        LinksysVelopDeviceButton | LinksysVelopMeshButton | LinksysVelopNodeButton
+    ] = []
+    buttons_to_remove: List[
+        LinksysVelopDeviceButton | LinksysVelopMeshButton | LinksysVelopNodeButton
+    ] = []
+
+    # region #-- Device button --#
+    device_button_descriptions: tuple[LinksysVelopButtonDescription, ...]
+    for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
+        device_button_descriptions = (
+            LinksysVelopButtonDescription(
+                icon="mdi:delete",
+                key="",
+                name="Delete",
+                press_action="async_delete_device_by_id",
+                press_action_arguments=lambda d: {
+                    "device": d.unique_id,
+                    "signal": SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
+                    "signal_arguments": [DEF_UI_DEVICE_ID],
+                },
+            ),
+        )
+
+        for button_description in device_button_descriptions:
+            buttons.append(
+                LinksysVelopDeviceButton(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=button_description,
+                    device_id=device_id,
+                )
+            )
+    # endregion
 
     # region #-- Mesh buttons --#
     mesh_button_descriptions: tuple[LinksysVelopButtonDescription, ...] = (
@@ -143,12 +183,49 @@ async def _async_button_pressed(
     """Carry out the button press action."""
     action: Callable | None = getattr(mesh, action, None)
     signal: str = action_arguments.pop("signal", None)
+    signal_arguments: list = action_arguments.pop("signal_arguments", [])
     if action and isinstance(action, Callable):
         if action_arguments is None:
             action_arguments = {}
         await action(**action_arguments)
-        if signal:
-            async_dispatcher_send(hass, signal)
+        if signal is not None:
+            async_dispatcher_send(hass, signal, *signal_arguments)
+
+
+class LinksysVelopDeviceButton(LinksysVelopDeviceEntity, ButtonEntity, ABC):
+    """Representation of a device button."""
+
+    entity_description: LinksysVelopButtonDescription
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config_entry: ConfigEntry,
+        description: LinksysVelopButtonDescription,
+        device_id: str,
+    ) -> None:
+        """Initialise."""
+        self.entity_domain = ENTITY_DOMAIN
+        super().__init__(
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=description,
+            device_id=device_id,
+        )
+
+    async def async_press(self) -> None:
+        """Handle the button being pressed."""
+        if isinstance(self.entity_description.press_action_arguments, Callable):
+            action_args = self.entity_description.press_action_arguments(self._device)
+        else:
+            action_args = self.entity_description.press_action_arguments.copy()
+
+        await _async_button_pressed(
+            action=self.entity_description.press_action,
+            action_arguments=action_args,
+            hass=self.hass,
+            mesh=self._mesh,
+        )
 
 
 class LinksysVelopMeshButton(LinksysVelopMeshEntity, ButtonEntity, ABC):
