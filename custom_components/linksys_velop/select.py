@@ -177,6 +177,8 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
             ea_args["device_name"] = self.current_option
             return self.entity_description.extra_attributes(**ea_args)
 
+        return None
+
     @property
     def options(self) -> list[str]:
         """Build the options for the select."""
