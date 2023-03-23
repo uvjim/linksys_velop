@@ -182,6 +182,7 @@ install time and from reconfiguring the integration.
 
 #### Switches
 
+* Device: Internet Access
 * Mesh: Guest Wi-Fi state
   * list of guest networks available
 * Mesh: HomeKit Integration
