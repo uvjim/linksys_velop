@@ -60,6 +60,9 @@ a the URL of this repository as a custom repository to HACS (see
 Where applicable the sub-items in the list detail the additional attributes
 available.
 
+All device entities are only available if the [UI Device](#ui-devices) is
+enabled.
+
 #### Binary Sensors
 
 * Device: Blocked Times
