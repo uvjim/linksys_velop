@@ -271,6 +271,7 @@ class LinksysVelopDeviceSwitch(LinksysVelopDeviceEntity, SwitchEntity, ABC):
             await action(**action_args)
             self._value = False
             await self.async_update_ha_state()
+            await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -283,6 +284,7 @@ class LinksysVelopDeviceSwitch(LinksysVelopDeviceEntity, SwitchEntity, ABC):
             await action(**action_args)
             self._value = True
             await self.async_update_ha_state()
+            await self.coordinator.async_request_refresh()
 
     @property
     def icon(self) -> str | None:
