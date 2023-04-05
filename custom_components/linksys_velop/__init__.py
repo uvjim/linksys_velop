@@ -712,7 +712,6 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
         try:
             _ = self.has_entity_name
             self._attr_has_entity_name = True
-            self._attr_name = self.entity_description.name
         except AttributeError:
             self._attr_name = f"{ENTITY_SLUG} Device: {self.entity_description.name}"
 
@@ -922,7 +921,6 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         try:
             _ = self.has_entity_name
             self._attr_has_entity_name = True
-            self._attr_name = self.entity_description.name
         except AttributeError:
             self._attr_name = (
                 f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
