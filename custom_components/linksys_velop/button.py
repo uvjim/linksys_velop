@@ -99,6 +99,7 @@ async def async_setup_entry(
                     "signal": SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
                     "signal_arguments": [DEF_UI_DEVICE_ID],
                 },
+                translation_key="delete",
             ),
         )
 
@@ -120,6 +121,7 @@ async def async_setup_entry(
             key="",
             name="Check for Updates",
             press_action="async_check_for_updates",
+            translation_key="check_for_updates",
         ),
         LinksysVelopButtonDescription(
             icon="mdi:wifi-sync",
@@ -127,6 +129,7 @@ async def async_setup_entry(
             name="Start Channel Scan",
             press_action="async_start_channel_scan",
             press_action_arguments={"signal": SIGNAL_UPDATE_CHANNEL_SCANNING},
+            translation_key="channel_scan",
         ),
         LinksysVelopButtonDescription(
             icon="hass:refresh",
@@ -134,6 +137,7 @@ async def async_setup_entry(
             name="Start Speedtest",
             press_action="async_start_speedtest",
             press_action_arguments={"signal": SIGNAL_UPDATE_SPEEDTEST_STATUS},
+            translation_key="speedtest",
         ),
     )
 
@@ -163,6 +167,7 @@ async def async_setup_entry(
                         name="Reboot",
                         press_action="async_reboot_node",
                         press_action_arguments={"node_name": node.name},
+                        translation_key="reboot",
                     ),
                 )
             )

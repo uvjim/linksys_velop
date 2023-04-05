@@ -68,6 +68,23 @@
                 }
             }
         },
+        "button": {
+            "channel_scan": {
+                "name": "Start Channel Scan"
+            },
+            "check_for_updates": {
+                "name": "Check for Updates"
+            },
+            "delete": {
+                "name": "Delete"
+            },
+            "reboot": {
+                "name": "Reboot"
+            },
+            "speedtest": {
+                "name": "Start Speedtest"
+            }
+        },
         "select": {
             "mesh_devices": {
                 "name": "Devices"
