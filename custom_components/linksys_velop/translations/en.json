@@ -68,6 +68,11 @@
                 }
             }
         },
+        "select": {
+            "mesh_devices": {
+                "name": "Devices"
+            }
+        },
         "sensor": {
             "connection_type": {
                 "state": {
