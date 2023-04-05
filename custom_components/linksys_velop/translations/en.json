@@ -55,17 +55,75 @@
     },
     "entity": {
         "binary_sensor": {
-            "activeidle": {
-                "state": {
-                    "off": "Idle",
-                    "on": "Active"
-                }
-            },
-            "yesno": {
+            "blocked_times": {
+                "name": "Blocked Times",
                 "state": {
                     "off": "No",
                     "on": "Yes"
                 }
+            },
+            "channel_scanning": {
+                "name": "Channel Scanning"
+            },
+            "client_steering": {
+                "name": "Client Steering"
+            },
+            "dhcp_server": {
+                "name": "DHCP Server"
+            },
+            "express_forwarding": {
+                "name": "Express Forwarding"
+            },
+            "guest_network": {
+                "name": "Guest Network",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "homekit_paired": {
+                "name": "HomeKit Integration Paired",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "mac_filtering": {
+                "name": "MAC Filtering"
+            },
+            "node_steering": {
+                "name": "Node Steering"
+            },
+            "reserved_ip": {
+                "name": "Reserved IP",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "sip": {
+                "name": "SIP"
+            },
+            "speedtest_status": {
+                "name": "Speedtest Status"
+            },
+            "status": {
+                "name": "Status"
+            },
+            "update_available": {
+                "name": "Update Available"
+            },
+            "upnp": {
+                "name": "UPnP"
+            },
+            "upnp_allow_change_settings": {
+                "name": "UPnP Allow Users to Configure"
+            },
+            "upnp_allow_disable_internet": {
+                "name": "UPnP Allow Users to Disable Internet"
+            },
+            "wan_status": {
+                "name": "WAN Status"
             }
         },
         "button": {

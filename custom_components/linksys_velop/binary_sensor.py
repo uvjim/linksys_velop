@@ -115,7 +115,7 @@ async def async_setup_entry(
                 )
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
-                translation_key="yesno",
+                translation_key="blocked_times",
             ),
             LinksysVelopBinarySensorDescription(
                 key="",
@@ -125,7 +125,7 @@ async def async_setup_entry(
                 )
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
-                translation_key="yesno",
+                translation_key="guest_network",
             ),
             LinksysVelopBinarySensorDescription(
                 key="",
@@ -135,7 +135,7 @@ async def async_setup_entry(
                 )
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
-                translation_key="yesno",
+                translation_key="reserved_ip",
             ),
             LinksysVelopBinarySensorDescription(
                 device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -145,6 +145,7 @@ async def async_setup_entry(
                 state_value=lambda d: d.status
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
+                translation_key="status",
             ),
         )
 
@@ -165,22 +166,25 @@ async def async_setup_entry(
             entity_registry_enabled_default=False,
             key="client_steering_enabled",
             name="Client Steering",
+            translation_key="client_steering",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="dhcp_enabled",
             name="DHCP Server",
+            translation_key="dhcp_server",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="express_forwarding_enabled",
             name="Express Forwarding",
+            translation_key="express_forwarding",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="homekit_paired",
             name="HomeKit Integration Paired",
-            translation_key="yesno",
+            translation_key="homekit_paired",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
@@ -190,31 +194,37 @@ async def async_setup_entry(
             },
             key="mac_filtering_enabled",
             name="MAC Filtering",
+            translation_key="mac_filtering",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="node_steering_enabled",
             name="Node Steering",
+            translation_key="node_steering",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="sip_enabled",
             name="SIP",
+            translation_key="sip",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="upnp_allow_change_settings",
             name="UPnP Allow Users to Configure",
+            translation_key="upnp_allow_change_settings",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="upnp_allow_disable_internet",
             name="UPnP Allow Users to Disable Internet",
+            translation_key="upnp_allow_disable_internet",
         ),
         LinksysVelopBinarySensorDescription(
             entity_registry_enabled_default=False,
             key="upnp_enabled",
             name="UPnP",
+            translation_key="upnp",
         ),
         LinksysVelopBinarySensorDescription(
             device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -225,6 +235,7 @@ async def async_setup_entry(
             },
             key="wan_status",
             name="WAN Status",
+            translation_key="wan_status",
         ),
     )
 
@@ -245,9 +256,10 @@ async def async_setup_entry(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 description=LinksysVelopBinarySensorDescription(
+                    device_class=BinarySensorDeviceClass.RUNNING,
                     key="is_channel_scan_running",
                     name="Channel Scanning",
-                    translation_key="activeidle",
+                    translation_key="channel_scanning",
                 ),
                 recurrence_interval=40,
                 recurrence_trigger=SIGNAL_UPDATE_CHANNEL_SCANNING,
@@ -258,10 +270,11 @@ async def async_setup_entry(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 description=LinksysVelopBinarySensorDescription(
+                    device_class=BinarySensorDeviceClass.RUNNING,
                     key="",
                     name="Speedtest Status",
                     state_value=lambda m: m.speedtest_status != "",
-                    translation_key="activeidle",
+                    translation_key="speedtest_status",
                 ),
                 recurrence_interval=1,
                 recurrence_post_signal=SIGNAL_UPDATE_SPEEDTEST_RESULTS,
@@ -289,6 +302,7 @@ async def async_setup_entry(
                     name="Update Available",
                     state_value=lambda n: n.firmware.get("version")
                     != n.firmware.get("latest_version"),
+                    translation_key="update_available",
                 ),
             )
         )
@@ -313,6 +327,7 @@ async def async_setup_entry(
                         else {},
                         key="status",
                         name="Status",
+                        translation_key="status",
                     ),
                 ),
             ]
