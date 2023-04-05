@@ -837,7 +837,6 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
         try:
             _ = self.has_entity_name
             self._attr_has_entity_name = True
-            self._attr_name = self.entity_description.name
         except AttributeError:
             self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
 
