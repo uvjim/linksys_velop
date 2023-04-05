@@ -101,6 +101,7 @@ async def async_setup_entry(
                 key="",
                 name="Internet Access",
                 state_value=_device_internet_access_state,
+                translation_key="internet_access",
                 turn_off="async_device_internet_access_state",
                 turn_off_args=lambda d: {"device_id": d.unique_id, "state": False},
                 turn_on="async_device_internet_access_state",
@@ -130,6 +131,7 @@ async def async_setup_entry(
             icon_on="hass:wifi",
             key="guest_wifi_enabled",
             name="Guest Wi-Fi",
+            translation_key="guest_wifi",
             turn_off="async_set_guest_wifi_state",
             turn_off_args={
                 "state": False,
@@ -142,6 +144,7 @@ async def async_setup_entry(
         LinksysVelopSwitchDescription(
             key="homekit_enabled",
             name="HomeKit Integration",
+            translation_key="homekit",
             turn_off="async_set_homekit_state",
             turn_off_args={
                 "state": False,
@@ -165,6 +168,7 @@ async def async_setup_entry(
             icon_on="hass:account",
             key="parental_control_enabled",
             name="Parental Control",
+            translation_key="parental_control",
             turn_off="async_set_parental_control_state",
             turn_off_args={
                 "state": False,
@@ -177,6 +181,7 @@ async def async_setup_entry(
         LinksysVelopSwitchDescription(
             key="wps_state",
             name="WPS",
+            translation_key="wps",
             turn_off="async_set_wps_state",
             turn_off_args={
                 "state": False,

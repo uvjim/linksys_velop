@@ -171,6 +171,23 @@
                 }
             }
         },
+        "switch": {
+            "guest_wifi": {
+                "name": "Guest Wi-Fi"
+            },
+            "homekit": {
+                "name": "HomeKit Integration"
+            },
+            "internet_access": {
+                "name": "Internet Access"
+            },
+            "parental_control": {
+                "name": "Parental Control"
+            },
+            "wps": {
+                "name": "WPS"
+            }
+        },
         "update": {
             "update": {
                 "name": "Update"
