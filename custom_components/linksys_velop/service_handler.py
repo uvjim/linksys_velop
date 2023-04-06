@@ -18,11 +18,10 @@ from pyvelop.mesh import Mesh
 
 from .const import (
     CONF_COORDINATOR,
-    CONF_LOGGING_SERIAL,
-    DEF_LOGGING_SERIAL,
     DOMAIN,
     SIGNAL_UPDATE_SPEEDTEST_STATUS,
 )
+from .helpers import include_serial_logging
 from .logger import Logger
 
 # endregion
@@ -155,9 +154,7 @@ class LinksysVelopServiceHandler:
                     entry_id=config_entry_id
                 )
                 if config_entry.domain == DOMAIN:
-                    if config_entry.options.get(
-                        CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL
-                    ):
+                    if include_serial_logging(config=config_entry):
                         self._log_formatter = Logger(unique_id=config_entry.unique_id)
                     else:
                         self._log_formatter = Logger()
