@@ -387,5 +387,13 @@
                 "title": "Linksys Velop"
             }
         }
+    },
+    "selector": {
+        "logging_modes": {
+            "options": {
+                "off": "Off",
+                "single": "Single poll"
+            }
+        }
     }
 }

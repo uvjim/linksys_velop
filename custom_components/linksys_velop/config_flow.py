@@ -61,7 +61,6 @@ from .const import (
     DEF_UI_DEVICE_ID,
     DEVICE_TRACKER_DOMAIN,
     DOMAIN,
-    LOGGING_MODE_SELECTOR,
     ST_IGD,
 )
 from .events import EVENT_TYPE, EventSubType
@@ -233,7 +232,8 @@ async def _async_build_schema_with_user_input(
                     ): selector.SelectSelector(
                         config=selector.SelectSelectorConfig(
                             mode=selector.SelectSelectorMode.LIST,
-                            options=LOGGING_MODE_SELECTOR,
+                            options=["off", "single"],
+                            translation_key="logging_modes",
                         )
                     )
                 }
