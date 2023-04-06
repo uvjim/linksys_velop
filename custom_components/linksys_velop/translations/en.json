@@ -342,7 +342,7 @@
             },
             "device_ui": {
                 "data": {
-                    "": "Available devices"
+                    "ui_devices": "Available devices"
                 },
                 "description": "Select the devices that you'd like to have created in the UI.",
                 "title": "Linksys Velop"
