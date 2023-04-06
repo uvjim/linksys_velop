@@ -366,8 +366,9 @@
             },
             "logging": {
                 "data": {
-                    "logging_mode": "Logging mode",
                     "logging_jnap_response": "Include query responses in debug logs",
+                    "logging_mode": "Logging mode",
+                    "logging_options": "Logging options",
                     "logging_serial": "Include the serial number in debug logs"
                 },
                 "data_description": {
@@ -389,6 +390,12 @@
         }
     },
     "selector": {
+        "logging_options": {
+            "options": {
+                "include_serial": "Include serial number",
+                "include_query_response": "Include query responses"
+            }
+        },
         "logging_modes": {
             "options": {
                 "off": "Off",

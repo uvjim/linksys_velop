@@ -42,6 +42,11 @@ from .const import (
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
+    CONF_LOGGING_MODE_OFF,
+    CONF_LOGGING_MODE_SINGLE,
+    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
+    CONF_LOGGING_OPTION_INCLUDE_SERIAL,
+    CONF_LOGGING_OPTIONS,
     CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_NODE_IMAGES,
@@ -52,9 +57,8 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_FLOW_NAME,
-    DEF_LOGGING_JNAP_RESPONSE,
     DEF_LOGGING_MODE,
-    DEF_LOGGING_SERIAL,
+    DEF_LOGGING_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
@@ -209,18 +213,34 @@ async def _async_build_schema_with_user_input(
             }
         )
     elif step == STEP_LOGGING:
+        # region #-- migrate old values into the dropdown --#
+        if CONF_LOGGING_OPTIONS not in user_input:
+            user_input[CONF_LOGGING_OPTIONS] = DEF_LOGGING_OPTIONS
+            if user_input.get(CONF_LOGGING_SERIAL):
+                user_input[CONF_LOGGING_OPTIONS].append(
+                    CONF_LOGGING_OPTION_INCLUDE_SERIAL
+                )
+            if user_input.get(CONF_LOGGING_JNAP_RESPONSE):
+                user_input[CONF_LOGGING_OPTIONS].append(
+                    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE
+                )
+        # endregion
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_LOGGING_SERIAL,
-                    default=user_input.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL),
-                ): selector.BooleanSelector(),
-                vol.Required(
-                    CONF_LOGGING_JNAP_RESPONSE,
-                    default=user_input.get(
-                        CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
-                    ),
-                ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_LOGGING_OPTIONS,
+                    default=user_input.get(CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS),
+                ): selector.SelectSelector(
+                    config=selector.SelectSelectorConfig(
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                        options=[
+                            CONF_LOGGING_OPTION_INCLUDE_SERIAL,
+                            CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
+                        ],
+                        translation_key="logging_options",
+                    )
+                ),
             }
         )
         if kwargs.get("logging_mode"):
@@ -232,7 +252,7 @@ async def _async_build_schema_with_user_input(
                     ): selector.SelectSelector(
                         config=selector.SelectSelectorConfig(
                             mode=selector.SelectSelectorMode.LIST,
-                            options=["off", "single"],
+                            options=[CONF_LOGGING_MODE_OFF, CONF_LOGGING_MODE_SINGLE],
                             translation_key="logging_modes",
                         )
                     )
@@ -691,6 +711,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
             if DEF_UI_DEVICE_ID not in self._options[CONF_DEVICE_UI]:
                 self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)
+        # endregion
+
+        # region #-- remove up the old logging options --#
+        self._options.pop(CONF_LOGGING_JNAP_RESPONSE, None)
+        self._options.pop(CONF_LOGGING_SERIAL, None)
         # endregion
 
         return self.async_create_entry(title="", data=self._options)

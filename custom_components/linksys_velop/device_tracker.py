@@ -23,13 +23,12 @@ from pyvelop.mesh import Mesh
 from .const import (
     CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
-    CONF_LOGGING_SERIAL,
     DEF_CONSIDER_HOME,
-    DEF_LOGGING_SERIAL,
     DOMAIN,
     ENTITY_SLUG,
     SIGNAL_UPDATE_DEVICE_TRACKER,
 )
+from .helpers import include_serial_logging
 from .logger import Logger
 
 # endregion
@@ -64,7 +63,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
         self._config: ConfigEntry = config_entry
         self._listener_consider_home: Callable | None = None
-        if self._config.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+        if include_serial_logging(config=self._config):
             self._log_formatter: Logger = Logger(unique_id=self._config.unique_id)
         else:
             self._log_formatter: Logger = Logger()
