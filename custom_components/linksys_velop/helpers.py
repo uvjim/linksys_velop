@@ -24,8 +24,9 @@ from .const import (
     CONF_DEVICE_TRACKERS_MISSING,
     CONF_DEVICE_UI,
     CONF_DEVICE_UI_MISSING,
-    CONF_LOGGING_SERIAL,
-    DEF_LOGGING_SERIAL,
+    CONF_LOGGING_OPTION_INCLUDE_SERIAL,
+    CONF_LOGGING_OPTIONS,
+    DEF_LOGGING_OPTIONS,
     DEVICE_TRACKER_DOMAIN,
     DOMAIN,
     ISSUE_MISSING_DEVICE_TRACKER,
@@ -89,6 +90,13 @@ def dr_nodes_for_mesh(
     return ret or None
 
 
+def include_serial_logging(config: ConfigEntry):
+    """Establish if the serial number should be logged."""
+    return CONF_LOGGING_OPTION_INCLUDE_SERIAL in config.options.get(
+        CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS
+    )
+
+
 def mesh_intensive_action_running(
     config_entry: ConfigEntry,
     hass: HomeAssistant,
@@ -126,7 +134,7 @@ def stop_tracking_device(
     raise_repair: bool = True,
 ) -> None:
     """Stop tracking the given device."""
-    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+    if include_serial_logging(config=config_entry):
         log_formatter = Logger(unique_id=config_entry.unique_id)
     else:
         log_formatter = Logger()

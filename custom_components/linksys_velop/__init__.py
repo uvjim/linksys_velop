@@ -51,18 +51,18 @@ from .const import (
     CONF_DEVICE_UI,
     CONF_DEVICE_UI_MISSING,
     CONF_ENTRY_RELOAD,
-    CONF_LOGGING_JNAP_RESPONSE,
+    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
+    CONF_LOGGING_OPTIONS,
     CONF_LOGGING_MODE,
-    CONF_LOGGING_SERIAL,
+    CONF_LOGGING_MODE_OFF,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_SERVICES_HANDLER,
     CONF_UNSUB_UPDATE_LISTENER,
     DEF_API_REQUEST_TIMEOUT,
-    DEF_LOGGING_JNAP_RESPONSE,
     DEF_LOGGING_MODE,
-    DEF_LOGGING_SERIAL,
+    DEF_LOGGING_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_UI_DEVICE_ID,
@@ -76,6 +76,7 @@ from .const import (
 from .events import EVENT_TYPE, EventSubType, build_payload
 from .helpers import (
     dr_nodes_for_mesh,
+    include_serial_logging,
     mesh_intensive_action_running,
     stop_tracking_device,
 )
@@ -99,8 +100,10 @@ async def async_logging_state(
     global LOGGING_DISABLED  # pylint: disable=global-statement
 
     logging_level: str = LOGGING_ON if state else LOGGING_OFF
-    if logging_level == LOGGING_ON and config_entry.options.get(
-        CONF_LOGGING_JNAP_RESPONSE, DEF_LOGGING_JNAP_RESPONSE
+    if (
+        logging_level == LOGGING_ON
+        and CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE
+        in config_entry.options.get(CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS)
     ):
         logging_level_jnap_response: str = LOGGING_ON
     else:
@@ -130,7 +133,7 @@ async def async_logging_state(
                 )
             )
             options: Dict = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = "off"
+            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
             hass.config_entries.async_update_entry(entry=config_entry, options=options)
             LOGGING_DISABLED = True
     else:
@@ -141,10 +144,11 @@ async def async_logging_state(
         )
         if (
             not state
-            and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) != "off"
+            and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
+            != CONF_LOGGING_MODE_OFF
         ):
             options: Dict = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = "off"
+            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
             hass.config_entries.async_update_entry(entry=config_entry, options=options)
             if hass.state != CoreState.stopping:
                 hass.bus.async_fire(
@@ -166,7 +170,7 @@ async def async_remove_config_entry_device(
 
     Do not allow the Mesh device to be removed
     """
-    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+    if include_serial_logging(config=config_entry):
         log_formatter = Logger(unique_id=config_entry.unique_id)
     else:
         log_formatter = Logger()
@@ -188,14 +192,14 @@ async def async_remove_config_entry_device(
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Create a config entry."""
-    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+    if include_serial_logging(config=config_entry):
         log_formatter = Logger(unique_id=config_entry.unique_id)
     else:
         log_formatter = Logger()
 
     # region #-- start logging if needed --#
     logging_mode: bool = config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-    if logging_mode != "off":
+    if logging_mode != CONF_LOGGING_MODE_OFF:
         await async_logging_state(
             config_entry=config_entry,
             hass=hass,
@@ -627,7 +631,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Cleanup when unloading a config entry."""
-    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+    if include_serial_logging(config=config_entry):
         log_formatter = Logger(unique_id=config_entry.unique_id)
     else:
         log_formatter = Logger()
@@ -991,7 +995,7 @@ def entity_cleanup(
     hass: HomeAssistant,
 ):
     """Remove entities from the registry if they are no longer needed."""
-    if config_entry.options.get(CONF_LOGGING_SERIAL, DEF_LOGGING_SERIAL):
+    if include_serial_logging(config=config_entry):
         log_formatter = Logger(
             unique_id=config_entry.unique_id,
             prefix=f"{entities[0].__class__.__name__} --> ",
