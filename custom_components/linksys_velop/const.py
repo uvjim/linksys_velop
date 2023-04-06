@@ -2,7 +2,7 @@
 
 # region #-- imports --#
 import uuid
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
@@ -51,11 +51,6 @@ DEF_UI_DEVICE_ID: str = str(uuid.UUID(int=0))
 
 ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
-
-LOGGING_MODE_SELECTOR: List[Dict[str, str]] = [
-    {"label": "Off", "value": "off"},
-    {"label": "Single poll", "value": "single"},
-]
 
 PLATFORMS: List[Optional[str]] = [
     BINARY_SENSOR_DOMAIN,
