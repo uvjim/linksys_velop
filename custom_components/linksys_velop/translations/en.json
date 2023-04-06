@@ -55,28 +55,113 @@
     },
     "entity": {
         "binary_sensor": {
-            "activeidle": {
-                "state": {
-                    "off": "Idle",
-                    "on": "Active"
-                }
-            },
-            "yesno": {
+            "blocked_times": {
+                "name": "Blocked Times",
                 "state": {
                     "off": "No",
                     "on": "Yes"
                 }
+            },
+            "channel_scanning": {
+                "name": "Channel Scanning"
+            },
+            "client_steering": {
+                "name": "Client Steering"
+            },
+            "dhcp_server": {
+                "name": "DHCP Server"
+            },
+            "express_forwarding": {
+                "name": "Express Forwarding"
+            },
+            "guest_network": {
+                "name": "Guest Network",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "homekit_paired": {
+                "name": "HomeKit Integration Paired",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "mac_filtering": {
+                "name": "MAC Filtering"
+            },
+            "node_steering": {
+                "name": "Node Steering"
+            },
+            "reserved_ip": {
+                "name": "Reserved IP",
+                "state": {
+                    "off": "No",
+                    "on": "Yes"
+                }
+            },
+            "sip": {
+                "name": "SIP"
+            },
+            "speedtest_status": {
+                "name": "Speedtest Status"
+            },
+            "status": {
+                "name": "Status"
+            },
+            "update_available": {
+                "name": "Update Available"
+            },
+            "upnp": {
+                "name": "UPnP"
+            },
+            "upnp_allow_change_settings": {
+                "name": "UPnP Allow Users to Configure"
+            },
+            "upnp_allow_disable_internet": {
+                "name": "UPnP Allow Users to Disable Internet"
+            },
+            "wan_status": {
+                "name": "WAN Status"
+            }
+        },
+        "button": {
+            "channel_scan": {
+                "name": "Start Channel Scan"
+            },
+            "check_for_updates": {
+                "name": "Check for Updates"
+            },
+            "delete": {
+                "name": "Delete"
+            },
+            "reboot": {
+                "name": "Reboot"
+            },
+            "speedtest": {
+                "name": "Start Speedtest"
+            }
+        },
+        "select": {
+            "mesh_devices": {
+                "name": "Devices"
             }
         },
         "sensor": {
-            "connection_type": {
+            "available_storage": {
+                "name": "Available Storage"
+            },
+            "backhaul_connection_type": {
+                "name": "Backhaul Type",
                 "state": {
                     "unknown": "Unknown",
                     "wired": "Wired",
                     "wireless": "Wireless"
                 }
             },
-            "friendly_signal_strength": {
+            "backhaul_friendly_signal_strength": {
+                "name": "Backhaul Friendly Signal Strength",
                 "state": {
                     "excellent": "Excellent",
                     "fair": "Fair",
@@ -84,11 +169,136 @@
                     "weak": "Weak"
                 }
             },
+            "backhaul_last_checked": {
+                "name": "Backhaul Last Checked"
+            },
+            "backhaul_signal_strength": {
+                "name": "Backhaul Signal Strength"
+            },
+            "backhaul_speed": {
+                "name": "Backhaul Speed"
+            },
+            "blocked_sites": {
+                "name": "Blocked Sites"
+            },
+            "connected_devices": {
+                "name": "Connected Devices"
+            },
+            "description": {
+                "name": "Description"
+            },
+            "dhcp_reservations": {
+                "name": "DHCP Reservations"
+            },
+            "download_bandwidth": {
+                "name": "Speedtest Download Bandwidth"
+            },
+            "friendly_signal_strength": {
+                "name": "Friendly Signal Strength",
+                "state": {
+                    "excellent": "Excellent",
+                    "fair": "Fair",
+                    "good": "Good",
+                    "weak": "Weak"
+                }
+            },
+            "guest_devices": {
+                "name": "Guest Devices"
+            },
+            "id": {
+                "name": "ID"
+            },
+            "image": {
+                "name": "Image"
+            },
+            "ip": {
+                "name": "IP"
+            },
+            "ipv6": {
+                "name": "IPv6"
+            },
+            "last_update_check": {
+                "name": "Last Update Check"
+            },
+            "mac": {
+                "name": "MAC"
+            },
+            "manufacturer": {
+                "name": "Manufacturer"
+            },
+            "model": {
+                "name": "Model"
+            },
+            "name": {
+                "name": "Name"
+            },
             "node_type": {
+                "name": "Type",
                 "state": {
                     "primary": "Primary",
                     "secondary": "Secondary"
                 }
+            },
+            "offline_devices": {
+                "name": "Offline Devices"
+            },
+            "online_devices": {
+                "name": "Online Devices"
+            },
+            "operating_system": {
+                "name": "Operating System"
+            },
+            "parent_name": {
+                "name": "Parent"
+            },
+            "serial": {
+                "name": "Serial"
+            },
+            "signal_strength": {
+                "name": "Signal Strength"
+            },
+            "speedtest_last_run": {
+                "name": "Speedtest Last Run"
+            },
+            "speedtest_latency": {
+                "name": "Speedtest Latency"
+            },
+            "speedtest_progress": {
+                "name": "Speedtest Progress"
+            },
+            "speedtest_result": {
+                "name": "Speedtest Result"
+            },
+            "ui_type": {
+                "name": "UI Type"
+            },
+            "upload_bandwidth": {
+                "name": "Speedtest Upload Bandwidth"
+            },
+            "wan_ip": {
+                "name": "WAN IP"
+            }
+        },
+        "switch": {
+            "guest_wifi": {
+                "name": "Guest Wi-Fi"
+            },
+            "homekit": {
+                "name": "HomeKit Integration"
+            },
+            "internet_access": {
+                "name": "Internet Access"
+            },
+            "parental_control": {
+                "name": "Parental Control"
+            },
+            "wps": {
+                "name": "WPS"
+            }
+        },
+        "update": {
+            "update": {
+                "name": "Update"
             }
         }
     },

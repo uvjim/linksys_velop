@@ -12,12 +12,12 @@ from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
@@ -102,6 +102,7 @@ async def async_setup_entry(
                 extra_attributes=_get_device_details,
                 key="devices",
                 name="Devices",
+                translation_key="mesh_devices",
             ),
         )
     ]

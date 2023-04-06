@@ -75,6 +75,7 @@ async def async_setup_entry(
                     device_class=UpdateDeviceClass.FIRMWARE,
                     key="",
                     name="Update",
+                    translation_key="update",
                 ),
             ),
         )

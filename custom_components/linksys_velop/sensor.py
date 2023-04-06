@@ -6,6 +6,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 from typing import Any, Callable, Dict, List
+
 from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -130,10 +131,12 @@ async def async_setup_entry(
                 )
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
+                translation_key="blocked_sites",
             ),
             LinksysVelopSensorDescription(
                 key="description",
                 name="Description",
+                translation_key="description",
             ),
             LinksysVelopSensorDescription(
                 key="",
@@ -148,24 +151,29 @@ async def async_setup_entry(
                 key="",
                 name="IP",
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("ip"),
+                translation_key="ip",
             ),
             LinksysVelopSensorDescription(
                 key="",
                 name="IPv6",
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("ipv6"),
+                translation_key="ipv6",
             ),
             LinksysVelopSensorDescription(
                 key="",
                 name="MAC",
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("mac"),
+                translation_key="mac",
             ),
             LinksysVelopSensorDescription(
                 key="manufacturer",
                 name="Manufacturer",
+                translation_key="manufacturer",
             ),
             LinksysVelopSensorDescription(
                 key="model",
                 name="Model",
+                translation_key="model",
             ),
             LinksysVelopSensorDescription(
                 key="",
@@ -173,20 +181,24 @@ async def async_setup_entry(
                 state_value=lambda d: d.name
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
+                translation_key="name",
             ),
             LinksysVelopSensorDescription(
                 key="operating_system",
                 name="Operating System",
+                translation_key="operating_system",
             ),
             LinksysVelopSensorDescription(
                 icon="hass:family-tree",
                 key="parent_name",
                 name="Parent",
+                translation_key="parent_name",
             ),
             LinksysVelopSensorDescription(
                 icon="hass:barcode",
                 key="serial",
                 name="Serial",
+                translation_key="serial",
             ),
             LinksysVelopSensorDescription(
                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
@@ -194,6 +206,7 @@ async def async_setup_entry(
                 name="Signal Strength",
                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                 state_value=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
+                translation_key="signal_strength",
             ),
             LinksysVelopSensorDescription(
                 extra_attributes=(
@@ -208,6 +221,7 @@ async def async_setup_entry(
                 else None,
                 key="ui_type",
                 name="UI Type",
+                translation_key="ui_type",
             ),
             LinksysVelopSensorDescription(
                 key="unique_id",
@@ -215,6 +229,7 @@ async def async_setup_entry(
                 state_value=lambda d: d.unique_id
                 if d.unique_id != DEF_UI_DEVICE_ID
                 else None,
+                translation_key="id",
             ),
         )
 
@@ -239,6 +254,7 @@ async def async_setup_entry(
             name="Available Storage",
             state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(m.storage_available),
+            translation_key="available_storage",
         ),
         LinksysVelopSensorDescription(
             entity_registry_enabled_default=False,
@@ -249,6 +265,7 @@ async def async_setup_entry(
             name="DHCP Reservations",
             state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(m.dhcp_reservations),
+            translation_key="dhcp_reservations",
         ),
         LinksysVelopSensorDescription(
             entity_registry_enabled_default=False,
@@ -261,6 +278,7 @@ async def async_setup_entry(
             state_value=lambda m: len(
                 [d for d in get_devices(mesh=m) if d.get("guest_network")]
             ),
+            translation_key="guest_devices",
         ),
         LinksysVelopSensorDescription(
             extra_attributes=(
@@ -275,6 +293,7 @@ async def async_setup_entry(
             name="Offline Devices",
             state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(get_devices(mesh=m, state=False)),
+            translation_key="offline_devices",
         ),
         LinksysVelopSensorDescription(
             extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
@@ -282,11 +301,13 @@ async def async_setup_entry(
             name="Online Devices",
             state_class=SensorStateClass.MEASUREMENT,
             state_value=lambda m: len(get_devices(mesh=m)),
+            translation_key="online_devices",
         ),
         LinksysVelopSensorDescription(
             icon="mdi:ip-network-outline",
             key="wan_ip",
             name="WAN IP",
+            translation_key="wan_ip",
         ),
     )
     for sensor_description in mesh_sensor_descriptions:
@@ -318,6 +339,7 @@ async def async_setup_entry(
                     entity_registry_enabled_default=False,
                     key="",
                     name="Speedtest Progress",
+                    translation_key="speedtest_progress",
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -330,6 +352,7 @@ async def async_setup_entry(
                     key="download_bandwidth",
                     name="Speedtest Download Bandwidth",
                     native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+                    translation_key="download_bandwidth",
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -340,6 +363,7 @@ async def async_setup_entry(
                     icon="mdi:keyboard-return",
                     key="exit_code",
                     name="Speedtest Result",
+                    translation_key="speedtest_result",
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -350,6 +374,7 @@ async def async_setup_entry(
                     entity_registry_enabled_default=False,
                     key="timestamp",
                     name="Speedtest Last Run",
+                    translation_key="speedtest_last_run",
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -361,6 +386,7 @@ async def async_setup_entry(
                     key="latency",
                     name="Speedtest Latency",
                     native_unit_of_measurement="ms",
+                    translation_key="speedtest_latency",
                 ),
             ),
             LinksysVelopMeshSpeedtestLatestSensor(
@@ -373,6 +399,7 @@ async def async_setup_entry(
                     key="upload_bandwidth",
                     name="Speedtest Upload Bandwidth",
                     native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+                    translation_key="upload_bandwidth",
                 ),
             ),
         ]
@@ -398,6 +425,7 @@ async def async_setup_entry(
                         name="Connected devices",
                         state_class=SensorStateClass.MEASUREMENT,
                         state_value=lambda n: len(n.connected_devices),
+                        translation_key="connected_devices",
                     ),
                 ),
                 LinksysVelopNodeSensor(
@@ -414,6 +442,7 @@ async def async_setup_entry(
                         )
                         if n.last_update_check
                         else None,
+                        translation_key="last_update_check",
                     ),
                 ),
                 LinksysVelopNodeSensor(
@@ -429,6 +458,7 @@ async def async_setup_entry(
                         else None,
                         key="model",
                         name="Model",
+                        translation_key="model",
                     ),
                 ),
                 LinksysVelopNodeSensor(
@@ -436,7 +466,10 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     node=node,
                     description=LinksysVelopSensorDescription(
-                        icon="hass:barcode", key="serial", name="Serial"
+                        icon="hass:barcode",
+                        key="serial",
+                        name="Serial",
+                        translation_key="serial",
                     ),
                 ),
                 LinksysVelopNodeSensor(
@@ -467,6 +500,7 @@ async def async_setup_entry(
                         icon="hass:family-tree",
                         key="parent_name",
                         name="Parent",
+                        translation_key="parent_name",
                     ),
                 )
             )
@@ -515,6 +549,7 @@ async def async_setup_entry(
                             )
                             if n.backhaul.get("last_checked")
                             else None,
+                            translation_key="backhaul_last_checked",
                         ),
                     ),
                     LinksysVelopNodeSensor(
@@ -527,8 +562,9 @@ async def async_setup_entry(
                             else "",
                             key="",
                             name="Backhaul Speed",
-                            state_value=lambda n: n.backhaul.get("speed_mbps"),
                             native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
+                            state_value=lambda n: n.backhaul.get("speed_mbps"),
+                            translation_key="backhaul_speed",
                         ),
                     ),
                     LinksysVelopNodeSensor(
@@ -548,7 +584,7 @@ async def async_setup_entry(
                             state_value=lambda n: n.backhaul.get(
                                 "connection", "unknown"
                             ).lower(),
-                            translation_key="connection_type",
+                            translation_key="backhaul_connection_type",
                         ),
                     ),
                 ]
@@ -567,6 +603,7 @@ async def async_setup_entry(
                                 name="Backhaul Signal Strength",
                                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                                 state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                                translation_key="backhaul_signal_strength",
                             ),
                         ),
                         LinksysVelopNodeSensor(
@@ -580,7 +617,7 @@ async def async_setup_entry(
                                     "signal_strength", ""
                                 ).lower()
                                 or None,
-                                translation_key="friendly_signal_strength",
+                                translation_key="backhaul_friendly_signal_strength",
                             ),
                         ),
                     ]
@@ -624,6 +661,7 @@ async def async_setup_entry(
                         state_value=lambda n: (
                             f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
                         ),
+                        translation_key="image",
                     ),
                 )
             )
