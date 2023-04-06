@@ -428,17 +428,19 @@ create automations based on a device signal strength, parent node or state
 
 ![Configure Logging](images/config_logging.png)
 
-* `Include the serial number in debug logs`: setting this will make the serial
-number of the primary node appear in the debug logs. This will be useful if
-there a multiple instances of the integration configured. _(defaults to off)_
-* `Include query responses in logs`: setting this will cause the debug logs to
-include the responses to the queries. This could drastically increase the size
-of your logs depending on the number of devices you have connected to the mesh.
+* `Logging options` - includes the following: -
+  * `Include the serial number in debug logs`: setting this will make the serial
+  number of the primary node appear in the debug logs. This will be useful if
+  there a multiple instances of the integration configured.
+  * `Include query responses in logs`: setting this will cause the debug logs to
+  include the responses to the queries. This could drastically increase the size
+  of your logs depending on the number of devices you have connected to the
+  mesh.
 
-  > **N.B.** there is no redaction on the responses as much of the response will
-  be required for troubleshooting. Using [diagnostics](#diagnostics-integration)
-  a pre-processed and redacted version can be downloaded for the mesh or a node.
-  _(defaults to off)_
+    > **N.B.** there is no redaction on the responses as much of the response
+    will be required for troubleshooting. Using
+    [diagnostics](#diagnostics-integration) a pre-processed and redacted version
+    can be downloaded for the mesh or a node.
 * `Logging mode` - this setting has no effect if logging for the integration is
 configured in `configuration.yaml` and is only available if the
 [`logger`](https://www.home-assistant.io/integrations/logger/) integration is
