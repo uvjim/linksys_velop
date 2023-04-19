@@ -39,19 +39,20 @@ async def async_get_config_entry_diagnostics(
     mesh: Mesh = coordinator.data
     mesh_attributes: Dict = getattr(mesh, "_mesh_attributes")
 
-    # region #-- non-serialisable objects --#
-    devices: List[Device] | None = mesh_attributes.pop("devices", None)
-    nodes: List[Node] | None = mesh_attributes.pop("nodes", None)
+    # region #-- unwanted attributes --#
+    exclude_props: List[str] = ["devices"]
     # endregion
 
     # region #-- create generic details --#
     ret: Dict[str, Any] = {
         "config_entry": config_entry.as_dict(),  # get the config entry details
         "mesh_details": {  # get mesh details
-            key: mesh_attributes.get(key) for key in mesh_attributes
+            key: mesh_attributes.get(key)
+            for key in mesh_attributes
+            if key not in exclude_props
         },
-        "nodes": [node.__dict__ for node in nodes if nodes],
-        "devices": [device.__dict__ for device in devices if devices],
+        "nodes": [node.__dict__ for node in mesh.nodes],
+        "devices": [device.__dict__ for device in mesh.devices],
     }
     # endregion
 
