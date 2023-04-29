@@ -8,6 +8,7 @@
   ],
   "domain": "linksys_velop",
   "documentation": "https://github.com/uvjim/linksys_velop",
+  "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/uvjim/linksys_velop/issues",
   "loggers": [
