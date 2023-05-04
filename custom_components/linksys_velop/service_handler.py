@@ -6,21 +6,17 @@ from __future__ import annotations
 import functools
 import logging
 import uuid
-from typing import List
+from typing import Dict, List
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from pyvelop.device import Device
+from pyvelop.device import Device, ParentalControl
 from pyvelop.mesh import Mesh
 
-from .const import (
-    CONF_COORDINATOR,
-    DOMAIN,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
-)
+from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
 from .helpers import include_serial_logging
 from .logger import Logger
 
@@ -256,9 +252,23 @@ class LinksysVelopServiceHandler:
         if device is None:
             raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        await self._mesh.async_device_internet_access_state(
+        rules_to_apply: Dict[str, str] = {}
+        if kwargs.get("pause", False):
+            rules_to_apply = dict(
+                map(
+                    lambda weekday, readable_schedule: (
+                        weekday.name,
+                        readable_schedule,
+                    ),
+                    ParentalControl.WEEKDAYS,
+                    ("00:00-00:00",) * len(ParentalControl.WEEKDAYS),
+                )
+            )
+
+        await self._mesh.async_set_parental_control_rules(
             device_id=device[0].unique_id,
-            state=not kwargs.get("pause", False),
+            force_enable=True if kwargs.get("pause", False) else False,
+            rules=rules_to_apply,
         )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
