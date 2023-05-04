@@ -85,6 +85,21 @@ class LinksysVelopServiceHandler:
                 }
             )
         },
+        "device_internet_rules": {
+            "schema": vol.Schema(
+                {
+                    vol.Required("mesh"): str,
+                    vol.Required("device"): str,
+                    vol.Optional("sunday"): str,
+                    vol.Optional("monday"): str,
+                    vol.Optional("tuesday"): str,
+                    vol.Optional("wednesday"): str,
+                    vol.Optional("thursday"): str,
+                    vol.Optional("friday"): str,
+                    vol.Optional("saturday"): str,
+                }
+            )
+        },
         "reboot_node": {
             "schema": vol.Schema(
                 {
@@ -268,6 +283,42 @@ class LinksysVelopServiceHandler:
         await self._mesh.async_set_parental_control_rules(
             device_id=device[0].unique_id,
             force_enable=True if kwargs.get("pause", False) else False,
+            rules=rules_to_apply,
+        )
+
+        _LOGGER.debug(self._log_formatter.format("exited"))
+
+    async def device_internet_rules(self, **kwargs) -> None:
+        """Set Parental Control rules for the device."""
+        _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
+
+        device: List[Device] | None = None
+        try:
+            _ = uuid.UUID(kwargs.get("device"))
+            device = self._get_device(
+                attribute="unique_id", value=kwargs.get("device", "")
+            )
+        except ValueError:
+            device = self._get_device(attribute="name", value=kwargs.get("device", ""))
+
+        if device is None:
+            raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
+
+        rules_to_apply: Dict[str, str] = {}
+        rules_to_apply = dict(
+            map(
+                lambda weekday: (
+                    weekday.name,
+                    kwargs.get(weekday.name, None),
+                ),
+                ParentalControl.WEEKDAYS,
+            )
+        )
+
+        _LOGGER.debug(self._log_formatter.format("rules_to_apply: %s"), rules_to_apply)
+
+        await self._mesh.async_set_parental_control_rules(
+            device_id=device[0].unique_id,
             rules=rules_to_apply,
         )
 
