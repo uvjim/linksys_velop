@@ -59,6 +59,75 @@ device_internet_access:
       selector:
         boolean:
 
+device_internet_rules:
+  name: Set Device Parental Controls
+  description: Set the rules for blocking Internet access for a device
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device:
+      name: Device
+      description: The name or identifier of the device to pause/resume
+      required: true
+      selector:
+        text:
+    sunday:
+      name: Sunday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+          translation_key: test
+    monday:
+      name: Monday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+    tuesday:
+      name: Tuesday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+    wednesday:
+      name: Wednesday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+    thursday:
+      name: Thursday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+    friday:
+      name: Friday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+    saturday:
+      name: Saturday
+      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
+      example: 00:00-01:00,17:00-22:00
+      required: false
+      selector:
+        text:
+
 reboot_node:
   name: "Reboot Node"
   description: Instruct the mesh to reboot a node
