@@ -275,7 +275,7 @@ class LinksysVelopDeviceSwitch(LinksysVelopDeviceEntity, SwitchEntity, ABC):
         if isinstance(action, Callable):
             await action(**action_args)
             self._value = False
-            await self.async_update_ha_state()
+            await self.async_schedule_update_ha_state()
             await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -288,7 +288,7 @@ class LinksysVelopDeviceSwitch(LinksysVelopDeviceEntity, SwitchEntity, ABC):
         if isinstance(action, Callable):
             await action(**action_args)
             self._value = True
-            await self.async_update_ha_state()
+            await self.async_schedule_update_ha_state()
             await self.coordinator.async_request_refresh()
 
     @property
@@ -342,7 +342,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         if isinstance(action, Callable):
             await action(**self.entity_description.turn_off_args)
             self._value = False
-            await self.async_update_ha_state()
+            await self.async_schedule_update_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -350,7 +350,7 @@ class LinksysVelopMeshSwitch(LinksysVelopMeshEntity, SwitchEntity, ABC):
         if isinstance(action, Callable):
             await action(**self.entity_description.turn_on_args)
             self._value = True
-            await self.async_update_ha_state()
+            await self.async_schedule_update_ha_state()
 
     @property
     def icon(self) -> str | None:
