@@ -73,60 +73,73 @@ device_internet_rules:
           manufacturer: uvjim
     device:
       name: Device
-      description: The name or identifier of the device to pause/resume
+      description: The name or identifier of the device to apply the schedule to
       required: true
       selector:
         text:
     sunday:
       name: Sunday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
-          translation_key: test
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     monday:
       name: Monday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     tuesday:
       name: Tuesday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     wednesday:
       name: Wednesday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     thursday:
       name: Thursday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     friday:
       name: Friday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
     saturday:
       name: Saturday
-      description: The times that the device should be blocked in the form "00:00-01:00,17:00-22:00"
-      example: 00:00-01:00,17:00-22:00
+      description: Select times the device should be blocked
       required: false
       selector:
-        text:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
 
 reboot_node:
   name: "Reboot Node"

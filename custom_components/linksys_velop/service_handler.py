@@ -90,13 +90,13 @@ class LinksysVelopServiceHandler:
                 {
                     vol.Required("mesh"): str,
                     vol.Required("device"): str,
-                    vol.Optional("sunday"): str,
-                    vol.Optional("monday"): str,
-                    vol.Optional("tuesday"): str,
-                    vol.Optional("wednesday"): str,
-                    vol.Optional("thursday"): str,
-                    vol.Optional("friday"): str,
-                    vol.Optional("saturday"): str,
+                    vol.Optional("sunday"): list,
+                    vol.Optional("monday"): list,
+                    vol.Optional("tuesday"): list,
+                    vol.Optional("wednesday"): list,
+                    vol.Optional("thursday"): list,
+                    vol.Optional("friday"): list,
+                    vol.Optional("saturday"): list,
                 }
             )
         },
@@ -309,7 +309,7 @@ class LinksysVelopServiceHandler:
             map(
                 lambda weekday: (
                     weekday.name,
-                    kwargs.get(weekday.name, None),
+                    ",".join(kwargs.get(weekday.name, [])) or None,
                 ),
                 ParentalControl.WEEKDAYS,
             )
