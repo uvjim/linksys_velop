@@ -127,7 +127,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                     self._log_formatter.format("%s: back online"), self._device.name
                 )
                 self._is_connected = True
-                await self.async_schedule_update_ha_state()
+                self.async_schedule_update_ha_state()
         else:
             if self._listener_consider_home is not None:
                 _LOGGER.debug(
@@ -151,7 +151,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         )
         self._is_connected = False
         self._listener_consider_home = None
-        await self.async_schedule_update_ha_state()
+        self.async_schedule_update_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Create listeners."""

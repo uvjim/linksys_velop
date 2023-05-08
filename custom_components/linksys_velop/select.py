@@ -135,7 +135,7 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         """Reset the select entity."""
         if device_id == DEF_UI_DEVICE_ID:
             self._attr_current_option = None
-            await self.async_schedule_update_ha_state()
+            self.async_schedule_update_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         """Select the option."""
