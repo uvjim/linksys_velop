@@ -59,6 +59,88 @@ device_internet_access:
       selector:
         boolean:
 
+device_internet_rules:
+  name: Set Device Parental Controls
+  description: Set the rules for blocking Internet access for a device
+  fields:
+    mesh:
+      name: Mesh
+      description: The Mesh that the action should be executed on
+      required: true
+      selector:
+        device:
+          integration: linksys_velop
+          manufacturer: uvjim
+    device:
+      name: Device
+      description: The name or identifier of the device to apply the schedule to
+      required: true
+      selector:
+        text:
+    sunday:
+      name: Sunday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    monday:
+      name: Monday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    tuesday:
+      name: Tuesday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    wednesday:
+      name: Wednesday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    thursday:
+      name: Thursday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    friday:
+      name: Friday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+    saturday:
+      name: Saturday
+      description: Select times the device should be blocked
+      required: false
+      selector:
+        select:
+          mode: dropdown
+          multiple: true
+          options: !include includes/schedule_times.yaml
+
 reboot_node:
   name: "Reboot Node"
   description: Instruct the mesh to reboot a node
