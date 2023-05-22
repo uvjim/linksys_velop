@@ -102,9 +102,9 @@ async def async_setup_entry(
                 name="Internet Access",
                 state_value=_device_internet_access_state,
                 translation_key="internet_access",
-                turn_off="async_device_internet_access_state",
+                turn_off="async_set_parental_control_state",
                 turn_off_args=lambda d: {"device_id": d.unique_id, "state": False},
-                turn_on="async_device_internet_access_state",
+                turn_on="async_set_parental_control_state",
                 turn_on_args=lambda d: {"device_id": d.unique_id, "state": True},
             ),
         )
