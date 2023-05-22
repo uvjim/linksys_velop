@@ -20,7 +20,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvelop.device import Device
+from pyvelop.device import Device, ParentalControl
 
 from . import LinksysVelopDeviceEntity, LinksysVelopMeshEntity, entity_cleanup
 from .const import (
@@ -102,10 +102,22 @@ async def async_setup_entry(
                 name="Internet Access",
                 state_value=_device_internet_access_state,
                 translation_key="internet_access",
-                turn_off="async_device_internet_access_state",
-                turn_off_args=lambda d: {"device_id": d.unique_id, "state": False},
-                turn_on="async_device_internet_access_state",
-                turn_on_args=lambda d: {"device_id": d.unique_id, "state": True},
+                turn_off="async_set_parental_control_rules",
+                turn_off_args=lambda d: {
+                    "device_id": d.unique_id,
+                    "rules": dict(
+                        map(
+                            lambda weekday, readable_schedule: (
+                                weekday.name,
+                                readable_schedule,
+                            ),
+                            ParentalControl.WEEKDAYS,
+                            ("00:00-00:00",) * len(ParentalControl.WEEKDAYS),
+                        )
+                    ),
+                },
+                turn_on="async_set_parental_control_rules",
+                turn_on_args=lambda d: {"device_id": d.unique_id, "rules": {}},
             ),
         )
 
