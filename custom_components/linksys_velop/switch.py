@@ -78,6 +78,9 @@ def _device_internet_access_state(device_details: Device) -> bool | None:
         str, str
     ] = device_details.parental_control_schedule.get("blocked_internet_access", {})
 
+    if len(blocked_internet_access.values()) == 0:
+        return True
+    
     return not all(",".join(hrs) == "00:00-00:00" for hrs in blocked_internet_access.values())
 
 
