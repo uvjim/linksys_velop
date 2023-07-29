@@ -83,6 +83,7 @@ def dr_nodes_for_mesh(
             [
                 dr_device.manufacturer != PYVELOP_AUTHOR,
                 dr_device.name.lower() != "mesh",
+                len(dr_device.connections) == 0,
             ]
         )
     ]
