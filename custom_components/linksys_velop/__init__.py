@@ -285,16 +285,21 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         # endregion
 
         # region #-- get current known nodes --#
+        previous_nodes_serials: Set[str] = {}
         _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
         if (
             previous_nodes := dr_nodes_for_mesh(
                 config=config_entry, device_registry=device_registry
             )
         ) is not None:
-            previous_nodes_serials: Set[str] = {
-                next(iter(prev_node.identifiers))[1]  # serial number of node
-                for prev_node in previous_nodes
-            }
+            try:
+                previous_nodes_serials = {
+                    next(iter(prev_node.identifiers))[1]  # serial number of node
+                    for prev_node in previous_nodes
+                }
+            except StopIteration:
+                pass
+            _LOGGER.debug(log_formatter.format("previous_node_serials: %s"), previous_nodes_serials)
         # endregion
 
         try:
