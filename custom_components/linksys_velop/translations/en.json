@@ -401,6 +401,191 @@
                 "off": "Off",
                 "single": "Single poll"
             }
+        },
+        "pc_times": {
+            "options": {
+                "00:00-00:00": "All Day",
+                "00:00-00:30": "00:00-00:30",
+                "00:30-01:00": "00:30-01:00",
+                "01:00-01:30": "01:00-01:30",
+                "01:30-02:00": "01:30-02:00",
+                "02:00-02:30": "02:00-02:30",
+                "02:30-03:00": "02:30-03:00",
+                "03:00-03:30": "03:00-03:30",
+                "03:30-04:00": "03:30-04:00",
+                "04:00-04:30": "04:00-04:30",
+                "04:30-05:00": "04:30-05:00",
+                "05:00-05:30": "05:00-05:30",
+                "05:30-06:00": "05:30-06:00",
+                "06:00-06:30": "06:00-06:30",
+                "06:30-07:00": "06:30-07:00",
+                "07:00-07:30": "07:00-07:30",
+                "07:30-08:00": "07:30-08:00",
+                "08:00-08:30": "08:00-08:30",
+                "08:30-09:00": "08:30-09:00",
+                "09:00-09:30": "09:00-09:30",
+                "09:30-10:00": "09:30-10:00",
+                "10:00-10:30": "10:00-10:30",
+                "10:30-11:00": "10:30-11:00",
+                "11:00-11:30": "11:00-11:30",
+                "11:30-12:00": "11:30-12:00",
+                "12:00-12:30": "12:00-12:30",
+                "12:30-13:00": "12:30-13:00",
+                "13:00-13:30": "13:00-13:30",
+                "13:30-14:00": "13:30-14:00",
+                "14:00-14:30": "14:00-14:30",
+                "14:30-15:00": "14:30-15:00",
+                "15:00-15:30": "15:00-15:30",
+                "15:30-16:00": "15:30-16:00",
+                "16:00-16:30": "16:00-16:30",
+                "16:30-17:00": "16:30-17:00",
+                "17:00-17:30": "17:00-17:30",
+                "17:30-18:00": "17:30-18:00",
+                "18:00-18:30": "18:00-18:30",
+                "18:30-19:00": "18:30-19:00",
+                "19:00-19:30": "19:00-19:30",
+                "19:30-20:00": "19:30-20:00",
+                "20:00-20:30": "20:00-20:30",
+                "20:30-21:00": "20:30-21:00",
+                "21:00-21:30": "21:00-21:30",
+                "21:30-22:00": "21:30-22:00",
+                "22:00-22:30": "22:00-22:30",
+                "22:30-23:00": "22:30-23:00",
+                "23:00-23:30": "23:00-23:30",
+                "23:30-00:00": "23:30-00:00"
+            }
+        }
+    },
+    "services": {
+        "check_updates": {
+            "description": "Instruct the mesh to check for firmware updates",
+            "name": "Check for Updates",
+            "fields": {
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                }
+            }
+        },
+        "delete_device": {
+            "description": "Delete a device from the mesh Device List (only a single device can be deleted at a time). The mesh will reject the request if the device is not marked as offline.",
+            "name": "Delete Device",
+            "fields": {
+                "device": {
+                    "description": "The name or identifier of the device to rename",
+                    "name": "Device"
+                },          
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                }
+            }
+        },
+        "device_internet_access": {
+            "description": "Pause/Resume a device's access to the Internet via the Mesh",
+            "name": "Control Internet Access for a Device",
+            "fields": {
+                "device": {
+                    "description": "The name or identifier of the device to pause/resume",
+                    "name": "Device"
+                },
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                },
+                "pause": {
+                    "name": "Pause Access",
+                    "description": "Enable to pause Internet access for the device"
+                }
+            }
+        },
+        "device_internet_rules": {
+            "description": "Set the rules for blocking Internet access for a device",
+            "name": "Set Device Parental Controls",
+            "fields": {
+                "device": {
+                    "description": "The name or identifier of the device to apply the schedule to",
+                    "name": "Device"
+                },
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                },
+                "sunday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Sunday"
+                },
+                "monday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Monday"
+                },
+                "tuesday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Tuesday"
+                },
+                "wednesday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Wednesday"
+                },
+                "thursday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Thursday"
+                },
+                "friday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Friday"
+                },
+                "saturday": {
+                    "description": "Select times the device should be blocked",
+                    "name": "Saturday"
+                }
+            }
+        },
+        "reboot_node": {
+            "description": "Instruct the mesh to reboot a node",
+            "name": "Reboot Node",
+            "fields": {
+                "is_primary": {
+                    "description": "Rebooting the primary node will force a reboot on all secondary nodes. If you are sure you want to do this, enable this setting and turn it on.",
+                    "name": "Is Primary"
+                },
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"              
+                },
+                "node_name": {
+                    "description": "The name of the node to reboot",
+                    "name": "Name"
+                }
+            }
+        },
+        "rename_device": {
+            "description": "Rename a device on the Mesh",
+            "name": "Rename Device",
+            "fields": {
+                "device": {
+                    "description": "The name or identifier of the device to rename",
+                    "name": "Device"
+                },
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                },
+                "new_name": {
+                    "description": "The new name for the device",
+                    "name": "New Name"
+                }
+            }
+        },
+        "start_speedtest": {
+            "description": "Instruct the mesh to carry out a Speedtest",
+            "name": "Execute Speedtest",
+            "fields": {
+                "mesh": {
+                    "description": "The Mesh that the action should be executed on",
+                    "name": "Mesh"
+                }
+            }
         }
     }
 }
