@@ -43,7 +43,7 @@ class IssueMissingDeviceTrackerRepairFlow(RepairsFlow):
         if user_input is not None:
             entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
             if (
-                entity_registry.async_get(entity_id=self.data.get("device_id"))
+                entity_registry.async_get(self.data.get("device_id"))
                 is not None
             ):
                 entity_registry.async_remove(entity_id=self.data.get("device_id"))
