@@ -29,29 +29,6 @@ from .const import CONF_COORDINATOR, CONF_NODE_IMAGES, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-# region #-- update entity descriptions --#
-@dataclasses.dataclass
-class OptionalLinksysVelopDescription:
-    """Represent the optional attributes of the update description."""
-
-
-@dataclasses.dataclass
-class RequiredLinksysVelopDescription:
-    """Represent the required attributes of the update description."""
-
-
-@dataclasses.dataclass
-class LinksysVelopUpdateDescription(
-    OptionalLinksysVelopDescription,
-    UpdateEntityDescription,
-    RequiredLinksysVelopDescription,
-):
-    """Describes update entity."""
-
-
-# endregion
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -71,7 +48,7 @@ async def async_setup_entry(
                 config_entry=config_entry,
                 coordinator=coordinator,
                 node=node,
-                description=LinksysVelopUpdateDescription(
+                description=UpdateEntityDescription(
                     device_class=UpdateDeviceClass.FIRMWARE,
                     key="",
                     name="Update",
@@ -91,14 +68,14 @@ async def async_setup_entry(
 class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
     """Representation of an update entity for a node."""
 
-    entity_description: LinksysVelopUpdateDescription
+    entity_description: UpdateEntityDescription
 
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopUpdateDescription,
+        description: UpdateEntityDescription,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
