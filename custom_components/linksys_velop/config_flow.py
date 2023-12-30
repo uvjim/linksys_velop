@@ -709,8 +709,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         # region #-- add the placeholder ui device if needed --#
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            if DEF_UI_DEVICE_ID not in self._options[CONF_DEVICE_UI]:
-                self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)
+            if DEF_UI_DEVICE_ID not in self._options.get(CONF_DEVICE_UI, []):
+                if self._options.get(CONF_DEVICE_UI) is not None:
+                    self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)
+                else:
+                    self._options[CONF_DEVICE_UI] = [DEF_UI_DEVICE_ID]
         # endregion
 
         # region #-- remove up the old logging options --#
