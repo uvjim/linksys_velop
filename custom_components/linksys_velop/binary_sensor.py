@@ -604,7 +604,7 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
 
         state_method_results: Any = await state_method()
         if self._additional_description is not None and isinstance(
-            self._additional_description_description.extra_attributes, Callable
+            self._additional_description.extra_attributes, Callable
         ):
             self._esa = self._additional_description.extra_attributes(
                 state_method_results
