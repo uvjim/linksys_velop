@@ -57,29 +57,15 @@ def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
 
 
 # region #-- select entity descriptions --#
-@dataclasses.dataclass
-class OptionalLinksysVelopDescription:
-    """Represent the optional attributes of the select description."""
+@dataclasses.dataclass(frozen=True)
+class AdditionalSelectDescription:
+    """Represent the additional properties for the select description."""
 
     custom_options: Callable[[Any], list[str]] | list[str] = dataclasses.field(
         default_factory=list
     )
     extra_attributes_args: dict | None = dataclasses.field(default_factory=dict)
     extra_attributes: Callable[[Any], dict] | None = None
-
-
-@dataclasses.dataclass
-class RequiredLinksysVelopDescription:
-    """Represent the required attributes of the select description."""
-
-
-@dataclasses.dataclass
-class LinksysVelopSelectDescription(
-    OptionalLinksysVelopDescription,
-    SelectEntityDescription,
-    RequiredLinksysVelopDescription,
-):
-    """Describes select entity."""
 
 
 # endregion
@@ -95,11 +81,13 @@ async def async_setup_entry(
 
     selects: List[LinksysVelopMeshSelect] = [
         LinksysVelopMeshSelect(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=LinksysVelopSelectDescription(
+            additional_description=AdditionalSelectDescription(
                 custom_options=lambda m: ([device.name for device in m.devices]),
                 extra_attributes=_get_device_details,
+            ),
+            config_entry=config_entry,
+            coordinator=coordinator,
+            description=SelectEntityDescription(
                 key="devices",
                 name="Devices",
                 translation_key="mesh_devices",
@@ -113,15 +101,17 @@ async def async_setup_entry(
 class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     """Representation for a select entity in the Mesh."""
 
-    entity_description: LinksysVelopSelectDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopSelectDescription,
+        description: SelectEntityDescription,
+        additional_description: AdditionalSelectDescription | None = None,
     ) -> None:
         """Initialise."""
+        self._additional_description: AdditionalSelectDescription | None = (
+            additional_description
+        )
         self._attr_current_option = None
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_registry_enabled_default = False
@@ -164,25 +154,28 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes."""
         if (
-            self.entity_description.extra_attributes
-            and isinstance(self.entity_description.extra_attributes, Callable)
+            self._additional_description.extra_attributes
+            and isinstance(self._additional_description.extra_attributes, Callable)
             and not self._config.options.get(CONF_SELECT_TEMP_UI_DEVICE)
         ):
             ea_args: dict
-            if self.entity_description.extra_attributes_args:
-                ea_args = self.entity_description.extra_attributes_args.copy()
+            if self._additional_description.extra_attributes_args:
+                ea_args = self._additional_description.extra_attributes_args.copy()
             else:
                 ea_args = {}
             ea_args["mesh"] = self._mesh
             ea_args["device_name"] = self.current_option
-            return self.entity_description.extra_attributes(**ea_args)
+            return self._additional_description.extra_attributes(**ea_args)
 
         return None
 
     @property
     def options(self) -> list[str]:
         """Build the options for the select."""
-        if isinstance(self.entity_description.custom_options, Callable):
-            return self.entity_description.custom_options(self._mesh)
+        if isinstance(self._additional_description.custom_options, Callable):
+            return self._additional_description.custom_options(self._mesh)
 
-        return self.entity_description.custom_options or self.entity_description.options
+        return (
+            self._additional_description.custom_options
+            or self.entity_description.options
+        )

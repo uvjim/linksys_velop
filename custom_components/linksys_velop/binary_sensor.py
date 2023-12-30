@@ -51,26 +51,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # region #-- binary sensor entity descriptions --#
-@dataclasses.dataclass
-class OptionalLinksysVelopDescription:
-    """Represent the optional attributes of the binary sensor description."""
+@dataclasses.dataclass(frozen=True)
+class AdditionalBinarySensorDescription:
+    """Represent the additional attributes of the binary sensor description."""
 
     extra_attributes: Callable | None = None
     state_value: Callable | None = None
-
-
-@dataclasses.dataclass
-class RequiredLinksysVelopDescription:
-    """Represent the required attributes of the binary sensor description."""
-
-
-@dataclasses.dataclass
-class LinksysVelopBinarySensorDescription(
-    OptionalLinksysVelopDescription,
-    BinarySensorEntityDescription,
-    RequiredLinksysVelopDescription,
-):
-    """Describe binary sensor entity."""
 
 
 # endregion
@@ -98,155 +84,217 @@ async def async_setup_entry(
     ] = []
 
     # region #-- Device binary sensors --#
-    device_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...]
     for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
-        device_binary_sensor_descriptions = (
-            LinksysVelopBinarySensorDescription(
-                extra_attributes=lambda d: d.parental_control_schedule.get(
-                    "blocked_internet_access"
-                ),
-                key="",
-                name="Blocked Times",
-                state_value=lambda d: d.parental_control_schedule is not None
-                and d.parental_control_schedule.get("blocked_internet_access")
-                is not None
-                and any(
-                    d.parental_control_schedule.get("blocked_internet_access").values()
-                )
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="blocked_times",
-            ),
-            LinksysVelopBinarySensorDescription(
-                key="",
-                name="Guest Network",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "guest_network"
-                )
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="guest_network",
-            ),
-            LinksysVelopBinarySensorDescription(
-                key="",
-                name="Reserved IP",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                    "reservation"
-                )
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="reserved_ip",
-            ),
-            LinksysVelopBinarySensorDescription(
-                device_class=BinarySensorDeviceClass.CONNECTIVITY,
-                extra_attributes={"device": True},
-                key="",
-                name="Status",
-                state_value=lambda d: d.status
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="status",
-            ),
-        )
-
-        for binary_sensor_description in device_binary_sensor_descriptions:
-            binary_sensors.append(
+        binary_sensors.extend(
+            [
                 LinksysVelopDeviceBinarySensor(
+                    additional_description=AdditionalBinarySensorDescription(
+                        extra_attributes=lambda d: d.parental_control_schedule.get(
+                            "blocked_internet_access"
+                        ),
+                        state_value=lambda d: d.parental_control_schedule is not None
+                        and d.parental_control_schedule.get("blocked_internet_access")
+                        is not None
+                        and any(
+                            d.parental_control_schedule.get(
+                                "blocked_internet_access"
+                            ).values()
+                        )
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
                     config_entry=config_entry,
                     coordinator=coordinator,
-                    description=binary_sensor_description,
+                    description=BinarySensorEntityDescription(
+                        key="",
+                        name="Blocked Times",
+                        translation_key="blocked_times",
+                    ),
                     device_id=device_id,
-                )
-            )
+                ),
+                LinksysVelopDeviceBinarySensor(
+                    additional_description=AdditionalBinarySensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "guest_network"
+                        )
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=BinarySensorEntityDescription(
+                        key="",
+                        name="Guest Network",
+                        translation_key="guest_network",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceBinarySensor(
+                    additional_description=AdditionalBinarySensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "reservation"
+                        )
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=BinarySensorEntityDescription(
+                        key="",
+                        name="Reserved IP",
+                        translation_key="reserved_ip",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceBinarySensor(
+                    additional_description=AdditionalBinarySensorDescription(
+                        extra_attributes={"device": True},
+                        state_value=lambda d: d.status
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=BinarySensorEntityDescription(
+                        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                        key="",
+                        name="Status",
+                        translation_key="status",
+                    ),
+                    device_id=device_id,
+                ),
+            ]
+        )
     # endregion
 
     # region #-- Mesh binary sensors --#
-    mesh_binary_sensor_descriptions: tuple[LinksysVelopBinarySensorDescription, ...] = (
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="client_steering_enabled",
-            name="Client Steering",
-            translation_key="client_steering",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="dhcp_enabled",
-            name="DHCP Server",
-            translation_key="dhcp_server",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="express_forwarding_enabled",
-            name="Express Forwarding",
-            translation_key="express_forwarding",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="homekit_paired",
-            name="HomeKit Integration Paired",
-            translation_key="homekit_paired",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            extra_attributes=lambda m: {
-                "mode": m.mac_filtering_mode,
-                "addresses": m.mac_filtering_addresses,
-            },
-            key="mac_filtering_enabled",
-            name="MAC Filtering",
-            translation_key="mac_filtering",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="node_steering_enabled",
-            name="Node Steering",
-            translation_key="node_steering",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="sip_enabled",
-            name="SIP",
-            translation_key="sip",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="upnp_allow_change_settings",
-            name="UPnP Allow Users to Configure",
-            translation_key="upnp_allow_change_settings",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="upnp_allow_disable_internet",
-            name="UPnP Allow Users to Disable Internet",
-            translation_key="upnp_allow_disable_internet",
-        ),
-        LinksysVelopBinarySensorDescription(
-            entity_registry_enabled_default=False,
-            key="upnp_enabled",
-            name="UPnP",
-            translation_key="upnp",
-        ),
-        LinksysVelopBinarySensorDescription(
-            device_class=BinarySensorDeviceClass.CONNECTIVITY,
-            extra_attributes=lambda m: {
-                "ip": m.wan_ip,
-                "dns": m.wan_dns or None,
-                "mac": m.wan_mac,
-            },
-            key="wan_status",
-            name="WAN Status",
-            translation_key="wan_status",
-        ),
-    )
-
-    for binary_sensor_description in mesh_binary_sensor_descriptions:
-        binary_sensors.append(
+    binary_sensors.extend(
+        [
             LinksysVelopMeshBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=binary_sensor_description,
-            )
-        )
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="client_steering_enabled",
+                    name="Client Steering",
+                    translation_key="client_steering",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="dhcp_enabled",
+                    name="DHCP Server",
+                    translation_key="dhcp_server",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="express_forwarding_enabled",
+                    name="Express Forwarding",
+                    translation_key="express_forwarding",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="homekit_paired",
+                    name="HomeKit Integration Paired",
+                    translation_key="homekit_paired",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                additional_description=AdditionalBinarySensorDescription(
+                    extra_attributes=lambda m: {
+                        "mode": m.mac_filtering_mode,
+                        "addresses": m.mac_filtering_addresses,
+                    },
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="mac_filtering_enabled",
+                    name="MAC Filtering",
+                    translation_key="mac_filtering",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="node_steering_enabled",
+                    name="Node Steering",
+                    translation_key="node_steering",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="sip_enabled",
+                    name="SIP",
+                    translation_key="sip",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="upnp_allow_change_settings",
+                    name="UPnP Allow Users to Configure",
+                    translation_key="upnp_allow_change_settings",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="upnp_allow_disable_internet",
+                    name="UPnP Allow Users to Disable Internet",
+                    translation_key="upnp_allow_disable_internet",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="upnp_enabled",
+                    name="UPnP",
+                    translation_key="upnp",
+                ),
+            ),
+            LinksysVelopMeshBinarySensor(
+                additional_description=AdditionalBinarySensorDescription(
+                    extra_attributes=lambda m: {
+                        "ip": m.wan_ip,
+                        "dns": m.wan_dns or None,
+                        "mac": m.wan_mac,
+                    },
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=BinarySensorEntityDescription(
+                    device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                    key="wan_status",
+                    name="WAN Status",
+                    translation_key="wan_status",
+                ),
+            ),
+        ]
+    )
     # endregion
 
     # region #-- Mesh recurring binary sensors --#
@@ -255,7 +303,7 @@ async def async_setup_entry(
             LinksysVelopMeshRecurringBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.RUNNING,
                     key="is_channel_scan_running",
                     name="Channel Scanning",
@@ -267,13 +315,15 @@ async def async_setup_entry(
                 state_processor=lambda s: s.get("isRunning", False),
             ),
             LinksysVelopMeshRecurringBinarySensor(
+                additional_description=AdditionalBinarySensorDescription(
+                    state_value=lambda m: m.speedtest_status != "",
+                ),
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.RUNNING,
                     key="",
                     name="Speedtest Status",
-                    state_value=lambda m: m.speedtest_status != "",
                     translation_key="speedtest_status",
                 ),
                 recurrence_interval=1,
@@ -293,15 +343,17 @@ async def async_setup_entry(
         # -- need to keep this here for upgrading from older HASS versions --#
         binary_sensor_update: LinksysVelopNodeBinarySensor = (
             LinksysVelopNodeBinarySensor(
+                additional_description=AdditionalBinarySensorDescription(
+                    state_value=lambda n: n.firmware.get("version")
+                    != n.firmware.get("latest_version"),
+                ),
                 config_entry=config_entry,
                 coordinator=coordinator,
                 node=node,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.UPDATE,
                     key="update_available",
                     name="Update Available",
-                    state_value=lambda n: n.firmware.get("version")
-                    != n.firmware.get("latest_version"),
                     translation_key="update_available",
                 ),
             )
@@ -317,14 +369,16 @@ async def async_setup_entry(
         binary_sensors.extend(
             [
                 LinksysVelopNodeBinarySensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopBinarySensorDescription(
-                        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                    additional_description=AdditionalBinarySensorDescription(
                         extra_attributes=lambda n: n.connected_adapters[0]
                         if n.connected_adapters
                         else {},
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=BinarySensorEntityDescription(
+                        device_class=BinarySensorDeviceClass.CONNECTIVITY,
                         key="status",
                         name="Status",
                         translation_key="status",
@@ -342,7 +396,7 @@ async def async_setup_entry(
             LinksysVelopMeshBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     key="",
                     name="Check for Updates Status",
                 ),
@@ -350,7 +404,7 @@ async def async_setup_entry(
             LinksysVelopMeshBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     entity_registry_enabled_default=False,
                     key="homekit_enabled",
                     name="HomeKit Integration",
@@ -359,7 +413,7 @@ async def async_setup_entry(
             LinksysVelopMeshBinarySensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopBinarySensorDescription(
+                description=BinarySensorEntityDescription(
                     key="wps_state",
                     name="WPS",
                 ),
@@ -376,17 +430,19 @@ async def async_setup_entry(
 class LinksysVelopDeviceBinarySensor(LinksysVelopDeviceEntity, BinarySensorEntity):
     """Representation of a device binary sensor."""
 
-    entity_description: LinksysVelopBinarySensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription,
+        description: BinarySensorEntityDescription,
         device_id: str,
+        additional_description: AdditionalBinarySensorDescription | None = None,
     ) -> None:
         """Initialise Device sensor."""
         self.entity_domain = ENTITY_DOMAIN
+        self._additional_description: AdditionalBinarySensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         super().__init__(
@@ -399,24 +455,29 @@ class LinksysVelopDeviceBinarySensor(LinksysVelopDeviceEntity, BinarySensorEntit
     @property
     def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._device)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._device)
         return getattr(self._device, self.entity_description.key, None)
 
 
 class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     """Representation of a binary sensor for the mesh."""
 
-    entity_description: LinksysVelopBinarySensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription,
+        description: BinarySensorEntityDescription,
+        additional_description: AdditionalBinarySensorDescription | None = None,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
+        self._additional_description: AdditionalBinarySensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         super().__init__(
             config_entry=config_entry, coordinator=coordinator, description=description
@@ -425,8 +486,11 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._mesh)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._mesh)
         else:
             return getattr(self._mesh, self.entity_description.key, None)
 
@@ -434,16 +498,18 @@ class LinksysVelopMeshBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
 class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
     """Representaion of a binary sensor related to a node."""
 
-    entity_description: LinksysVelopBinarySensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription,
+        description: BinarySensorEntityDescription,
+        additional_description: AdditionalBinarySensorDescription | None = None,
     ) -> None:
         """Initialise."""
+        self._additional_description: AdditionalBinarySensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self.entity_domain = ENTITY_DOMAIN
         super().__init__(
@@ -456,8 +522,11 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Get the state of the binary sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._node)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._node)
         else:
             return getattr(self._node, self.entity_description.key, None)
 
@@ -465,22 +534,24 @@ class LinksysVelopNodeBinarySensor(LinksysVelopNodeEntity, BinarySensorEntity):
 class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensorEntity):
     """Representation of a binary sensor that may need out of band updates."""
 
-    entity_description: LinksysVelopBinarySensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopBinarySensorDescription,
+        description: BinarySensorEntityDescription,
         recurrence_interval: int,
         recurrence_trigger: str,
         state_method: str,
         state_processor: Callable[..., bool],
+        additional_description: AdditionalBinarySensorDescription | None = None,
         recurrence_post_signal: str | None = None,
         recurrence_progress_signal: str | None = None,
     ) -> None:
         """Initialise."""
         self.entity_domain = ENTITY_DOMAIN
+        self._additional_description: AdditionalBinarySensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         self._state: bool | None = None
@@ -532,8 +603,12 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
             raise RuntimeError("State processor is not callable") from None
 
         state_method_results: Any = await state_method()
-        if isinstance(self.entity_description.extra_attributes, Callable):
-            self._esa = self.entity_description.extra_attributes(state_method_results)
+        if self._additional_description is not None and isinstance(
+            self._additional_description.extra_attributes, Callable
+        ):
+            self._esa = self._additional_description.extra_attributes(
+                state_method_results
+            )
 
         if self._recurrence_progress_signal is not None:
             async_dispatcher_send(
@@ -580,8 +655,11 @@ class LinksysVelopMeshRecurringBinarySensor(LinksysVelopMeshEntity, BinarySensor
         """Get the state of the binary sensor."""
         queried_state: bool
         ret: bool
-        if self.entity_description.state_value:
-            queried_state = self.entity_description.state_value(self._mesh)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            queried_state = self._additional_description.state_value(self._mesh)
         else:
             queried_state = getattr(self._mesh, self.entity_description.key, None)
 
