@@ -299,7 +299,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
                 }
             except StopIteration:
                 pass
-            _LOGGER.debug(log_formatter.format("previous_node_serials: %s"), previous_nodes_serials)
+            _LOGGER.debug(
+                log_formatter.format("previous_node_serials: %s"),
+                previous_nodes_serials,
+            )
         # endregion
 
         try:
@@ -706,13 +709,15 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
         if not getattr(self, "entity_domain", None):
             self.entity_domain: str = ""
 
-        if hasattr(self.entity_description, "entity_picture"):
-            if isinstance(self.entity_description.entity_picture, Callable):
-                self._attr_entity_picture = self.entity_description.entity_picture(
+        if hasattr(self, "_additional_description") and hasattr(
+            self._additional_description, "entity_picture"
+        ):
+            if isinstance(self._additional_description.entity_picture, Callable):
+                self._attr_entity_picture = self._additional_description.entity_picture(
                     self._device
                 )
             else:
-                self._attr_entity_picture = self.entity_description.entity_picture
+                self._attr_entity_picture = self._additional_description.entity_picture
 
         try:
             _ = self.has_entity_name
@@ -792,17 +797,19 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
-        if hasattr(self.entity_description, "extra_attributes"):
-            if isinstance(self.entity_description.extra_attributes, Callable):
-                return self.entity_description.extra_attributes(self._device)
+        if hasattr(self, "_additional_description") and hasattr(
+            self._additional_description, "extra_attributes"
+        ):
+            if isinstance(self._additional_description.extra_attributes, Callable):
+                return self._additional_description.extra_attributes(self._device)
 
-            if isinstance(self.entity_description.extra_attributes, dict):
-                return self.entity_description.extra_attributes
+            if isinstance(self._additional_description.extra_attributes, dict):
+                return self._additional_description.extra_attributes
 
-            if isinstance(self.entity_description.extra_attributes, str):
+            if isinstance(self._additional_description.extra_attributes, str):
                 if (
                     esa := getattr(
-                        self._device, self.entity_description.extra_attributes
+                        self._device, self._additional_description.extra_attributes
                     )
                 ) is not None:
                     if not isinstance(esa, dict):
@@ -810,7 +817,7 @@ class LinksysVelopDeviceEntity(CoordinatorEntity):
                             self._log_formatter.format(
                                 "%s is not a dictionary or None"
                             ),
-                            self.entity_description.extra_attributes,
+                            self._additional_description.extra_attributes,
                         )
                     else:
                         return esa
@@ -877,20 +884,24 @@ class LinksysVelopMeshEntity(CoordinatorEntity):
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
-        if hasattr(self.entity_description, "extra_attributes"):
-            if isinstance(self.entity_description.extra_attributes, Callable):
-                return self.entity_description.extra_attributes(self._mesh)
+        if hasattr(self, "_additional_description") and hasattr(
+            self._additional_description, "extra_attributes"
+        ):
+            if isinstance(self._additional_description.extra_attributes, Callable):
+                return self._additional_description.extra_attributes(self._mesh)
 
-            if isinstance(self.entity_description.extra_attributes, str):
+            if isinstance(self._additional_description.extra_attributes, str):
                 if (
-                    esa := getattr(self._mesh, self.entity_description.extra_attributes)
+                    esa := getattr(
+                        self._mesh, self._additional_description.extra_attributes
+                    )
                 ) is not None:
                     if not isinstance(esa, dict):
                         _LOGGER.debug(
                             self._log_formatter.format(
                                 "%s is not a dictionary or None"
                             ),
-                            self.entity_description.extra_attributes,
+                            self._additional_description.extra_attributes,
                         )
                     else:
                         return esa
@@ -915,8 +926,10 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
         if not getattr(self, "entity_description", None):
             self.entity_domain: str = ""
         else:
-            if hasattr(self.entity_description, "entity_picture"):
-                self._attr_entity_picture = self.entity_description.entity_picture
+            if hasattr(self, "_additional_description") and hasattr(
+                self._additional_description, "entity_picture"
+            ):
+                self._attr_entity_picture = self._additional_description.entity_picture
 
         self._config = config_entry
         self._mesh: Mesh = coordinator.data
@@ -981,11 +994,12 @@ class LinksysVelopNodeEntity(CoordinatorEntity):
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Additional attributes for the entity."""
         if (
-            hasattr(self.entity_description, "extra_attributes")
-            and isinstance(self.entity_description.extra_attributes, Callable)
+            hasattr(self, "_additional_description")
+            and hasattr(self._additional_description, "extra_attributes")
+            and isinstance(self._additional_description.extra_attributes, Callable)
             and self._node
         ):
-            return self.entity_description.extra_attributes(self._node)
+            return self._additional_description.extra_attributes(self._node)
 
         return None
 
