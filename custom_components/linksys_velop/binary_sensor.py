@@ -127,6 +127,7 @@ async def async_setup_entry(
                         name="Guest Network",
                         translation_key="guest_network",
                     ),
+                    device_id=device_id,
                 ),
                 LinksysVelopDeviceBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
@@ -143,6 +144,7 @@ async def async_setup_entry(
                         name="Reserved IP",
                         translation_key="reserved_ip",
                     ),
+                    device_id=device_id,
                 ),
                 LinksysVelopDeviceBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
@@ -159,6 +161,7 @@ async def async_setup_entry(
                         name="Status",
                         translation_key="status",
                     ),
+                    device_id=device_id,
                 ),
             ]
         )
