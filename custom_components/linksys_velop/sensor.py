@@ -50,28 +50,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # region #-- sensor entity descriptions --#
-@dataclasses.dataclass
-class OptionalLinksysVelopDescription:
-    """Represent the optional attributes of the sensor description."""
+@dataclasses.dataclass(frozen=True)
+class AdditionalSensorDescription:
+    """Represent the additional attributes for the sensor description."""
 
     if not hasattr(SensorEntityDescription, "entity_picture"):
         entity_picture: str | None = None
     extra_attributes: Callable | None = None
     state_value: Callable | None = None
-
-
-@dataclasses.dataclass
-class RequiredLinksysVelopDescription:
-    """Represent the required attributes of the sensor description."""
-
-
-@dataclasses.dataclass
-class LinksysVelopSensorDescription(
-    OptionalLinksysVelopDescription,
-    SensorEntityDescription,
-    RequiredLinksysVelopDescription,
-):
-    """Describes sensor entity."""
 
 
 # endregion
@@ -116,215 +102,341 @@ async def async_setup_entry(
     sensors_to_remove: List[LinksysVelopMeshSensor | LinksysVelopNodeSensor] = []
 
     # region #-- Device sensors --#
-    device_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...]
     for device_id in config_entry.options.get(CONF_DEVICE_UI, []):
-        device_sensor_descriptions = (
-            LinksysVelopSensorDescription(
-                extra_attributes=lambda d: {
-                    "sites": d.parental_control_schedule.get("blocked_sites", [])
-                },
-                key="",
-                name="Blocked Sites",
-                state_class=SensorStateClass.MEASUREMENT,
-                state_value=lambda d: len(
-                    d.parental_control_schedule.get("blocked_sites", [])
-                )
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="blocked_sites",
-            ),
-            LinksysVelopSensorDescription(
-                key="description",
-                name="Description",
-                translation_key="description",
-            ),
-            LinksysVelopSensorDescription(
-                key="",
-                name="Friendly Signal Strength",
-                state_value=lambda d: next(iter(d.connected_adapters), {})
-                .get("signal_strength", "")
-                .lower()
-                or None,
-                translation_key="friendly_signal_strength",
-            ),
-            LinksysVelopSensorDescription(
-                key="",
-                name="IP",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get("ip"),
-                translation_key="ip",
-            ),
-            LinksysVelopSensorDescription(
-                key="",
-                name="IPv6",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get("ipv6"),
-                translation_key="ipv6",
-            ),
-            LinksysVelopSensorDescription(
-                key="",
-                name="MAC",
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get("mac"),
-                translation_key="mac",
-            ),
-            LinksysVelopSensorDescription(
-                key="manufacturer",
-                name="Manufacturer",
-                translation_key="manufacturer",
-            ),
-            LinksysVelopSensorDescription(
-                key="model",
-                name="Model",
-                translation_key="model",
-            ),
-            LinksysVelopSensorDescription(
-                key="",
-                name="Name",
-                state_value=lambda d: d.name
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="name",
-            ),
-            LinksysVelopSensorDescription(
-                key="operating_system",
-                name="Operating System",
-                translation_key="operating_system",
-            ),
-            LinksysVelopSensorDescription(
-                icon="hass:family-tree",
-                key="parent_name",
-                name="Parent",
-                translation_key="parent_name",
-            ),
-            LinksysVelopSensorDescription(
-                icon="hass:barcode",
-                key="serial",
-                name="Serial",
-                translation_key="serial",
-            ),
-            LinksysVelopSensorDescription(
-                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                key="",
-                name="Signal Strength",
-                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                state_value=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
-                translation_key="signal_strength",
-            ),
-            LinksysVelopSensorDescription(
-                extra_attributes=(
-                    lambda d: {
-                        "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
-                        f"{d.ui_type.lower()}.png"
-                        if d.ui_type is not None
-                        else None
-                    }
-                )
-                if config_entry.options.get(CONF_NODE_IMAGES, "")
-                else None,
-                key="ui_type",
-                name="UI Type",
-                translation_key="ui_type",
-            ),
-            LinksysVelopSensorDescription(
-                key="unique_id",
-                name="ID",
-                state_value=lambda d: d.unique_id
-                if d.unique_id != DEF_UI_DEVICE_ID
-                else None,
-                translation_key="id",
-            ),
-        )
-
-        for sensor_description in device_sensor_descriptions:
-            sensors.append(
+        sensors.extend(
+            [
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        extra_attributes=lambda d: {
+                            "sites": d.parental_control_schedule.get(
+                                "blocked_sites", []
+                            )
+                        },
+                        state_value=lambda d: len(
+                            d.parental_control_schedule.get("blocked_sites", [])
+                        )
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="Blocked Sites",
+                        state_class=SensorStateClass.MEASUREMENT,
+                        translation_key="blocked_sites",
+                    ),
+                    device_id=device_id,
+                ),
                 LinksysVelopDeviceSensor(
                     config_entry=config_entry,
                     coordinator=coordinator,
-                    description=sensor_description,
+                    description=SensorEntityDescription(
+                        key="description",
+                        name="Description",
+                        translation_key="description",
+                    ),
                     device_id=device_id,
-                )
-            )
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {})
+                        .get("signal_strength", "")
+                        .lower()
+                        or None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="Friendly Signal Strength",
+                        translation_key="friendly_signal_strength",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "ip"
+                        ),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="IP",
+                        translation_key="ip",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "ipv6"
+                        ),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="IPv6",
+                        translation_key="ipv6",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "mac"
+                        ),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="MAC",
+                        translation_key="mac",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="manufacturer",
+                        name="Manufacturer",
+                        translation_key="manufacturer",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="model",
+                        name="Model",
+                        translation_key="model",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: d.name
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="",
+                        name="Name",
+                        translation_key="name",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="operating_system",
+                        name="Operating System",
+                        translation_key="operating_system",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        icon="hass:family-tree",
+                        key="parent_name",
+                        name="Parent",
+                        translation_key="parent_name",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        icon="hass:barcode",
+                        key="serial",
+                        name="Serial",
+                        translation_key="serial",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
+                            "rssi"
+                        ),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                        key="",
+                        name="Signal Strength",
+                        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                        translation_key="signal_strength",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        extra_attributes=(
+                            lambda d: {
+                                "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
+                                f"{d.ui_type.lower()}.png"
+                                if d.ui_type is not None
+                                else None
+                            }
+                        )
+                        if config_entry.options.get(CONF_NODE_IMAGES, "")
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="ui_type",
+                        name="UI Type",
+                        translation_key="ui_type",
+                    ),
+                    device_id=device_id,
+                ),
+                LinksysVelopDeviceSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda d: d.unique_id
+                        if d.unique_id != DEF_UI_DEVICE_ID
+                        else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    description=SensorEntityDescription(
+                        key="unique_id",
+                        name="ID",
+                        translation_key="id",
+                    ),
+                    device_id=device_id,
+                ),
+            ]
+        )
     # endregion
 
     # region #-- Mesh sensors --#
-    mesh_sensor_descriptions: tuple[LinksysVelopSensorDescription, ...] = (
-        LinksysVelopSensorDescription(
-            entity_registry_enabled_default=False,
-            extra_attributes=lambda m: {"partitions": m.storage_available or None},
-            icon="mdi:nas",
-            key="available_storage",
-            name="Available Storage",
-            state_class=SensorStateClass.MEASUREMENT,
-            state_value=lambda m: len(m.storage_available),
-            translation_key="available_storage",
-        ),
-        LinksysVelopSensorDescription(
-            entity_registry_enabled_default=False,
-            extra_attributes=lambda m: {
-                "reservations": m.dhcp_reservations,
-            },
-            key="dhcp_reservations",
-            name="DHCP Reservations",
-            state_class=SensorStateClass.MEASUREMENT,
-            state_value=lambda m: len(m.dhcp_reservations),
-            translation_key="dhcp_reservations",
-        ),
-        LinksysVelopSensorDescription(
-            entity_registry_enabled_default=False,
-            extra_attributes=lambda m: {
-                "devices": [d for d in get_devices(mesh=m) if d.get("guest_network")]
-            },
-            key="guest_devices",
-            name="Guest Devices",
-            state_class=SensorStateClass.MEASUREMENT,
-            state_value=lambda m: len(
-                [d for d in get_devices(mesh=m) if d.get("guest_network")]
+    sensors.extend(
+        [
+            LinksysVelopMeshSensor(
+                additional_description=AdditionalSensorDescription(
+                    extra_attributes=lambda m: {
+                        "partitions": m.storage_available or None
+                    },
+                    state_value=lambda m: len(m.storage_available),
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=SensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    icon="mdi:nas",
+                    key="available_storage",
+                    name="Available Storage",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    translation_key="available_storage",
+                ),
             ),
-            translation_key="guest_devices",
-        ),
-        LinksysVelopSensorDescription(
-            extra_attributes=(
-                lambda m: {
-                    "devices": [
-                        {"name": d.get("name", ""), "id": d.get("id", "")}
-                        for d in get_devices(mesh=m, state=False)
-                    ]
-                }
+            LinksysVelopMeshSensor(
+                additional_description=AdditionalSensorDescription(
+                    extra_attributes=lambda m: {
+                        "reservations": m.dhcp_reservations,
+                    },
+                    state_value=lambda m: len(m.dhcp_reservations),
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=SensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="dhcp_reservations",
+                    name="DHCP Reservations",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    translation_key="dhcp_reservations",
+                ),
             ),
-            key="offline_devices",
-            name="Offline Devices",
-            state_class=SensorStateClass.MEASUREMENT,
-            state_value=lambda m: len(get_devices(mesh=m, state=False)),
-            translation_key="offline_devices",
-        ),
-        LinksysVelopSensorDescription(
-            extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
-            key="online_devices",
-            name="Online Devices",
-            state_class=SensorStateClass.MEASUREMENT,
-            state_value=lambda m: len(get_devices(mesh=m)),
-            translation_key="online_devices",
-        ),
-        LinksysVelopSensorDescription(
-            icon="mdi:ip-network-outline",
-            key="wan_ip",
-            name="WAN IP",
-            translation_key="wan_ip",
-        ),
-    )
-    for sensor_description in mesh_sensor_descriptions:
-        sensors.append(
+            LinksysVelopMeshSensor(
+                additional_description=AdditionalSensorDescription(
+                    extra_attributes=lambda m: {
+                        "devices": [
+                            d for d in get_devices(mesh=m) if d.get("guest_network")
+                        ]
+                    },
+                    state_value=lambda m: len(
+                        [d for d in get_devices(mesh=m) if d.get("guest_network")]
+                    ),
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=SensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    key="guest_devices",
+                    name="Guest Devices",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    translation_key="guest_devices",
+                ),
+            ),
+            LinksysVelopMeshSensor(
+                additional_description=AdditionalSensorDescription(
+                    extra_attributes=(
+                        lambda m: {
+                            "devices": [
+                                {"name": d.get("name", ""), "id": d.get("id", "")}
+                                for d in get_devices(mesh=m, state=False)
+                            ]
+                        }
+                    ),
+                    state_value=lambda m: len(get_devices(mesh=m, state=False)),
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=SensorEntityDescription(
+                    key="offline_devices",
+                    name="Offline Devices",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    translation_key="offline_devices",
+                ),
+            ),
+            LinksysVelopMeshSensor(
+                additional_description=AdditionalSensorDescription(
+                    extra_attributes=lambda m: {"devices": get_devices(mesh=m)},
+                    state_value=lambda m: len(get_devices(mesh=m)),
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=SensorEntityDescription(
+                    key="online_devices",
+                    name="Online Devices",
+                    state_class=SensorStateClass.MEASUREMENT,
+                    translation_key="online_devices",
+                ),
+            ),
             LinksysVelopMeshSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=sensor_description,
-            )
-        )
+                description=SensorEntityDescription(
+                    icon="mdi:ip-network-outline",
+                    key="wan_ip",
+                    name="WAN IP",
+                    translation_key="wan_ip",
+                ),
+            ),
+        ]
+    )
 
     # region #-- Speedtest sensors --#
     sensors_to_remove.append(
         LinksysVelopMeshSpeedtestLatestSensor(
             config_entry=config_entry,
             coordinator=coordinator,
-            description=LinksysVelopSensorDescription(
+            description=SensorEntityDescription(
                 key="",
                 name="Speedtest Latest",
             ),
@@ -335,7 +447,7 @@ async def async_setup_entry(
             LinsysVelopMeshSpeedtestCurrentStatusSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     entity_registry_enabled_default=False,
                     key="",
                     name="Speedtest Progress",
@@ -345,7 +457,7 @@ async def async_setup_entry(
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     device_class=SensorDeviceClass.DATA_RATE,
                     entity_registry_enabled_default=False,
                     icon="mdi:cloud-download-outline",
@@ -358,7 +470,7 @@ async def async_setup_entry(
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     entity_registry_enabled_default=False,
                     icon="mdi:keyboard-return",
                     key="exit_code",
@@ -369,7 +481,7 @@ async def async_setup_entry(
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     device_class=SensorDeviceClass.TIMESTAMP,
                     entity_registry_enabled_default=False,
                     key="timestamp",
@@ -380,7 +492,7 @@ async def async_setup_entry(
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     entity_registry_enabled_default=False,
                     icon="mdi:timer-sync-outline",
                     key="latency",
@@ -392,7 +504,7 @@ async def async_setup_entry(
             LinksysVelopMeshSpeedtestLatestSensor(
                 config_entry=config_entry,
                 coordinator=coordinator,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     device_class=SensorDeviceClass.DATA_RATE,
                     entity_registry_enabled_default=False,
                     icon="mdi:cloud-upload-outline",
@@ -414,48 +526,53 @@ async def async_setup_entry(
         sensors.extend(
             [
                 LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
+                    additional_description=AdditionalSensorDescription(
                         extra_attributes=lambda n: {"devices": n.connected_devices}
                         if n.connected_devices
                         else {},
+                        state_value=lambda n: len(n.connected_devices),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=SensorEntityDescription(
                         key="",
                         name="Connected devices",
                         state_class=SensorStateClass.MEASUREMENT,
-                        state_value=lambda n: len(n.connected_devices),
                         translation_key="connected_devices",
                     ),
                 ),
                 LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        device_class=SensorDeviceClass.TIMESTAMP,
-                        entity_registry_enabled_default=False,
-                        key="",
-                        name="Last Update Check",
+                    additional_description=AdditionalSensorDescription(
                         state_value=lambda n: dt_util.parse_datetime(
                             n.last_update_check
                         )
                         if n.last_update_check
                         else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=SensorEntityDescription(
+                        device_class=SensorDeviceClass.TIMESTAMP,
+                        entity_registry_enabled_default=False,
+                        key="",
+                        name="Last Update Check",
                         translation_key="last_update_check",
                     ),
                 ),
                 LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    # TODO: remove if SensorEntityDescription ever includes entity_picture natively
-                    description=LinksysVelopSensorDescription(  # pylint: disable=unexpected-keyword-arg
+                    additional_description=AdditionalSensorDescription(
                         entity_picture=(
                             f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{node.model}.png"
                         )
                         if config_entry.options.get(CONF_NODE_IMAGES, "")
                         else None,
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=SensorEntityDescription(
                         key="model",
                         name="Model",
                         translation_key="model",
@@ -465,7 +582,7 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
+                    description=SensorEntityDescription(
                         icon="hass:barcode",
                         key="serial",
                         name="Serial",
@@ -473,17 +590,19 @@ async def async_setup_entry(
                     ),
                 ),
                 LinksysVelopNodeSensor(
+                    additional_description=AdditionalSensorDescription(
+                        state_value=lambda n: n.type.value,
+                    ),
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
+                    description=SensorEntityDescription(
                         device_class=SensorDeviceClass.ENUM
                         if hasattr(SensorDeviceClass, "ENUM")
                         else "",
                         key="type",
                         name="Type",
                         options=["primary", "secondary"],
-                        state_value=lambda n: n.type.value,
                         translation_key="node_type",
                     ),
                 ),
@@ -492,11 +611,13 @@ async def async_setup_entry(
         if node.type is not NodeType.PRIMARY:
             sensors.append(
                 LinksysVelopNodeSensor(
+                    additional_description=AdditionalSensorDescription(
+                        extra_attributes=lambda n: {"parent_ip": n.parent_ip},
+                    ),
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
-                        extra_attributes=lambda n: {"parent_ip": n.parent_ip},
+                    description=SensorEntityDescription(
                         icon="hass:family-tree",
                         key="parent_name",
                         name="Parent",
@@ -510,7 +631,7 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
+                    description=SensorEntityDescription(
                         key="parent_name",
                         name="Parent",
                     ),
@@ -526,7 +647,7 @@ async def async_setup_entry(
                         config_entry=config_entry,
                         coordinator=coordinator,
                         node=node,
-                        description=LinksysVelopSensorDescription(
+                        description=SensorEntityDescription(
                             key="",
                             name="Backhaul",
                         ),
@@ -536,42 +657,51 @@ async def async_setup_entry(
             sensors.extend(
                 [
                     LinksysVelopNodeSensor(
-                        config_entry=config_entry,
-                        coordinator=coordinator,
-                        node=node,
-                        description=LinksysVelopSensorDescription(
-                            device_class=SensorDeviceClass.TIMESTAMP,
-                            entity_registry_enabled_default=False,
-                            key="",
-                            name="Backhaul Last Checked",
+                        additional_description=AdditionalSensorDescription(
                             state_value=lambda n: dt_util.parse_datetime(
                                 n.backhaul.get("last_checked")
                             )
                             if n.backhaul.get("last_checked")
                             else None,
+                        ),
+                        config_entry=config_entry,
+                        coordinator=coordinator,
+                        node=node,
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.TIMESTAMP,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Backhaul Last Checked",
                             translation_key="backhaul_last_checked",
                         ),
                     ),
                     LinksysVelopNodeSensor(
+                        additional_description=AdditionalSensorDescription(
+                            state_value=lambda n: n.backhaul.get("speed_mbps"),
+                        ),
                         config_entry=config_entry,
                         coordinator=coordinator,
                         node=node,
-                        description=LinksysVelopSensorDescription(
+                        description=SensorEntityDescription(
                             device_class=SensorDeviceClass.DATA_RATE
                             if hasattr(SensorDeviceClass, "DATA_RATE")
                             else "",
                             key="",
                             name="Backhaul Speed",
                             native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
-                            state_value=lambda n: n.backhaul.get("speed_mbps"),
                             translation_key="backhaul_speed",
                         ),
                     ),
                     LinksysVelopNodeSensor(
+                        additional_description=AdditionalSensorDescription(
+                            state_value=lambda n: n.backhaul.get(
+                                "connection", "unknown"
+                            ).lower(),
+                        ),
                         config_entry=config_entry,
                         coordinator=coordinator,
                         node=node,
-                        description=LinksysVelopSensorDescription(
+                        description=SensorEntityDescription(
                             device_class=SensorDeviceClass.ENUM
                             if hasattr(SensorDeviceClass, "ENUM")
                             else "",
@@ -581,9 +711,6 @@ async def async_setup_entry(
                             key="",
                             name="Backhaul Type",
                             options=["unknown", "wired", "wireless"],
-                            state_value=lambda n: n.backhaul.get(
-                                "connection", "unknown"
-                            ).lower(),
                             translation_key="backhaul_connection_type",
                         ),
                     ),
@@ -594,29 +721,33 @@ async def async_setup_entry(
                 sensors.extend(
                     [
                         LinksysVelopNodeSensor(
+                            additional_description=AdditionalSensorDescription(
+                                state_value=lambda n: n.backhaul.get("rssi_dbm"),
+                            ),
                             config_entry=config_entry,
                             coordinator=coordinator,
                             node=node,
-                            description=LinksysVelopSensorDescription(
+                            description=SensorEntityDescription(
                                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                                 key="",
                                 name="Backhaul Signal Strength",
                                 native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                                state_value=lambda n: n.backhaul.get("rssi_dbm"),
                                 translation_key="backhaul_signal_strength",
                             ),
                         ),
                         LinksysVelopNodeSensor(
-                            config_entry=config_entry,
-                            coordinator=coordinator,
-                            node=node,
-                            description=LinksysVelopSensorDescription(
-                                key="",
-                                name="Backhaul Friendly Signal Strength",
+                            additional_description=AdditionalSensorDescription(
                                 state_value=lambda n: n.backhaul.get(
                                     "signal_strength", ""
                                 ).lower()
                                 or None,
+                            ),
+                            config_entry=config_entry,
+                            coordinator=coordinator,
+                            node=node,
+                            description=SensorEntityDescription(
+                                key="",
+                                name="Backhaul Friendly Signal Strength",
                                 translation_key="backhaul_friendly_signal_strength",
                             ),
                         ),
@@ -629,7 +760,7 @@ async def async_setup_entry(
                             config_entry=config_entry,
                             coordinator=coordinator,
                             node=node,
-                            description=LinksysVelopSensorDescription(
+                            description=SensorEntityDescription(
                                 key="",
                                 name="Backhaul Signal Strength",
                             ),
@@ -638,7 +769,7 @@ async def async_setup_entry(
                             config_entry=config_entry,
                             coordinator=coordinator,
                             node=node,
-                            description=LinksysVelopSensorDescription(
+                            description=SensorEntityDescription(
                                 key="",
                                 name="Backhaul Friendly Signal Strength",
                             ),
@@ -651,16 +782,18 @@ async def async_setup_entry(
         if config_entry.options.get(CONF_NODE_IMAGES):
             sensors.append(
                 LinksysVelopNodeSensor(
-                    config_entry=config_entry,
-                    coordinator=coordinator,
-                    node=node,
-                    description=LinksysVelopSensorDescription(
-                        entity_registry_enabled_default=False,
-                        key="",
-                        name="Image",
+                    additional_description=AdditionalSensorDescription(
                         state_value=lambda n: (
                             f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
                         ),
+                    ),
+                    config_entry=config_entry,
+                    coordinator=coordinator,
+                    node=node,
+                    description=SensorEntityDescription(
+                        entity_registry_enabled_default=False,
+                        key="",
+                        name="Image",
                         translation_key="image",
                     ),
                 )
@@ -671,7 +804,7 @@ async def async_setup_entry(
                     config_entry=config_entry,
                     coordinator=coordinator,
                     node=node,
-                    description=LinksysVelopSensorDescription(
+                    description=SensorEntityDescription(
                         key="",
                         name="Image",
                     ),
@@ -682,23 +815,27 @@ async def async_setup_entry(
         # region #-- version sensors if needed --#
         sensors_versions: List[LinksysVelopNodeSensor] = [
             LinksysVelopNodeSensor(
+                additional_description=AdditionalSensorDescription(
+                    state_value=lambda n: n.firmware.get("latest_version", None),
+                ),
                 config_entry=config_entry,
                 coordinator=coordinator,
                 node=node,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     key="",
                     name="Newest Version",
-                    state_value=lambda n: n.firmware.get("latest_version", None),
                 ),
             ),
             LinksysVelopNodeSensor(
+                additional_description=AdditionalSensorDescription(
+                    state_value=lambda n: n.firmware.get("version", None),
+                ),
                 config_entry=config_entry,
                 coordinator=coordinator,
                 node=node,
-                description=LinksysVelopSensorDescription(
+                description=SensorEntityDescription(
                     key="",
                     name="Version",
-                    state_value=lambda n: n.firmware.get("version", None),
                 ),
             ),
         ]
@@ -719,17 +856,19 @@ async def async_setup_entry(
 class LinksysVelopDeviceSensor(LinksysVelopDeviceEntity, SensorEntity):
     """Representation of a sensor related to the Device."""
 
-    entity_description: LinksysVelopSensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopSensorDescription,
+        description: SensorEntityDescription,
         device_id: str,
+        additional_description: AdditionalSensorDescription | None = None,
     ) -> None:
         """Initialise Device sensor."""
         self.entity_domain = ENTITY_DOMAIN
+        self._additional_description: AdditionalSensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         super().__init__(
@@ -742,8 +881,11 @@ class LinksysVelopDeviceSensor(LinksysVelopDeviceEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Get the state of the sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._device)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._device)
 
         return getattr(self._device, self.entity_description.key, None)
 
@@ -751,16 +893,18 @@ class LinksysVelopDeviceSensor(LinksysVelopDeviceEntity, SensorEntity):
 class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
     """Representation of a sensor related to the Mesh."""
 
-    entity_description: LinksysVelopSensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         config_entry: ConfigEntry,
-        description: LinksysVelopSensorDescription,
+        description: SensorEntityDescription,
+        additional_description: AdditionalSensorDescription | None = None,
     ) -> None:
         """Initialise Mesh sensor."""
         self.entity_domain = ENTITY_DOMAIN
+        self._additional_description: AdditionalSensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
         super().__init__(
@@ -770,8 +914,11 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Get the state of the sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._mesh)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._mesh)
 
         return getattr(self._mesh, self.entity_description.key, None)
 
@@ -779,16 +926,18 @@ class LinksysVelopMeshSensor(LinksysVelopMeshEntity, SensorEntity):
 class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
     """Representation of a sensor for a node."""
 
-    entity_description: LinksysVelopSensorDescription
-
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
         node: Node,
         config_entry: ConfigEntry,
-        description: LinksysVelopSensorDescription,
+        description: SensorEntityDescription,
+        additional_description: AdditionalSensorDescription | None = None,
     ) -> None:
         """Initialise Node sensor."""
+        self._additional_description: AdditionalSensorDescription | None = (
+            additional_description
+        )
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self.entity_domain = ENTITY_DOMAIN
         super().__init__(
@@ -801,8 +950,11 @@ class LinksysVelopNodeSensor(LinksysVelopNodeEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Get the state of the sensor."""
-        if self.entity_description.state_value:
-            return self.entity_description.state_value(self._node)
+        if (
+            self._additional_description is not None
+            and self._additional_description.state_value
+        ):
+            return self._additional_description.state_value(self._node)
 
         return getattr(self._node, self.entity_description.key, None)
 
