@@ -112,11 +112,11 @@ async def async_setup_entry(
                                 "blocked_sites", []
                             )
                         },
-                        state_value=lambda d: len(
-                            d.parental_control_schedule.get("blocked_sites", [])
-                        )
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            len(d.parental_control_schedule.get("blocked_sites", []))
+                            if d.unique_id != DEF_UI_DEVICE_ID
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -221,9 +221,9 @@ async def async_setup_entry(
                 ),
                 LinksysVelopDeviceSensor(
                     additional_description=AdditionalSensorDescription(
-                        state_value=lambda d: d.name
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            d.name if d.unique_id != DEF_UI_DEVICE_ID else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -286,15 +286,19 @@ async def async_setup_entry(
                 LinksysVelopDeviceSensor(
                     additional_description=AdditionalSensorDescription(
                         extra_attributes=(
-                            lambda d: {
-                                "entity_picture": f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
-                                f"{d.ui_type.lower()}.png"
-                                if d.ui_type is not None
-                                else None
-                            }
-                        )
-                        if config_entry.options.get(CONF_NODE_IMAGES, "")
-                        else None,
+                            (
+                                lambda d: {
+                                    "entity_picture": (
+                                        f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
+                                        f"{d.ui_type.lower()}.png"
+                                        if d.ui_type is not None
+                                        else None
+                                    )
+                                }
+                            )
+                            if config_entry.options.get(CONF_NODE_IMAGES, "")
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -307,9 +311,9 @@ async def async_setup_entry(
                 ),
                 LinksysVelopDeviceSensor(
                     additional_description=AdditionalSensorDescription(
-                        state_value=lambda d: d.unique_id
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            d.unique_id if d.unique_id != DEF_UI_DEVICE_ID else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -527,9 +531,11 @@ async def async_setup_entry(
             [
                 LinksysVelopNodeSensor(
                     additional_description=AdditionalSensorDescription(
-                        extra_attributes=lambda n: {"devices": n.connected_devices}
-                        if n.connected_devices
-                        else {},
+                        extra_attributes=lambda n: (
+                            {"devices": n.connected_devices}
+                            if n.connected_devices
+                            else {}
+                        ),
                         state_value=lambda n: len(n.connected_devices),
                     ),
                     config_entry=config_entry,
@@ -544,11 +550,11 @@ async def async_setup_entry(
                 ),
                 LinksysVelopNodeSensor(
                     additional_description=AdditionalSensorDescription(
-                        state_value=lambda n: dt_util.parse_datetime(
-                            n.last_update_check
-                        )
-                        if n.last_update_check
-                        else None,
+                        state_value=lambda n: (
+                            dt_util.parse_datetime(n.last_update_check)
+                            if n.last_update_check
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -564,10 +570,12 @@ async def async_setup_entry(
                 LinksysVelopNodeSensor(
                     additional_description=AdditionalSensorDescription(
                         entity_picture=(
-                            f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{node.model}.png"
-                        )
-                        if config_entry.options.get(CONF_NODE_IMAGES, "")
-                        else None,
+                            (
+                                f"{config_entry.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{node.model}.png"
+                            )
+                            if config_entry.options.get(CONF_NODE_IMAGES, "")
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -597,9 +605,11 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     node=node,
                     description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.ENUM
-                        if hasattr(SensorDeviceClass, "ENUM")
-                        else "",
+                        device_class=(
+                            SensorDeviceClass.ENUM
+                            if hasattr(SensorDeviceClass, "ENUM")
+                            else ""
+                        ),
                         key="type",
                         name="Type",
                         options=["primary", "secondary"],
@@ -658,11 +668,11 @@ async def async_setup_entry(
                 [
                     LinksysVelopNodeSensor(
                         additional_description=AdditionalSensorDescription(
-                            state_value=lambda n: dt_util.parse_datetime(
-                                n.backhaul.get("last_checked")
-                            )
-                            if n.backhaul.get("last_checked")
-                            else None,
+                            state_value=lambda n: (
+                                dt_util.parse_datetime(n.backhaul.get("last_checked"))
+                                if n.backhaul.get("last_checked")
+                                else None
+                            ),
                         ),
                         config_entry=config_entry,
                         coordinator=coordinator,
@@ -683,9 +693,11 @@ async def async_setup_entry(
                         coordinator=coordinator,
                         node=node,
                         description=SensorEntityDescription(
-                            device_class=SensorDeviceClass.DATA_RATE
-                            if hasattr(SensorDeviceClass, "DATA_RATE")
-                            else "",
+                            device_class=(
+                                SensorDeviceClass.DATA_RATE
+                                if hasattr(SensorDeviceClass, "DATA_RATE")
+                                else ""
+                            ),
                             key="",
                             name="Backhaul Speed",
                             native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
@@ -702,12 +714,17 @@ async def async_setup_entry(
                         coordinator=coordinator,
                         node=node,
                         description=SensorEntityDescription(
-                            device_class=SensorDeviceClass.ENUM
-                            if hasattr(SensorDeviceClass, "ENUM")
-                            else "",
-                            icon="mdi:lan-connect"
-                            if node.backhaul.get("connection", "").lower() == "wired"
-                            else "mdi:wifi",
+                            device_class=(
+                                SensorDeviceClass.ENUM
+                                if hasattr(SensorDeviceClass, "ENUM")
+                                else ""
+                            ),
+                            icon=(
+                                "mdi:lan-connect"
+                                if node.backhaul.get("connection", "").lower()
+                                == "wired"
+                                else "mdi:wifi"
+                            ),
                             key="",
                             name="Backhaul Type",
                             options=["unknown", "wired", "wireless"],
@@ -737,10 +754,11 @@ async def async_setup_entry(
                         ),
                         LinksysVelopNodeSensor(
                             additional_description=AdditionalSensorDescription(
-                                state_value=lambda n: n.backhaul.get(
-                                    "signal_strength", ""
-                                ).lower()
-                                or None,
+                                state_value=lambda n: (
+                                    n.backhaul.get("signal_strength", "").lower()
+                                    if n.backhaul.get("signal_strength")
+                                    else None
+                                )
                             ),
                             config_entry=config_entry,
                             coordinator=coordinator,
