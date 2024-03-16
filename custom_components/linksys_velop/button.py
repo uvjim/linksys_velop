@@ -292,8 +292,8 @@ class LinksysVelopNodeButton(LinksysVelopNodeEntity, ButtonEntity, ABC):
         """Handle the button being pressed."""
         if self._additional_description is not None:
             await _async_button_pressed(
-                action=self.entity_description.press_action,
-                action_arguments=self.entity_description.press_action_arguments.copy(),
+                action=self._additional_description.press_action,
+                action_arguments=self._additional_description.press_action_arguments.copy(),
                 hass=self.hass,
                 mesh=self._mesh,
             )
