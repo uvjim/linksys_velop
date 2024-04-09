@@ -50,6 +50,22 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def status_extra_attributes(n: Node) -> dict[str, Any]:
+    """Return the extra attributes for the Status binary sensor."""
+
+    ret: dict[str, Any] = {}
+
+    primary_adapter: list[dict[str, Any]] = [
+        adapter for adapter in n.connected_adapters if adapter.get("primary")
+    ]
+
+    if primary_adapter:
+        del primary_adapter[0]["primary"]
+        ret = primary_adapter[0]
+
+    return ret
+
+
 # region #-- binary sensor entity descriptions --#
 @dataclasses.dataclass(frozen=True)
 class AdditionalBinarySensorDescription:
@@ -92,16 +108,20 @@ async def async_setup_entry(
                         extra_attributes=lambda d: d.parental_control_schedule.get(
                             "blocked_internet_access"
                         ),
-                        state_value=lambda d: d.parental_control_schedule is not None
-                        and d.parental_control_schedule.get("blocked_internet_access")
-                        is not None
-                        and any(
-                            d.parental_control_schedule.get(
+                        state_value=lambda d: (
+                            d.parental_control_schedule is not None
+                            and d.parental_control_schedule.get(
                                 "blocked_internet_access"
-                            ).values()
-                        )
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                            )
+                            is not None
+                            and any(
+                                d.parental_control_schedule.get(
+                                    "blocked_internet_access"
+                                ).values()
+                            )
+                            if d.unique_id != DEF_UI_DEVICE_ID
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -114,11 +134,11 @@ async def async_setup_entry(
                 ),
                 LinksysVelopDeviceBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
-                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                            "guest_network"
-                        )
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            next(iter(d.connected_adapters), {}).get("guest_network")
+                            if d.unique_id != DEF_UI_DEVICE_ID
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -131,11 +151,11 @@ async def async_setup_entry(
                 ),
                 LinksysVelopDeviceBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
-                        state_value=lambda d: next(iter(d.connected_adapters), {}).get(
-                            "reservation"
-                        )
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            next(iter(d.connected_adapters), {}).get("reservation")
+                            if d.unique_id != DEF_UI_DEVICE_ID
+                            else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -149,9 +169,9 @@ async def async_setup_entry(
                 LinksysVelopDeviceBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
                         extra_attributes={"device": True},
-                        state_value=lambda d: d.status
-                        if d.unique_id != DEF_UI_DEVICE_ID
-                        else None,
+                        state_value=lambda d: (
+                            d.status if d.unique_id != DEF_UI_DEVICE_ID else None
+                        ),
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
@@ -370,9 +390,7 @@ async def async_setup_entry(
             [
                 LinksysVelopNodeBinarySensor(
                     additional_description=AdditionalBinarySensorDescription(
-                        extra_attributes=lambda n: n.connected_adapters[0]
-                        if n.connected_adapters
-                        else {},
+                        extra_attributes=status_extra_attributes
                     ),
                     config_entry=config_entry,
                     coordinator=coordinator,
