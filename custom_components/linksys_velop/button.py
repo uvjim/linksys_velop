@@ -228,7 +228,7 @@ class LinksysVelopDeviceButton(LinksysVelopDeviceEntity, ButtonEntity, ABC):
                 action_args = self._additional_description.press_action_arguments.copy()
 
             await _async_button_pressed(
-                action=self.entity_description.press_action,
+                action=self._additional_description.press_action,
                 action_arguments=action_args,
                 hass=self.hass,
                 mesh=self._mesh,
