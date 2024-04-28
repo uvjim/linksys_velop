@@ -45,13 +45,18 @@ def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
 
     ret = None
     dev: Device
-    device: List[Device] = [
-        dev
-        for dev in mesh.devices
-        if device_name and dev.name.lower() == device_name.lower()
-    ]
-    if device:
-        ret = {p: getattr(device[0], p, None) or None for p in required_properties}
+    match_on: str = (
+        device_name
+        if not device_name.startswith("Network Device (")
+        else device_name.split("(")[1].strip(")")
+    )
+    for dev in mesh.devices:
+        match_against: List[str] = [dev.name.lower(), dev.unique_id]
+        if device_name.startswith("Network Device (") and dev.status:
+            match_against.append(dev.connected_adapters[0].get("ip"))
+        if device_name and (match_on.lower() in match_against):
+            ret = {p: getattr(dev, p, None) or None for p in required_properties}
+            break
 
     return ret
 
@@ -82,7 +87,16 @@ async def async_setup_entry(
     selects: List[LinksysVelopMeshSelect] = [
         LinksysVelopMeshSelect(
             additional_description=AdditionalSelectDescription(
-                custom_options=lambda m: ([device.name for device in m.devices]),
+                custom_options=lambda m: (
+                    [
+                        (
+                            device.name
+                            if device.name != "Network Device"
+                            else f"{device.name} ({device.connected_adapters[0].get('ip') if device.status else device.unique_id})"
+                        )
+                        for device in m.devices
+                    ]
+                ),
                 extra_attributes=_get_device_details,
             ),
             config_entry=config_entry,
