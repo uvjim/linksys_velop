@@ -116,8 +116,9 @@ install time and from reconfiguring the integration.
 #### Select
 
 * Mesh: Devices _(disabled by default)_
-  * Once a device is selected the attributes will be updated to reflect the
-    following: connected adapters, description, manufacturer, model, name,
+  * Once a device is selected (assuming a [temporary device](#advanced-options)
+    is not being used for display) the attributes will be updated to reflect
+    the following: connected adapters, description, manufacturer, model, name,
     operating_system, parent name, serial, status and unique_id
 
 #### Sensors
