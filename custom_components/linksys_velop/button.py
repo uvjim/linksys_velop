@@ -20,7 +20,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
-from pyvelop.node import Node
+from pyvelop.node import Node, NodeType
 
 from . import (
     LinksysVelopDeviceEntity,
@@ -29,8 +29,10 @@ from . import (
     entity_cleanup,
 )
 from .const import (
+    CONF_ALLOW_MESH_REBOOT,
     CONF_COORDINATOR,
     CONF_DEVICE_UI,
+    DEF_ALLOW_MESH_REBOOT,
     DEF_UI_DEVICE_ID,
     DOMAIN,
     SIGNAL_UPDATE_CHANNEL_SCANNING,
@@ -143,6 +145,40 @@ async def async_setup_entry(
             ),
         ]
     )
+    # region #-- add conditional mesh buttons --#
+    primary_node: Node | List[Node] = [node for node in mesh.nodes if node.type == NodeType.PRIMARY]
+    if primary_node:
+        primary_node = primary_node[0]
+    if config_entry.options.get(CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT):
+        buttons.append(
+            LinksysVelopMeshButton(
+                additional_description=AdditionalButtonDescription(
+                    press_action="async_reboot_node",
+                    press_action_arguments={"node_name": primary_node.name, "force": True},
+                ),
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=ButtonEntityDescription(
+                    device_class=ButtonDeviceClass.RESTART,
+                    key="",
+                    name="Reboot the Whole Mesh",
+                    translation_key="reboot_mesh",
+                ),
+            )
+        )
+    else:
+        buttons_to_remove.append(
+            LinksysVelopMeshButton(
+                config_entry=config_entry,
+                coordinator=coordinator,
+                description=ButtonEntityDescription(
+                    key="",
+                    name="Reboot the Whole Mesh",
+                    translation_key="reboot_mesh",
+                ),
+            )
+        )
+    # endregion
     # endregion
 
     # region #-- Node buttons --#

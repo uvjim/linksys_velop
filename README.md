@@ -426,6 +426,8 @@ create automations based on a device signal strength, parent node or state
   device that will be populated with the details of the device selected in
   the [select](#select) entity. The `select` entity will no longer have the
   details populated to its attributes.
+* `Allow rebooting the Mesh`: creates a button on the Mesh entity that allows
+  rebooting the whole mesh.
 
 ### Logging
 

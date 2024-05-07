@@ -34,6 +34,7 @@ from pyvelop.mesh import Mesh, Node
 
 from . import async_logging_state
 from .const import (
+    CONF_ALLOW_MESH_REBOOT,
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_UI,
     CONF_DEVICE_UI_MISSING,
@@ -54,6 +55,7 @@ from .const import (
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_SUBTYPE,
     CONF_TITLE_PLACEHOLDERS,
+    DEF_ALLOW_MESH_REBOOT,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_FLOW_NAME,
@@ -269,6 +271,12 @@ async def _async_build_schema_with_user_input(
                     CONF_SELECT_TEMP_UI_DEVICE,
                     default=user_input.get(
                         CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_ALLOW_MESH_REBOOT,
+                    default=user_input.get(
+                        CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
                     ),
                 ): selector.BooleanSelector(),
             }
