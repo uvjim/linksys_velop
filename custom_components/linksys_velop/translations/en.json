@@ -139,6 +139,9 @@
             "reboot": {
                 "name": "Reboot"
             },
+            "reboot_mesh": {
+                "name": "Reboot the Whole Mesh"
+            },
             "speedtest": {
                 "name": "Start Speedtest"
             }
@@ -330,10 +333,12 @@
         "step": {
             "advanced_options": {
                 "data": {
+                    "allow_mesh_reboot": "Allow rebooting the mesh",
                     "node_images": "Velop image path",
                     "select_temp_ui_device": "Use a temporary device for select entity details"
                 },
                 "data_description": {
+                    "allow_mesh_reboot": "Creates a button on the Mesh service that allows rebooting of the whole mesh.",
                     "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value.",
                     "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },

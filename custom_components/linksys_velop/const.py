@@ -17,6 +17,7 @@ from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
 DOMAIN: str = "linksys_velop"
 ENTITY_SLUG: str = "Velop"
 
+CONF_ALLOW_MESH_REBOOT: str = "allow_mesh_reboot"
 CONF_API_REQUEST_TIMEOUT: str = "api_request_timeout"
 CONF_COORDINATOR: str = "coordinator"
 CONF_COORDINATOR_MESH: str = "mesh"
@@ -43,6 +44,7 @@ CONF_SUBTYPE: str = "subtype"
 CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
 CONF_UNSUB_UPDATE_LISTENER: str = "unsub_update_listener"
 
+DEF_ALLOW_MESH_REBOOT: bool = False
 DEF_API_REQUEST_TIMEOUT: int = 10
 DEF_CONSIDER_HOME: int = 180
 DEF_FLOW_NAME: str = "Linksys Velop Mesh"
