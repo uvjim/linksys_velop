@@ -93,11 +93,12 @@ enabled.
 
 * Device: Delete
 * Mesh: Check for Updates
+* Mesh: Reboot the Whole Mesh (see [Configurable Options -> Advanced Options](#advanced-options))
 * Mesh: Start Channel Scanning _(interval: 40s)_
 * Mesh: Start Speedtest _(interval: 1s)_
 * Node: Reboot
 
-> **N.B.** Buttons with an in terval in brackets start a long running task.
+> **N.B.** Buttons with an interval in brackets start a long running task.
   When they are pressed or the corresponding `binary_sensor` realises that the
   task is running a secondary timer is started, using the specified interval.
 >
@@ -106,7 +107,8 @@ enabled.
   I consider this to be quite a destructive action. There is no confirmation in
   the HASS UI when a button is pressed so there is no time to warn anyone. If
   you'd like to reboot the Primary you node you must use the
-  [service](#services) with the `is_primary` flag provided.
+  [service](#services) with the `is_primary` flag provided, or the `Mesh: Reboot
+  the Whole Mesh` button.
 
 #### Device Trackers
 
