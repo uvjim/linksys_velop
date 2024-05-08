@@ -103,12 +103,12 @@ enabled.
   task is running a secondary timer is started, using the specified interval.
 >
 > **N.B.** There is deliberately no button provided to restart the Primary node.
-  Restarting the Primary node will cause all nodes in the Mesh to reboot and
-  I consider this to be quite a destructive action. There is no confirmation in
-  the HASS UI when a button is pressed so there is no time to warn anyone. If
-  you'd like to reboot the Primary you node you must use the
-  [service](#services) with the `is_primary` flag provided, or the `Mesh: Reboot
-  the Whole Mesh` button.
+Restarting the Primary node will cause all nodes in the Mesh to reboot and
+I consider this to be quite a destructive action. There is no confirmation in
+the HASS UI when a button is pressed so there is no time to warn anyone. If
+you'd like to reboot the Primary you node you must use the
+[service](#services) with the `is_primary` flag provided, or the `Mesh: Reboot
+the Whole Mesh` button.
 
 #### Device Trackers
 
