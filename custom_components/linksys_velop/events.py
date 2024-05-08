@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Dict, List
 
-from homeassistant.backports.enum import StrEnum
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import device_registry as dr
 from homeassistant.const import CONF_NAME
