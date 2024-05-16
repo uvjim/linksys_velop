@@ -103,6 +103,7 @@ async def async_setup_entry(
             config_entry=config_entry,
             coordinator=coordinator,
             description=SelectEntityDescription(
+                entity_registry_enabled_default=False,
                 key="devices",
                 name="Devices",
                 translation_key="mesh_devices",
@@ -129,7 +130,6 @@ class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
         )
         self._attr_current_option = None
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_entity_registry_enabled_default = False
         self.entity_domain = ENTITY_DOMAIN
 
         super().__init__(
