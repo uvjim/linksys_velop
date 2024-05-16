@@ -19,6 +19,7 @@ from homeassistant.helpers.dispatcher import (
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from pyvelop.const import DEF_EMPTY_NAME
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
@@ -47,12 +48,12 @@ def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
     dev: Device
     match_on: str = (
         device_name
-        if not device_name.startswith("Network Device (")
+        if not device_name.startswith(f"{DEF_EMPTY_NAME} (")
         else device_name.split("(")[1].strip(")")
     )
     for dev in mesh.devices:
         match_against: List[str] = [dev.name.lower(), dev.unique_id]
-        if device_name.startswith("Network Device (") and dev.status:
+        if device_name.startswith(f"{DEF_EMPTY_NAME} (") and dev.status:
             match_against.append(dev.connected_adapters[0].get("ip"))
         if device_name and (match_on.lower() in match_against):
             ret = {p: getattr(dev, p, None) or None for p in required_properties}
@@ -91,7 +92,7 @@ async def async_setup_entry(
                     [
                         (
                             device.name
-                            if device.name != "Network Device"
+                            if device.name != DEF_EMPTY_NAME
                             else f"{device.name} ({device.connected_adapters[0].get('ip') if device.status else device.unique_id})"
                         )
                         for device in m.devices
