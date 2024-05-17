@@ -3,7 +3,9 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import asyncio
 import logging
+from enum import StrEnum
 from typing import List
 
 import homeassistant.helpers.config_validation as cv
@@ -25,7 +27,7 @@ from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshBadResponse,
     MeshConnectionError,
-    MeshInvalidCredentials,
+    MeshException,
     MeshInvalidInput,
     MeshNodeNotPrimary,
     MeshTimeoutError,
@@ -36,10 +38,10 @@ from . import async_logging_state
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
     CONF_API_REQUEST_TIMEOUT,
-    CONF_DEVICE_UI,
-    CONF_DEVICE_UI_MISSING,
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_MISSING,
+    CONF_DEVICE_UI,
+    CONF_DEVICE_UI_MISSING,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
@@ -74,14 +76,18 @@ from .logger import Logger
 
 # endregion
 
-STEP_ADVANCED_OPTIONS: str = "advanced_options"
-STEP_DEVICE_CREATE: str = "device_ui"
-STEP_DEVICE_TRACKERS: str = "device_trackers"
-STEP_FINALISE: str = "finalise"
-STEP_INIT: str = "init"
-STEP_LOGGING: str = "logging"
-STEP_USER: str = "user"
-STEP_TIMERS: str = "timers"
+
+class Steps(StrEnum):
+    ADVANCED_OPTIONS = "advanced_options"
+    DEVICE_CREATE = "device_ui"
+    DEVICE_TRACKERS = "device_trackers"
+    FINALISE = "finalise"
+    GATHER_DETAILS = "gather_details"
+    INIT = "init"
+    LOGIN = "login"
+    LOGGING = "logging"
+    USER = "user"
+    TIMERS = "timers"
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,7 +120,7 @@ async def _async_build_schema_with_user_input(
     :return: the schema including necessary restrictions, defaults, pre-selections etc.
     """
     schema: vol.Schema = vol.Schema({})
-    if step == STEP_USER:
+    if step == Steps.USER:
         schema = vol.Schema(
             {
                 vol.Required(
@@ -129,7 +135,7 @@ async def _async_build_schema_with_user_input(
                 ),
             }
         )
-    elif step == STEP_TIMERS:
+    elif step == Steps.TIMERS:
         schema = vol.Schema(
             {
                 vol.Required(
@@ -170,7 +176,7 @@ async def _async_build_schema_with_user_input(
                 ): cv.positive_float,
             }
         )
-    elif step == STEP_DEVICE_CREATE:
+    elif step == Steps.DEVICE_CREATE:
         valid_devices = [
             device
             for device in user_input.get(CONF_DEVICE_UI, [])
@@ -192,7 +198,7 @@ async def _async_build_schema_with_user_input(
                 )
             }
         )
-    elif step == STEP_DEVICE_TRACKERS:
+    elif step == Steps.DEVICE_TRACKERS:
         valid_trackers = [
             tracker
             for tracker in user_input.get(CONF_DEVICE_TRACKERS, [])
@@ -214,7 +220,7 @@ async def _async_build_schema_with_user_input(
                 )
             }
         )
-    elif step == STEP_LOGGING:
+    elif step == Steps.LOGGING:
         # region #-- migrate old values into the dropdown --#
         if CONF_LOGGING_OPTIONS not in user_input:
             user_input[CONF_LOGGING_OPTIONS] = DEF_LOGGING_OPTIONS
@@ -260,7 +266,7 @@ async def _async_build_schema_with_user_input(
                     )
                 }
             )
-    elif step == STEP_ADVANCED_OPTIONS:
+    elif step == Steps.ADVANCED_OPTIONS:
         schema = vol.Schema(
             {
                 vol.Optional(
@@ -311,8 +317,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # 2. ssdp(discovery_info) --> pick up at path 1
     # 3. unignore --> discovery_by_st --> pick up at path 2
 
-    task_login = None  # task for the potentially slow login process
-    _mesh: Mesh  # mesh object for the class
+    task_login: asyncio.Task | None = None
+    task_gather: asyncio.Task | None = None
+    _mesh: Mesh
 
     def __init__(self):
         """Initialise."""
@@ -329,45 +336,56 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return LinksysOptionsFlowHandler(config_entry=config_entry)
 
-    async def _async_task_login(self, user_input) -> None:
-        """Login to the Mesh.
-
-        Sets the instance variable if successful
-
-        :param user_input: details of the mesh as per the config UI
-        :return: None
-        """
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-        self._mesh = Mesh(**user_input, session=async_get_clientsession(hass=self.hass))
-        try:
-            _LOGGER.debug(self._log_formatter.format("gathering details"))
-            await self._mesh.async_gather_details()
-            _LOGGER.debug(self._log_formatter.format("details gathered"))
-        except MeshConnectionError:
+    def _set_error(self, exc: MeshException) -> None:
+        """Set the error for the flow based on the exception received."""
+        if isinstance(exc, MeshConnectionError):
             _LOGGER.debug(self._log_formatter.format("connection error"))
             self._errors["base"] = "connection_error"
-        except MeshInvalidCredentials:
-            _LOGGER.debug(self._log_formatter.format("login error"))
-            self._errors["base"] = "login_error"
-        except MeshBadResponse:
+        elif (exc, MeshBadResponse):
             _LOGGER.debug(self._log_formatter.format("bad response"))
             self._errors["base"] = "login_bad_response"
-        except MeshInvalidInput as err:
+        elif (exc, MeshInvalidInput):
             _LOGGER.debug(self._log_formatter.format("invalid input"))
-            _LOGGER.warning("%s", err)
+            _LOGGER.warning("%s", exc)
             self._errors["base"] = "invalid_input"
-        except MeshNodeNotPrimary:
+        elif (exc, MeshNodeNotPrimary):
             _LOGGER.debug(self._log_formatter.format("not primary"))
             self._errors["base"] = "node_not_primary"
-        except MeshTimeoutError:
+        elif (exc, MeshTimeoutError):
             _LOGGER.debug(self._log_formatter.format("timeout"))
             self._errors["base"] = "node_timeout"
+
+    async def _async_task_gather_details(self) -> None:
+        """Gather the details about the Mesh."""
+        _LOGGER.debug(self._log_formatter.format("entered"))
+        try:
+            await self._mesh.async_gather_details()
+        except MeshException as exc:
+            self._set_error(exc)
         else:
             _LOGGER.debug(self._log_formatter.format("no exceptions"))
 
-        self.hass.async_create_task(
-            self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
-        )
+        _LOGGER.debug(self._log_formatter.format("exited"))
+
+    async def _async_task_login(self, details) -> None:
+        """Test the credentials for the Mesh."""
+        _LOGGER.debug(self._log_formatter.format("entered, details: %s"), details)
+        _mesh = Mesh(**details, session=async_get_clientsession(hass=self.hass))
+        try:
+            _LOGGER.debug(self._log_formatter.format("testing credentials"))
+            valid: bool = await _mesh.async_test_credentials()
+            _LOGGER.debug(self._log_formatter.format("credentials tested"))
+            if not valid:
+                _LOGGER.debug(self._log_formatter.format("credentials are not valid"))
+                self._errors["base"] = "login_error"
+            else:
+                _LOGGER.debug(self._log_formatter.format("credentials are valid"))
+                self._mesh = _mesh
+        except MeshException as exc:
+            self._set_error(exc)
+        else:
+            _LOGGER.debug(self._log_formatter.format("no exceptions"))
+
         _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def async_step_device_trackers(
@@ -383,9 +401,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         devices: dict = await _async_get_devices(mesh=self._mesh)
 
         return self.async_show_form(
-            step_id=STEP_DEVICE_TRACKERS,
+            step_id=Steps.DEVICE_TRACKERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=devices
+                Steps.DEVICE_TRACKERS, self._options, multi_select_contents=devices
             ),
             errors=self._errors,
             last_step=False,
@@ -400,43 +418,64 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_create_entry(title=_title, data={}, options=self._options)
 
-    async def async_step_login(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Initiate the login task.
-
-        Shows the login task progress and then moves onto the next step, stays on the user step or
-        aborts the process on unknown errors.
-
-        :param user_input: details entered by the user
-        :return: the necessary FlowResult
-        """
+    async def async_step_gather_details(
+        self, user_input=None
+    ) -> data_entry_flow.FlowResult:
+        """Initiate gathering Mesh details."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-        if not self.task_login:
-            _LOGGER.debug(self._log_formatter.format("creating login task"))
+
+        if self.task_gather is None:
+            _LOGGER.debug(
+                self._log_formatter.format("creating task for gathering details")
+            )
+            self.task_gather = self.hass.async_create_task(
+                self._async_task_gather_details()
+            )
+
+        if self.task_gather.done():
+            _LOGGER.debug(self._log_formatter.format("_errors: %s"), self._errors)
+            next_step: str = Steps.TIMERS
+            if self._errors:
+                next_step = Steps.USER
+
+            _LOGGER.debug(self._log_formatter.format("next step: %s"), next_step)
+            return self.async_show_progress_done(next_step_id=next_step)
+
+        return self.async_show_progress(
+            step_id=Steps.GATHER_DETAILS,
+            progress_action="task_gather_details",
+            progress_task=self.task_gather,
+        )
+
+    async def async_step_login(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Initiate the credential test."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if self.task_login is None:
+            _LOGGER.debug(self._log_formatter.format("creating credential test task"))
             details: dict = {
                 "node": self._options.get(CONF_NODE),
                 "password": self._options.get(CONF_PASSWORD),
                 "request_timeout": DEF_API_REQUEST_TIMEOUT,
             }
             self.task_login = self.hass.async_create_task(
-                self._async_task_login(user_input=details)
-            )
-            return self.async_show_progress(
-                step_id="login", progress_action="task_login"
+                self._async_task_login(details)
             )
 
-        try:
-            _LOGGER.debug(self._log_formatter.format("running login task"))
-            await self.task_login
-            _LOGGER.debug(self._log_formatter.format("returned from login task"))
-        except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.debug(self._log_formatter.format("exception: %s"), err)
-            return self.async_abort(reason="abort_login")
+        if self.task_login.done():
+            _LOGGER.debug(self._log_formatter.format("_errors: %s"), self._errors)
+            next_step: str = Steps.GATHER_DETAILS
+            if self._errors:
+                next_step = Steps.USER
 
-        _LOGGER.debug(self._log_formatter.format("_errors: %s"), self._errors)
-        if self._errors:
-            return self.async_show_progress_done(next_step_id=STEP_USER)
+            _LOGGER.debug(self._log_formatter.format("next step: %s"), next_step)
+            return self.async_show_progress_done(next_step_id=next_step)
 
-        return self.async_show_progress_done(next_step_id=STEP_TIMERS)
+        return self.async_show_progress(
+            step_id=Steps.LOGIN,
+            progress_action="task_login",
+            progress_task=self.task_login,
+        )
 
     async def async_step_ssdp(
         self, discovery_info: SsdpServiceInfo
@@ -553,9 +592,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # endregion
 
         return self.async_show_form(
-            step_id=STEP_TIMERS,
+            step_id=Steps.TIMERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_TIMERS, self._options
+                Steps.TIMERS, self._options
             ),
             errors=self._errors,
             last_step=False,
@@ -602,9 +641,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_login()
 
         return self.async_show_form(
-            step_id=STEP_USER,
+            step_id=Steps.USER,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_USER, self._options
+                Steps.USER, self._options
             ),
             errors=self._errors,
             last_step=False,
@@ -642,9 +681,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
-            step_id=STEP_DEVICE_CREATE,
+            step_id=Steps.DEVICE_CREATE,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_CREATE, self._options, multi_select_contents=self._devices
+                Steps.DEVICE_CREATE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,
@@ -669,9 +708,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
-            step_id=STEP_DEVICE_TRACKERS,
+            step_id=Steps.DEVICE_TRACKERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_DEVICE_TRACKERS, self._options, multi_select_contents=self._devices
+                Steps.DEVICE_TRACKERS,
+                self._options,
+                multi_select_contents=self._devices,
             ),
             errors=self._errors,
             last_step=False,
@@ -683,10 +724,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         # region #-- remove any device trackers that are no longer needed --#
         entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
-        config_entry_entities: List[
-            er.RegistryEntry
-        ] = er.async_entries_for_config_entry(
-            registry=entity_registry, config_entry_id=self._config_entry.entry_id
+        config_entry_entities: List[er.RegistryEntry] = (
+            er.async_entries_for_config_entry(
+                registry=entity_registry, config_entry_id=self._config_entry.entry_id
+            )
         )
         device_tracker_entities: List[er.RegistryEntry] = [
             device_tracker
@@ -740,16 +781,16 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
         menu_options: list[str] = [
-            STEP_TIMERS,
-            STEP_DEVICE_TRACKERS,
-            STEP_DEVICE_CREATE,
-            STEP_LOGGING,
+            Steps.TIMERS,
+            Steps.DEVICE_TRACKERS,
+            Steps.DEVICE_CREATE,
+            Steps.LOGGING,
         ]
         if self.show_advanced_options:
-            menu_options.insert(-1, STEP_ADVANCED_OPTIONS)
+            menu_options.insert(-1, Steps.ADVANCED_OPTIONS)
 
         return self.async_show_menu(
-            step_id=STEP_INIT,
+            step_id=Steps.INIT,
             menu_options=menu_options,
         )
 
@@ -773,9 +814,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             domain=LOGGER_DOMAIN, service=LOGGER_SERVICE_SET_LEVEL
         ):
             return self.async_show_form(
-                step_id=STEP_LOGGING,
+                step_id=Steps.LOGGING,
                 data_schema=await _async_build_schema_with_user_input(
-                    STEP_LOGGING, self._options, logging_mode=True
+                    Steps.LOGGING, self._options, logging_mode=True
                 ),
                 description_placeholders={"logging_mode_warning": ""},
                 errors=self._errors,
@@ -783,9 +824,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             )
 
         return self.async_show_form(
-            step_id=STEP_LOGGING,
+            step_id=Steps.LOGGING,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_LOGGING, self._options, logging_mode=False
+                Steps.LOGGING, self._options, logging_mode=False
             ),
             description_placeholders={
                 "logging_mode_warning": (
@@ -811,9 +852,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_logging()
 
         return self.async_show_form(
-            step_id=STEP_ADVANCED_OPTIONS,
+            step_id=Steps.ADVANCED_OPTIONS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_ADVANCED_OPTIONS, self._options
+                Steps.ADVANCED_OPTIONS, self._options
             ),
             errors=self._errors,
             last_step=False,
@@ -835,9 +876,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_device_trackers()
 
         return self.async_show_form(
-            step_id=STEP_TIMERS,
+            step_id=Steps.TIMERS,
             data_schema=await _async_build_schema_with_user_input(
-                STEP_TIMERS, self._options
+                Steps.TIMERS, self._options
             ),
             errors=self._errors,
             last_step=False,

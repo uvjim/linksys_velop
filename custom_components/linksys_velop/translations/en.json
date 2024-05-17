@@ -16,6 +16,10 @@
             "node_timeout": "Timeout whilst contacting the node."
         },
         "flow_title": "{name}",
+        "progress": {
+            "task_gather_details": "Gathering Mesh details",
+            "task_login": "Checking credentials"
+        },
         "step": {
             "device_trackers": {
                 "data": {
@@ -479,7 +483,7 @@
                 "device": {
                     "description": "The name or identifier of the device to rename",
                     "name": "Device"
-                },          
+                },
                 "mesh": {
                     "description": "The Mesh that the action should be executed on",
                     "name": "Mesh"
@@ -556,7 +560,7 @@
                 },
                 "mesh": {
                     "description": "The Mesh that the action should be executed on",
-                    "name": "Mesh"              
+                    "name": "Mesh"
                 },
                 "node_name": {
                     "description": "The name of the node to reboot",
