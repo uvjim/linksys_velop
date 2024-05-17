@@ -39,6 +39,9 @@ _LOGGER = logging.getLogger(__name__)
 
 def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
     """Get the properties for a device with the given name."""
+    if not device_name:
+        return None
+
     # -- return all properties from the Device object for use --#
     required_properties: List[str] = [
         prop for prop in dir(Device) if not prop.startswith("_")
