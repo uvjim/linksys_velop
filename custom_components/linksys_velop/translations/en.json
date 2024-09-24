@@ -5,6 +5,7 @@
             "already_configured": "Device already configured.",
             "not_found": "Device not found.",
             "not_velop": "Not a Velop device.",
+            "reauth_successful": "Password updated.",
             "single_instance_allowed": "Integration already configured."
         },
         "error": {
@@ -25,8 +26,13 @@
                 "data": {
                     "tracked": "Available devices"
                 },
-                "description": "Select the devices you would like to use for presence tracking",
-                "title": "Linksys Velop"
+                "description": "Select the devices you would like to use for presence tracking"
+            },
+            "reauth_confirm": {
+                "data": {
+                    "password": "Password"
+                },
+                "description": "Please update the password to reauthenticate to the Mesh"
             },
             "timers": {
                 "data": {
@@ -35,16 +41,14 @@
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
-                "description": "Set the various timers for the integration",
-                "title": "Linksys Velop"
+                "description": "Set the various timers for the integration"
             },
             "user": {
                 "data": {
                     "node": "Primary node address",
                     "password": "Password"
                 },
-                "description": "Enter the details to connect to the Linksys Velop mesh",
-                "title": "Linksys Velop"
+                "description": "Enter the details to connect to the Linksys Velop mesh"
             }
         },
         "title": "Linksys Velop"
@@ -319,6 +323,14 @@
             "update": {
                 "name": "Update"
             }
+        }
+    },
+    "exceptions": {
+        "failed_login": {
+            "message": "Failed to login to the mesh."
+        },
+        "intensive_task": {
+            "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
         }
     },
     "issues": {

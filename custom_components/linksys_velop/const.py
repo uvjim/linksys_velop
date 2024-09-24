@@ -2,6 +2,7 @@
 
 # region #-- imports --#
 import uuid
+from enum import StrEnum
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
@@ -17,11 +18,9 @@ from .types import EventSubTypes
 # endregion
 
 DOMAIN: str = "linksys_velop"
-ENTITY_SLUG: str = "Velop"
 
 CONF_ALLOW_MESH_REBOOT: str = "allow_mesh_reboot"
 CONF_API_REQUEST_TIMEOUT: str = "api_request_timeout"
-CONF_DEVICE_UI_MISSING: str = "ui_devices_missing"
 CONF_DEVICE_TRACKERS: str = "tracked"
 CONF_DEVICE_TRACKERS_TO_REMOVE: str = "tracked_to_remove"
 CONF_EVENTS_OPTIONS: str = "events_options"
@@ -38,11 +37,9 @@ CONF_NODE: str = "node"
 CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
 CONF_SELECT_TEMP_UI_DEVICE: str = "select_temp_ui_device"
-CONF_SUBTYPE: str = "subtype"
 CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
 CONF_UI_DEVICES_TO_REMOVE: str = "ui_devices_to_remove"
 CONF_UI_DEVICES: str = "ui_devices"
-CONF_UNSUB_UPDATE_LISTENER: str = "unsub_update_listener"
 
 DEF_ALLOW_MESH_REBOOT: bool = False
 DEF_API_REQUEST_TIMEOUT: int = 10
@@ -73,3 +70,9 @@ SIGNAL_DEVICE_TRACKER_UPDATE: str = f"{DOMAIN}_device_tracker_update"
 SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE: str = f"{DOMAIN}_ui_placeholder_update"
 
 ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
+
+
+class IntensiveTask(StrEnum):
+    """"""
+
+    CHANNEL_SCAN = "Channel Scan"

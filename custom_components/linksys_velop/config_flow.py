@@ -40,7 +40,6 @@ from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_TO_REMOVE,
-    CONF_DEVICE_UI_MISSING,
     CONF_EVENTS_OPTIONS,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
@@ -87,11 +86,12 @@ class Steps(StrEnum):
     FINALISE = auto()
     GATHER_DETAILS = auto()
     INIT = auto()
-    LOGIN = auto()
     LOGGING = auto()
+    LOGIN = auto()
+    REAUTH_CONFIRM = auto()
+    TIMERS = auto()
     UI_DEVICE = auto()
     USER = auto()
-    TIMERS = auto()
 
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -227,6 +227,18 @@ async def _async_build_schema_with_user_input(
                     )
                 }
             )
+    elif step == Steps.REAUTH_CONFIRM:
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
+                ): selector.TextSelector(
+                    config=selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.PASSWORD
+                    )
+                ),
+            }
+        )
     elif step == Steps.TIMERS:
         schema = vol.Schema(
             {
@@ -330,11 +342,7 @@ async def _async_get_devices(mesh: Mesh) -> dict:
 class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the initial installation ConfigFlow."""
 
-    # Paths:
-    # 1. user() --> login --> timers --> device_trackers --> finish
-    # 2. ssdp(discovery_info) --> pick up at path 1
-    # 3. unignore --> discovery_by_st --> pick up at path 2
-
+    reauth_entry: LinksysVelopConfigEntry | None = None
     task_login: asyncio.Task | None = None
     task_gather: asyncio.Task | None = None
     _mesh: Mesh
@@ -493,6 +501,35 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id=Steps.LOGIN,
             progress_action="task_login",
             progress_task=self.task_login,
+        )
+
+    async def async_step_reauth(self, user_input=None) -> data_entry_flow.FlowResult:
+        """"""
+
+        self.reauth_entry = self.hass.config_entries.async_get_entry(
+            self.context["entry_id"]
+        )
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input=None
+    ) -> data_entry_flow.FlowResult:
+        """"""
+
+        if user_input is not None:
+            if self.reauth_entry:
+                _options = dict(self.reauth_entry.options)
+                _options.update(user_input)
+                return self.async_update_reload_and_abort(
+                    self.reauth_entry,
+                    options=_options,
+                )
+
+        return self.async_show_form(
+            step_id=Steps.REAUTH_CONFIRM,
+            data_schema=await _async_build_schema_with_user_input(
+                Steps.REAUTH_CONFIRM, self.reauth_entry.options
+            ),
         )
 
     async def async_step_ssdp(

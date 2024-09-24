@@ -31,6 +31,7 @@ from .const import (
     DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
     ISSUE_MISSING_UI_DEVICE,
+    IntensiveTask,
 )
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
@@ -356,6 +357,14 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 connected_node=self._mesh.connected_node,
                 is_running=result.get("isRunning"),
             )
+            if not ret.is_running:
+                if (
+                    IntensiveTask.CHANNEL_SCAN
+                    in self.config_entry.runtime_data.intensive_running_tasks
+                ):
+                    self.config_entry.runtime_data.intensive_running_tasks.remove(
+                        IntensiveTask.CHANNEL_SCAN
+                    )
         except Exception:
             raise
 

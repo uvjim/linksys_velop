@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import entity_registry as er
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceNotFound
+from homeassistant.exceptions import ConfigEntryAuthFailed, ServiceNotFound
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -61,6 +61,7 @@ from .coordinator import (
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
+from .exceptions import IntensiveTaskRunning
 from .helpers import (
     get_mesh_device_for_config_entry,
     include_serial_logging,
@@ -209,6 +210,15 @@ async def async_setup_entry(
         session=async_get_clientsession(hass=hass),
     )
 
+    # region #-- test auth --#
+    valid_auth: bool = await mesh.async_test_credentials()
+    if not valid_auth:
+        raise ConfigEntryAuthFailed(
+            translation_domain=DOMAIN,
+            translation_key="failed_login",
+        )
+    # endregion
+
     # region #-- setup the coordinators --#
     _LOGGER.debug(log_formatter.format("setting up Mesh for the coordinator"))
     # region #--- mesh coordinator --#
@@ -317,10 +327,16 @@ async def async_setup_entry(
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
             if len(config_entry.runtime_data.intensive_running_tasks) > 0:
-                # TODO: check for long running task and suppress error
-                pass
+                exc: IntensiveTaskRunning = IntensiveTaskRunning(
+                    translation_domain=DOMAIN,
+                    translation_key="intensive_task",
+                    translation_placeholders={
+                        "tasks": config_entry.runtime_data.intensive_running_tasks
+                    },
+                )
+                _LOGGER.warning(exc)
             else:
-                _LOGGER.warning(err)
+                _LOGGER.error(err)
         except MeshException as err:
             _LOGGER.error(err)
 

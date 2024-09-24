@@ -21,6 +21,7 @@ from .const import (
     CONF_ALLOW_MESH_REBOOT,
     DEF_ALLOW_MESH_REBOOT,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
+    IntensiveTask,
 )
 from .entities import (
     EntityContext,
@@ -59,7 +60,7 @@ async def _async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> No
     """"""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    config_entry.runtime_data.intensive_running_tasks.append("Channel Scan")
+    config_entry.runtime_data.intensive_running_tasks.append(IntensiveTask.CHANNEL_SCAN)
     await mesh.async_start_channel_scan()
 
 
