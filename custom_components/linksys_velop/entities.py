@@ -37,8 +37,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 EsaValueType = Callable[[Device | Mesh | Node], dict[str, Any]] | None
-IconValueType = Callable[[Device | Mesh | Node], str] | None
-PicValueType = IconValueType
+PicValueType = Callable[[Device | Mesh | Node], str] | None
 StateValueType = (
     Callable[[Device | Mesh | Node], StateType | bool | date | datetime | Decimal]
     | None
@@ -73,7 +72,6 @@ class EntityDetails:
     entity_type: EntityType
     coordinator_type: CoordinatorTypes = CoordinatorTypes.MESH
     esa_value_func: EsaValueType = None
-    icon_value_func: IconValueType = None
     pic_value_func: PicValueType = None
     state_value_func: StateValueType = None
 
@@ -328,19 +326,6 @@ class LinksysVelopEntity(CoordinatorEntity):
             self._attr_extra_state_attributes = None
 
     @callback
-    def _update_icon_value(self) -> None:
-        """"""
-
-        if self._context_data is None:
-            self._attr_icon = None
-            return
-
-        if self._entity_details.icon_value_func is not None:
-            self._attr_icon = self._entity_details.icon_value_func(self._context_data)
-        else:
-            self._attr_icon = None
-
-    @callback
     def _update_pic_value(self) -> None:
         """"""
 
@@ -358,6 +343,4 @@ class LinksysVelopEntity(CoordinatorEntity):
     def _update_values(self) -> None:
         self._update_attr_value()
         self._update_esa_value()
-        if not self.entity_description.icon:
-            self._update_icon_value()
         self._update_pic_value()

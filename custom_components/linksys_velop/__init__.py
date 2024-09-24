@@ -316,12 +316,13 @@ async def async_setup_entry(
                     )
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
-            pass
-            # TODO: check for long running task and suppress error
-            # TODO: no long running task, log warning
+            if len(config_entry.runtime_data.intensive_running_tasks) > 0:
+                # TODO: check for long running task and suppress error
+                pass
+            else:
+                _LOGGER.warning(err)
         except MeshException as err:
-            pass
-            # TODO: handle unexpected error
+            _LOGGER.error(err)
 
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         scan_interval = config_entry.options.get(

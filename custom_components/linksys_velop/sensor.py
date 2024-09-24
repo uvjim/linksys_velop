@@ -432,11 +432,6 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="backhaul_connection_type",
         ),
         entity_type=EntityType.SECONDARY_NODE,
-        icon_value_func=lambda n: (
-            "mdi:lan-connect"
-            if n.backhaul.get("connection", "").lower() == "wired"
-            else "mdi:wifi"
-        ),
         state_value_func=lambda n: n.backhaul.get("connection", "unknown").lower(),
     ),
     SensorDetails(

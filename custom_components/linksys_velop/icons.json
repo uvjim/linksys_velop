@@ -18,6 +18,12 @@
             "available_storage": {
                 "default": "mdi:nas"
             },
+            "backhaul_connection_type": {
+                "state": {
+                    "wired": "mdi:lan-connect",
+                    "wireless": "mdi:wifi"
+                }
+            },
             "download_bandwidth": {
                 "default": "mdi:cloud-download-outline"
             },
