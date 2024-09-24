@@ -26,7 +26,8 @@
                 "data": {
                     "tracked": "Available devices"
                 },
-                "description": "Select the devices you would like to use for presence tracking"
+                "description": "Select the devices you would like to use for presence tracking",
+                "title": "Linksys Velop: Device Trackers"
             },
             "reauth_confirm": {
                 "data": {
@@ -41,14 +42,16 @@
                     "scan_interval": "Scan interval (in seconds)",
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
-                "description": "Set the various timers for the integration"
+                "description": "Set the various timers for the integration",
+                "title": "Linksys Velop: Timers"
             },
             "user": {
                 "data": {
                     "node": "Primary node address",
                     "password": "Password"
                 },
-                "description": "Enter the details to connect to the Linksys Velop mesh"
+                "description": "Enter the details to connect to the Linksys Velop mesh",
+                "title": "Linksys Velop"
             }
         },
         "title": "Linksys Velop"
@@ -371,21 +374,21 @@
                     "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Advanced Options"
             },
             "device_trackers": {
                 "data": {
                     "tracked": "Available devices"
                 },
                 "description": "Select the devices you would like to use for presence tracking.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Device Trackers"
             },
             "events": {
                 "data": {
                     "events_options": "Available events"
                 },
                 "description": "Select the events that you would like to be notified of.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Events"
             },
             "init": {
                 "menu_options": {
@@ -409,7 +412,7 @@
                     "logging_mode": "The mode setting has no effect if logging for the integration is defined in configuration.yaml"
                 },
                 "description": "Configure logging details and state.{logging_mode_warning}",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Logging"
             },
             "timers": {
                 "data": {
@@ -419,14 +422,14 @@
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "description": "Set the various timers for the integration.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Timers"
             },
             "ui_device": {
                 "data": {
                     "ui_devices": "Available devices"
                 },
                 "description": "Select the devices that you'd like to have created in the UI.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: UI Devices"
             }
         }
     },
