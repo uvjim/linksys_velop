@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from enum import StrEnum
-from typing import List
+from enum import StrEnum, auto
+from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -20,9 +20,9 @@ from homeassistant.components.logger import (
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshBadResponse,
@@ -34,14 +34,14 @@ from pyvelop.exceptions import (
 )
 from pyvelop.mesh import Mesh, Node
 
-from . import async_logging_state
+from . import LinksysVelopConfigEntry, async_logging_state
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
-    CONF_DEVICE_TRACKERS_MISSING,
-    CONF_DEVICE_UI,
+    CONF_DEVICE_TRACKERS_TO_REMOVE,
     CONF_DEVICE_UI_MISSING,
+    CONF_EVENTS_OPTIONS,
     CONF_FLOW_NAME,
     CONF_LOGGING_JNAP_RESPONSE,
     CONF_LOGGING_MODE,
@@ -55,47 +55,49 @@ from .const import (
     CONF_NODE_IMAGES,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
-    CONF_SUBTYPE,
     CONF_TITLE_PLACEHOLDERS,
+    CONF_UI_DEVICES,
+    CONF_UI_DEVICES_TO_REMOVE,
     DEF_ALLOW_MESH_REBOOT,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
+    DEF_EVENTS_OPTIONS,
     DEF_FLOW_NAME,
     DEF_LOGGING_MODE,
     DEF_LOGGING_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
-    DEF_UI_DEVICE_ID,
-    DEVICE_TRACKER_DOMAIN,
+    DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
     ST_IGD,
 )
-from .events import EVENT_TYPE, EventSubType
+
+# from .events import EVENT_TYPE, EventSubType
 from .logger import Logger
+from .types import EventSubTypes
 
 # endregion
 
 
 class Steps(StrEnum):
-    ADVANCED_OPTIONS = "advanced_options"
-    DEVICE_CREATE = "device_ui"
-    DEVICE_TRACKERS = "device_trackers"
-    FINALISE = "finalise"
-    GATHER_DETAILS = "gather_details"
-    INIT = "init"
-    LOGIN = "login"
-    LOGGING = "logging"
-    USER = "user"
-    TIMERS = "timers"
+    ADVANCED_OPTIONS = auto()
+    DEVICE_TRACKERS = auto()
+    EVENTS = auto()
+    FINALISE = auto()
+    GATHER_DETAILS = auto()
+    INIT = auto()
+    LOGIN = auto()
+    LOGGING = auto()
+    UI_DEVICE = auto()
+    USER = auto()
+    TIMERS = auto()
 
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _is_mesh_by_host(
-    hass: HomeAssistant, host: str
-) -> config_entries.ConfigEntry | None:
+def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry | None:
     """Check if the given host is a Mesh."""
     current_entries = hass.config_entries.async_entries(DOMAIN)
     matching_entry = [
@@ -120,82 +122,25 @@ async def _async_build_schema_with_user_input(
     :return: the schema including necessary restrictions, defaults, pre-selections etc.
     """
     schema: vol.Schema = vol.Schema({})
-    if step == Steps.USER:
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_NODE, default=user_input.get(CONF_NODE, "")
-                ): selector.TextSelector(),
-                vol.Required(
-                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                ): selector.TextSelector(
-                    config=selector.TextSelectorConfig(
-                        type=selector.TextSelectorType.PASSWORD
-                    )
-                ),
-            }
-        )
-    elif step == Steps.TIMERS:
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-                    default=user_input.get(
-                        CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-                        DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-                    ),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_CONSIDER_HOME,
-                    default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_API_REQUEST_TIMEOUT,
-                    default=user_input.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    ),
-                ): cv.positive_float,
-            }
-        )
-    elif step == Steps.DEVICE_CREATE:
-        valid_devices = [
-            device
-            for device in user_input.get(CONF_DEVICE_UI, [])
-            if device in kwargs["multi_select_contents"].keys()
-        ]
+    if step == Steps.ADVANCED_OPTIONS:
         schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_DEVICE_UI, default=valid_devices
-                ): selector.SelectSelector(
-                    config=selector.SelectSelectorConfig(
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        multiple=True,
-                        options=[
-                            {"label": label, "value": value}
-                            for value, label in kwargs["multi_select_contents"].items()
-                        ],
-                    )
-                )
+                    CONF_NODE_IMAGES,
+                    default=user_input.get(CONF_NODE_IMAGES, ""),
+                ): selector.TextSelector(),
+                vol.Required(
+                    CONF_SELECT_TEMP_UI_DEVICE,
+                    default=user_input.get(
+                        CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
+                    ),
+                ): selector.BooleanSelector(),
+                vol.Required(
+                    CONF_ALLOW_MESH_REBOOT,
+                    default=user_input.get(
+                        CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
+                    ),
+                ): selector.BooleanSelector(),
             }
         )
     elif step == Steps.DEVICE_TRACKERS:
@@ -216,6 +161,22 @@ async def _async_build_schema_with_user_input(
                             {"label": label, "value": value}
                             for value, label in kwargs["multi_select_contents"].items()
                         ],
+                    )
+                )
+            }
+        )
+    elif step == Steps.EVENTS:
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_EVENTS_OPTIONS,
+                    default=user_input.get(CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS),
+                ): selector.SelectSelector(
+                    config=selector.SelectSelectorConfig(
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                        options=DEF_EVENTS_OPTIONS,
+                        translation_key=CONF_EVENTS_OPTIONS,
                     )
                 )
             }
@@ -266,25 +227,82 @@ async def _async_build_schema_with_user_input(
                     )
                 }
             )
-    elif step == Steps.ADVANCED_OPTIONS:
+    elif step == Steps.TIMERS:
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    default=user_input.get(
+                        CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                        DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    ),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_CONSIDER_HOME,
+                    default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
+                ): selector.NumberSelector(
+                    config=selector.NumberSelectorConfig(
+                        min=0,
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(
+                    CONF_API_REQUEST_TIMEOUT,
+                    default=user_input.get(
+                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                    ),
+                ): cv.positive_float,
+            }
+        )
+    elif step == Steps.UI_DEVICE:
+        valid_devices = [
+            device
+            for device in user_input.get(CONF_UI_DEVICES, [])
+            if device in kwargs["multi_select_contents"].keys()
+        ]
         schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_NODE_IMAGES,
-                    default=user_input.get(CONF_NODE_IMAGES, ""),
+                    CONF_UI_DEVICES, default=valid_devices
+                ): selector.SelectSelector(
+                    config=selector.SelectSelectorConfig(
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        multiple=True,
+                        options=[
+                            {"label": label, "value": value}
+                            for value, label in kwargs["multi_select_contents"].items()
+                        ],
+                    )
+                )
+            }
+        )
+    elif step == Steps.USER:
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NODE, default=user_input.get(CONF_NODE, "")
                 ): selector.TextSelector(),
                 vol.Required(
-                    CONF_SELECT_TEMP_UI_DEVICE,
-                    default=user_input.get(
-                        CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
-                    ),
-                ): selector.BooleanSelector(),
-                vol.Required(
-                    CONF_ALLOW_MESH_REBOOT,
-                    default=user_input.get(
-                        CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
-                    ),
-                ): selector.BooleanSelector(),
+                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
+                ): selector.TextSelector(
+                    config=selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.PASSWORD
+                    )
+                ),
             }
         )
 
@@ -301,7 +319,7 @@ async def _async_get_devices(mesh: Mesh) -> dict:
     """
     ret: dict = {}
 
-    devices: List[Device] = await mesh.async_get_devices()
+    devices: list[Device] = await mesh.async_get_devices()
     for device in devices:
         for adapter in device.network:
             ret[device.unique_id] = f"{device.name} --> {adapter.get('mac')}"
@@ -331,7 +349,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
+        config_entry: LinksysVelopConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
         return LinksysOptionsFlowHandler(config_entry=config_entry)
@@ -503,7 +521,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # This region assumes that the host is unique for the Mesh (it should be but isn't guaranteed)
         # It will match on host and then update the config entry with the serial number, then abort
         update_unique_id: bool = False
-        matching_entry = _is_mesh_by_host(hass=self.hass, host=_host)
+        matching_entry: LinksysVelopConfigEntry = _is_mesh_by_host(
+            hass=self.hass, host=_host
+        )
         if matching_entry:
             if not matching_entry.unique_id:  # no unique_id even though the host exists
                 _LOGGER.debug(
@@ -514,18 +534,23 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug(
                     self._log_formatter.format("assuming the primary node has changed")
                 )
-                self.hass.bus.async_fire(
-                    event_type=EVENT_TYPE,
-                    event_data={
+                update_unique_id = True
+
+                if EventSubTypes.NEW_PRIMARY_NODE in matching_entry.options.get(
+                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+                ):
+                    event_properties: dict[str, Any] = {
                         "host": _host,
                         "manufacturer": _manufacturer,
                         "model": _model,
                         "description": _model_description,
                         "serial": _serial,
-                        CONF_SUBTYPE: EventSubType.NEW_PRIMARY_NODE,
-                    },
-                )
-                update_unique_id = True
+                    }
+                    async_dispatcher_send(
+                        self.hass,
+                        f"{DOMAIN}_{EventSubTypes.NEW_PRIMARY_NODE.value}",
+                        event_properties,
+                    )
 
         if update_unique_id:
             _LOGGER.debug(self._log_formatter.format("updating unique_id"))
@@ -564,7 +589,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # region #-- get the unique_id --#
             unique_id: str | None = None
             if self._mesh:
-                nodes: List[Node] = self._mesh.nodes
+                nodes: list[Node] = self._mesh.nodes
                 for node in nodes:
                     if node.type == "primary":
                         unique_id = node.serial
@@ -610,7 +635,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # endregion
 
         # region #-- discover the necessary devices --#
-        devices: List[SsdpServiceInfo] = await ssdp.async_get_discovery_info_by_st(
+        devices: list[SsdpServiceInfo] = await ssdp.async_get_discovery_info_by_st(
             self.hass,
             ST_IGD,
         )
@@ -653,37 +678,31 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options from the configuration of the integration."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
+    def __init__(self, config_entry: LinksysVelopConfigEntry):
         """Intialise."""
         super().__init__()
-        self._config_entry: config_entries.ConfigEntry = config_entry
+        self._config_entry: LinksysVelopConfigEntry = config_entry
         self._devices: dict | None = None
         self._errors: dict = {}
-        self._options: dict = dict(config_entry.options)
+        self._options: dict = dict(self._config_entry.options)
         self._log_formatter: Logger = Logger()
 
-    async def async_step_device_ui(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Manage the devices that should be created in the UI."""
+    async def async_step_advanced_options(
+        self, user_input=None
+    ) -> data_entry_flow.FlowResult:
+        """Manage the advanced options for the configuration."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
+            if user_input.get(CONF_NODE_IMAGES) == "*":
+                user_input[CONF_NODE_IMAGES] = ""
             self._options.update(user_input)
-            if self.show_advanced_options:
-                return await self.async_step_advanced_options()
             return await self.async_step_logging()
 
-        if self._devices is None:
-            mesh = Mesh(
-                node=self._config_entry.options[CONF_NODE],
-                password=self._config_entry.options[CONF_PASSWORD],
-                session=async_get_clientsession(hass=self.hass),
-            )
-            self._devices = await _async_get_devices(mesh=mesh)
-
         return self.async_show_form(
-            step_id=Steps.DEVICE_CREATE,
+            step_id=Steps.ADVANCED_OPTIONS,
             data_schema=await _async_build_schema_with_user_input(
-                Steps.DEVICE_CREATE, self._options, multi_select_contents=self._devices
+                Steps.ADVANCED_OPTIONS, self._options
             ),
             errors=self._errors,
             last_step=False,
@@ -697,7 +716,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self._options.update(user_input)
-            return await self.async_step_device_ui()
+            return await self.async_step_ui_device()
 
         if self._devices is None:
             mesh = Mesh(
@@ -718,56 +737,75 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             last_step=False,
         )
 
+    async def async_step_events(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Event options."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            self._options.update(user_input)
+            if self.show_advanced_options:
+                return await self.async_step_advanced_options()
+            return await self.async_step_logging()
+
+        return self.async_show_form(
+            step_id=Steps.EVENTS,
+            data_schema=await _async_build_schema_with_user_input(
+                Steps.EVENTS, self._options
+            ),
+            errors=self._errors,
+            last_step=False,
+        )
+
     async def async_step_finalise(self, user_input=None) -> data_entry_flow.FlowResult:
         """Run the final pieces of the flow."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
-        # region #-- remove any device trackers that are no longer needed --#
-        entity_registry: er.EntityRegistry = er.async_get(hass=self.hass)
-        config_entry_entities: List[er.RegistryEntry] = (
-            er.async_entries_for_config_entry(
-                registry=entity_registry, config_entry_id=self._config_entry.entry_id
-            )
+        # region #-- set device trackers no longer required to be removed --#
+        prev_trackers: set[str] = set(
+            self._config_entry.options.get(CONF_DEVICE_TRACKERS, [])
         )
-        device_tracker_entities: List[er.RegistryEntry] = [
-            device_tracker
-            for device_tracker in config_entry_entities
-            if device_tracker.unique_id.startswith(
-                f"{self._config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::"
-            )
-        ]
-
-        self._options[CONF_DEVICE_TRACKERS_MISSING] = [
-            device_tracker.unique_id.split("::")[-1]
-            for device_tracker in device_tracker_entities
-            if device_tracker.unique_id.split("::")[-1]
-            not in self._options.get(CONF_DEVICE_TRACKERS)
-        ]
+        self._options[CONF_DEVICE_TRACKERS_TO_REMOVE] = list(
+            prev_trackers.difference(set(self._options.get(CONF_DEVICE_TRACKERS, [])))
+        )
         # endregion
 
-        # region #-- remove ui devices if no longer needed --#
+        # region #-- set ui devices to remove if no longer needed --#
         prev_ui_devices: set[str] = set(
-            self._config_entry.options.get(CONF_DEVICE_UI, [])
+            self._config_entry.options.get(CONF_UI_DEVICES, [])
         )
-        prev_ui_devices.discard(DEF_UI_DEVICE_ID)
-        new_ui_devices: set[str] = set(self._options.get(CONF_DEVICE_UI, []))
-        self._options[CONF_DEVICE_UI_MISSING] = list(
-            prev_ui_devices.difference(new_ui_devices)
+        prev_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
+        self._options[CONF_UI_DEVICES_TO_REMOVE] = list(
+            prev_ui_devices.difference(set(self._options.get(CONF_UI_DEVICES, [])))
         )
+        if not self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
+            self._options[CONF_UI_DEVICES_TO_REMOVE].append(
+                DEF_UI_PLACEHOLDER_DEVICE_ID
+            )
         # endregion
 
         # region #-- add the placeholder ui device if needed --#
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            if DEF_UI_DEVICE_ID not in self._options.get(CONF_DEVICE_UI, []):
-                if self._options.get(CONF_DEVICE_UI) is not None:
-                    self._options[CONF_DEVICE_UI].insert(0, DEF_UI_DEVICE_ID)
+            if DEF_UI_PLACEHOLDER_DEVICE_ID not in self._options.get(
+                CONF_UI_DEVICES, []
+            ):
+                if self._options.get(CONF_UI_DEVICES) is not None:
+                    self._options[CONF_UI_DEVICES].append(DEF_UI_PLACEHOLDER_DEVICE_ID)
                 else:
-                    self._options[CONF_DEVICE_UI] = [DEF_UI_DEVICE_ID]
+                    self._options[CONF_UI_DEVICES] = [DEF_UI_PLACEHOLDER_DEVICE_ID]
+        else:
+            try:
+                self._options.get(CONF_UI_DEVICES, []).remove(
+                    DEF_UI_PLACEHOLDER_DEVICE_ID
+                )
+            except ValueError:
+                pass
         # endregion
 
-        # region #-- remove up the old logging options --#
+        # region #-- remove up the old options --#
         self._options.pop(CONF_LOGGING_JNAP_RESPONSE, None)
         self._options.pop(CONF_LOGGING_SERIAL, None)
+        self._options.pop("ui_devices_missing", None)
+        self._options.pop("tracked_missing", None)
         # endregion
 
         return self.async_create_entry(title="", data=self._options)
@@ -783,10 +821,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         menu_options: list[str] = [
             Steps.TIMERS,
             Steps.DEVICE_TRACKERS,
-            Steps.DEVICE_CREATE,
+            Steps.UI_DEVICE,
             Steps.LOGGING,
         ]
         if self.show_advanced_options:
+            menu_options.insert(3, Steps.EVENTS)
             menu_options.insert(-1, Steps.ADVANCED_OPTIONS)
 
         return self.async_show_menu(
@@ -839,27 +878,6 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             last_step=False,
         )
 
-    async def async_step_advanced_options(
-        self, user_input=None
-    ) -> data_entry_flow.FlowResult:
-        """Manage the advanced options for the configuration."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-
-        if user_input is not None:
-            if user_input.get(CONF_NODE_IMAGES) == "*":
-                user_input[CONF_NODE_IMAGES] = ""
-            self._options.update(user_input)
-            return await self.async_step_logging()
-
-        return self.async_show_form(
-            step_id=Steps.ADVANCED_OPTIONS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.ADVANCED_OPTIONS, self._options
-            ),
-            errors=self._errors,
-            last_step=False,
-        )
-
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:
         """Manage the timer options available for the integration."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
@@ -879,6 +897,33 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             step_id=Steps.TIMERS,
             data_schema=await _async_build_schema_with_user_input(
                 Steps.TIMERS, self._options
+            ),
+            errors=self._errors,
+            last_step=False,
+        )
+
+    async def async_step_ui_device(self, user_input=None) -> data_entry_flow.FlowResult:
+        """Manage the devices that should be created in the UI."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            self._options.update(user_input)
+            if self.show_advanced_options:
+                return await self.async_step_events()
+            return await self.async_step_logging()
+
+        if self._devices is None:
+            mesh = Mesh(
+                node=self._config_entry.options[CONF_NODE],
+                password=self._config_entry.options[CONF_PASSWORD],
+                session=async_get_clientsession(hass=self.hass),
+            )
+            self._devices = await _async_get_devices(mesh=mesh)
+
+        return self.async_show_form(
+            step_id=Steps.UI_DEVICE,
+            data_schema=await _async_build_schema_with_user_input(
+                Steps.UI_DEVICE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
             last_step=False,

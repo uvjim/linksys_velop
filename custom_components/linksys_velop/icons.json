@@ -1,0 +1,58 @@
+{
+    "entity": {
+        "button": {
+            "channel_scan": {
+                "default": "mdi:wifi-sync"
+            },
+            "check_for_updates": {
+                "default": "mdi:update"
+            },
+            "delete": {
+                "default": "mdi:delete"
+            },
+            "speedtest": {
+                "default": "mdi:refresh"
+            }
+        },
+        "sensor": {
+            "available_storage": {
+                "default": "mdi:nas"
+            },
+            "download_bandwidth": {
+                "default": "mdi:cloud-download-outline"
+            },
+            "parent_name": {
+                "default": "mdi:family-tree"
+            },
+            "serial": {
+                "default": "mdi:barcode"
+            },
+            "speedtest_latency": {
+                "default": "mdi:timer-sync-outline"
+            },
+            "speedtest_result": {
+                "default": "mdi:keyboard-return"
+            },
+            "upload_bandwidth": {
+                "default": "mdi:cloud-upload-outline"
+            },
+            "wan_ip": {
+                "default": "mdi:ip-network-outline"
+            }
+        },
+        "switch": {
+            "guest_wifi": {
+                "state": {
+                    "off": "mdi:wifi-off",
+                    "on": "mdi:wifi"
+                }
+            },
+            "parental_control": {
+                "state": {
+                    "off": "mdi:account-off",
+                    "on": "mdi:account"
+                }
+            }
+        }
+    }
+}

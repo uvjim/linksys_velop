@@ -6,15 +6,15 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, List
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Device, Mesh, Node
 
-from .const import CONF_COORDINATOR, DOMAIN
+from .const import DOMAIN
+from .coordinator import LinksysVelopUpdateCoordinator
 from .helpers import dr_device_is_mesh
+from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
 
@@ -30,12 +30,12 @@ ATTR_REDACT: Iterable = {
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, config_entry: ConfigEntry
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> dict[str, Any]:
     """Diagnostics for the config entry."""
-    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][
-        CONF_COORDINATOR
-    ]
+    coordinator: LinksysVelopUpdateCoordinator = (
+        config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)
+    )
     mesh: Mesh = coordinator.data
     mesh_attributes: Dict = getattr(mesh, "_mesh_attributes")
 
@@ -87,7 +87,7 @@ async def async_get_config_entry_diagnostics(
 
 
 async def async_get_device_diagnostics(
-    hass: HomeAssistant, config_entry: ConfigEntry, device: DeviceEntry
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry, device: DeviceEntry
 ):
     """Diagnostics for a specific device.
 
@@ -96,9 +96,9 @@ async def async_get_device_diagnostics(
     if dr_device_is_mesh(device=device):
         return await async_get_config_entry_diagnostics(hass, config_entry)
 
-    coordinator: DataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id][
-        CONF_COORDINATOR
-    ]
+    coordinator: LinksysVelopUpdateCoordinator = (
+        config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)
+    )
     mesh: Mesh = coordinator.data
 
     ret: Dict[str, Any] = {

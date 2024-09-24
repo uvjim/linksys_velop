@@ -1,199 +1,120 @@
-"""Select entities."""
+"""Select entities for Linksys Velop."""
 
 # region #-- imports --#
-from __future__ import annotations
-
-import dataclasses
 import logging
-from abc import ABC
-from typing import Any, Callable, List, Mapping
+from dataclasses import dataclass
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.const import DEF_EMPTY_NAME
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
-from . import LinksysVelopMeshEntity
-from .const import (
-    CONF_COORDINATOR,
-    CONF_SELECT_TEMP_UI_DEVICE,
-    DEF_UI_DEVICE_ID,
-    DOMAIN,
-    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
-)
+from .const import SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE
+from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
+from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _get_device_details(mesh: Mesh, device_name: str) -> dict | None:
-    """Get the properties for a device with the given name."""
-    if not device_name:
-        return None
+@dataclass
+class SelectDetails(EntityDetails):
+    description: SelectEntityDescription
 
-    # -- return all properties from the Device object for use --#
-    required_properties: List[str] = [
-        prop for prop in dir(Device) if not prop.startswith("_")
+
+ENTITY_DETAILS: list[SelectDetails] = []
+
+
+def _build_options(mesh: Mesh) -> list[str]:
+    """"""
+
+    return [
+        (
+            d.name
+            if d.name != DEF_EMPTY_NAME
+            else f"{d.name} ({next(iter(d.connected_adapters), {}).get('ip') if d.status else d.unique_id})"
+        )
+        for d in mesh.devices
     ]
-
-    ret = None
-    dev: Device
-    match_on: str = (
-        device_name
-        if not device_name.startswith(f"{DEF_EMPTY_NAME} (")
-        else device_name.split("(")[1].strip(")")
-    )
-    for dev in mesh.devices:
-        match_against: List[str] = [dev.name.lower(), dev.unique_id]
-        if device_name.startswith(f"{DEF_EMPTY_NAME} (") and dev.status:
-            match_against.append(dev.connected_adapters[0].get("ip"))
-        if device_name and (match_on.lower() in match_against):
-            ret = {p: getattr(dev, p, None) or None for p in required_properties}
-            break
-
-    return ret
-
-
-# region #-- select entity descriptions --#
-@dataclasses.dataclass(frozen=True)
-class AdditionalSelectDescription:
-    """Represent the additional properties for the select description."""
-
-    custom_options: Callable[[Any], list[str]] | list[str] = dataclasses.field(
-        default_factory=list
-    )
-    extra_attributes_args: dict | None = dataclasses.field(default_factory=dict)
-    extra_attributes: Callable[[Any], dict] | None = None
-
-
-# endregion
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: LinksysVelopConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Create the entities."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
+    """Initialize a sensor."""
 
-    selects: List[LinksysVelopMeshSelect] = [
-        LinksysVelopMeshSelect(
-            additional_description=AdditionalSelectDescription(
-                custom_options=lambda m: (
-                    [
-                        (
-                            device.name
-                            if device.name != DEF_EMPTY_NAME
-                            else f"{device.name} ({device.connected_adapters[0].get('ip') if device.status else device.unique_id})"
-                        )
-                        for device in m.devices
-                    ]
-                ),
-                extra_attributes=_get_device_details,
-            ),
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=SelectEntityDescription(
-                entity_registry_enabled_default=False,
-                key="devices",
-                name="Devices",
-                translation_key="mesh_devices",
-            ),
-        )
-    ]
+    entities_to_add: list[LinksysVelopSelect] = []
 
-    async_add_entities(selects)
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
+    entities_to_add = [LinksysVelopSelect(**entity) for entity in entities]
+    entities_to_add.extend(
+        [
+            LinksysVelopSelectPlaceholderEntity(**entity)
+            for entity in build_entities(
+                [
+                    SelectDetails(
+                        description=SelectEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="",
+                            name="Devices",
+                            options=_build_options(
+                                config_entry.runtime_data.coordinators.get(
+                                    CoordinatorTypes.MESH
+                                ).data
+                            ),
+                            translation_key="mesh_devices",
+                        ),
+                        entity_type=EntityType.PLACEHOLDER_DEVICE,
+                    )
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        ]
+    )
+
+    if len(entities_to_add) > 0:
+        async_add_entities(entities_to_add)
 
 
-class LinksysVelopMeshSelect(LinksysVelopMeshEntity, SelectEntity, ABC):
-    """Representation for a select entity in the Mesh."""
+class LinksysVelopSelect(LinksysVelopEntity, SelectEntity):
+    """Linksys Velop sensor."""
 
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry,
-        description: SelectEntityDescription,
-        additional_description: AdditionalSelectDescription | None = None,
-    ) -> None:
-        """Initialise."""
-        self._additional_description: AdditionalSelectDescription | None = (
-            additional_description
-        )
-        self._attr_current_option = None
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self.entity_domain = ENTITY_DOMAIN
+    _attr_current_option: str | None = None
 
-        super().__init__(
-            config_entry=config_entry, coordinator=coordinator, description=description
-        )
 
-    async def _reset_option(self, device_id: str) -> None:
-        """Reset the select entity."""
-        if device_id == DEF_UI_DEVICE_ID:
-            self._attr_current_option = None
-            self.async_schedule_update_ha_state()
+class LinksysVelopSelectPlaceholderEntity(LinksysVelopSelect):
+    """Linksys Velop sensor."""
 
     async def async_select_option(self, option: str) -> None:
-        """Select the option."""
+        """"""
+
         self._attr_current_option = option
-        if self._config.options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            device_details = _get_device_details(mesh=self._mesh, device_name=option)
-            if device_details is not None:
-                async_dispatcher_send(
-                    self.hass,
-                    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
-                    device_details.get("unique_id"),
-                )
+        async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, option)
+        await self._config_entry.runtime_data.coordinators.get(
+            CoordinatorTypes.MESH
+        ).async_refresh()
 
-    async def async_added_to_hass(self) -> None:
-        """Register for callbacks and set initial value."""
-        await super().async_added_to_hass()
-        self.async_on_remove(
-            async_dispatcher_connect(
-                hass=self.hass,
-                signal=SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
-                target=self._reset_option,
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+
+        self._attr_options = _build_options(
+            self._config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+        )
+        if self.current_option not in self._attr_options:
+            self._attr_current_option = None
+            async_dispatcher_send(
+                self.hass,
+                SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
+                self._attr_current_option,
             )
-        )
 
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Additional attributes."""
-        if (
-            self._additional_description.extra_attributes
-            and isinstance(self._additional_description.extra_attributes, Callable)
-            and not self._config.options.get(CONF_SELECT_TEMP_UI_DEVICE)
-        ):
-            ea_args: dict
-            if self._additional_description.extra_attributes_args:
-                ea_args = self._additional_description.extra_attributes_args.copy()
-            else:
-                ea_args = {}
-            ea_args["mesh"] = self._mesh
-            ea_args["device_name"] = self.current_option
-            return self._additional_description.extra_attributes(**ea_args)
-
-        return None
-
-    @property
-    def options(self) -> list[str]:
-        """Build the options for the select."""
-        if isinstance(self._additional_description.custom_options, Callable):
-            return self._additional_description.custom_options(self._mesh)
-
-        return (
-            self._additional_description.custom_options
-            or self.entity_description.options
-        )
+        super()._handle_coordinator_update()

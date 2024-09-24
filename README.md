@@ -340,7 +340,7 @@ so paramters are described in the Home Assistant Services page.
   for a device.
 * Delete Device - delete a device from the Mesh device list.
 * Execute Speedtest &ast;^ - carry out a Speedtest from the Primary node.
-* Reboot Node - reboot the given node.
+* Reboot Node ^ - reboot the given node.
 * Rename Device - rename the given device in the Mesh device list.
 * Set Device Parental Controls - set the times a device is blocked from using
   the Internet.

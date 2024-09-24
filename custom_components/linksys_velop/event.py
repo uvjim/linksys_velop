@@ -1,0 +1,155 @@
+"""Event entities for the Linksys Velop."""
+
+# region #-- imports --#
+import logging
+from dataclasses import dataclass
+from enum import StrEnum, auto
+from typing import Any
+
+from homeassistant.components.event import DOMAIN as ENTITY_DOMAIN
+from homeassistant.components.event import EventEntity, EventEntityDescription
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.device import Device
+from pyvelop.node import Node
+
+from .const import DOMAIN
+from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
+from .helpers import get_mesh_device_for_config_entry
+from .types import EventSubTypes, LinksysVelopConfigEntry
+
+# endregion
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EventDetails(EntityDetails):
+    description: EventEntityDescription
+
+
+ENTITY_DETAILS: list[EventDetails] = [
+    EventDetails(
+        description=EventEntityDescription(
+            entity_category=EntityCategory.DIAGNOSTIC,
+            event_types=[ev.value for ev in EventSubTypes],
+            key="",
+            name="Events",
+            translation_key="mesh_events",
+        ),
+        entity_type=EntityType.MESH,
+    ),
+]
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialize a sensor."""
+
+    entities_to_add: list[LinksysVelopEventEntity] = []
+
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
+    entities_to_add = [LinksysVelopEventEntity(**entity) for entity in entities]
+
+    if len(entities_to_add) > 0:
+        async_add_entities(entities_to_add)
+
+
+def _build_event_properties(
+    properties: list[str], obj: Device | Node
+) -> dict[str, Any]:
+    """"""
+
+    return {prop: getattr(obj, prop, None) for prop in properties}
+
+
+class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
+    """"""
+
+    def _fire(self, event_subtype: str, event_attributes: dict[str, Any]) -> None:
+        """"""
+        mesh_details: DeviceEntry = get_mesh_device_for_config_entry(
+            self.hass, self._config_entry
+        )
+        self.hass.bus.async_fire(
+            f"{DOMAIN}_event",
+            {
+                "mesh_device_id": mesh_details.id,
+                "subtype": event_subtype,
+                **event_attributes,
+            },
+        )
+
+    async def _async_process_event_new_device_found(self, device: Device) -> None:
+        """"""
+
+        event_properties: list[str] = [
+            "connected_adapters",
+            "description",
+            "manufacturer",
+            "model",
+            "name",
+            "operating_system",
+            "parent_name",
+            "serial",
+            "status",
+            "unique_id",
+        ]
+
+        event_attributes: dict[str, Any] = _build_event_properties(
+            event_properties, device
+        )
+        self._trigger_event(EventSubTypes.NEW_DEVICE_FOUND.value, event_attributes)
+        self.async_write_ha_state()
+        # self._fire("new_device", event_attributes)
+
+    async def _async_process_event_new_node_found(self, node: Node) -> None:
+        """"""
+
+        event_properties: list[str] = [
+            "backhaul",
+            "connected_adapters",
+            "model",
+            "name",
+            "parent_name",
+            "serial",
+            "status",
+            "unique_id",
+        ]
+
+        event_attributes: dict[str, Any] = _build_event_properties(
+            event_properties, node
+        )
+        self._trigger_event(EventSubTypes.NEW_NODE_FOUND.value, event_attributes)
+        self.async_write_ha_state()
+        # self._fire("new_device", event_attributes)
+
+    async def _async_process_event_new_primary_node(
+        self, details: dict[str, Any]
+    ) -> None:
+        """"""
+
+        self._trigger_event(EventSubTypes.NEW_PRIMARY_NODE.value, details)
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        for event in self.event_types:
+            func_name: str = f"_async_process_event_{event}"
+            if not hasattr(self, func_name):
+                _LOGGER.warning("No event processor for event %s", func_name)
+                continue
+
+            self.async_on_remove(
+                async_dispatcher_connect(
+                    self.hass,
+                    f"{DOMAIN}_{event}",
+                    getattr(self, func_name),
+                )
+            )

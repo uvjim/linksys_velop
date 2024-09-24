@@ -150,6 +150,18 @@
                 "name": "Start Speedtest"
             }
         },
+        "event": {
+            "mesh_events": {
+                "name": "Mesh Events",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "new_device_found": "New device found"
+                        }
+                    }
+                }
+            }
+        },
         "select": {
             "mesh_devices": {
                 "name": "Devices"
@@ -327,7 +339,7 @@
                 "step": {
                     "confirm_removal": {
                         "title": "Remove the device",
-                        "description": "{device_name} is no longer on the Mesh or it's unique ID has changed. Click submit to remove the device from Home Assistant."
+                        "description": "{device_name} is no longer on the Mesh or it's unique ID has changed. Click submit to remove the UI device from Home Assistant."
                     }
                 }
             }
@@ -349,13 +361,6 @@
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
                 "title": "Linksys Velop"
             },
-            "device_ui": {
-                "data": {
-                    "ui_devices": "Available devices"
-                },
-                "description": "Select the devices that you'd like to have created in the UI.",
-                "title": "Linksys Velop"
-            },
             "device_trackers": {
                 "data": {
                     "tracked": "Available devices"
@@ -363,13 +368,21 @@
                 "description": "Select the devices you would like to use for presence tracking.",
                 "title": "Linksys Velop"
             },
+            "events": {
+                "data": {
+                    "events_options": "Available events"
+                },
+                "description": "Select the events that you would like to be notified of.",
+                "title": "Linksys Velop"
+            },
             "init": {
                 "menu_options": {
                     "advanced_options": "Advanced Options",
-                    "device_ui": "UI Devices",
                     "device_trackers": "Device Trackers",
+                    "events": "Events",
                     "logging": "Logging",
-                    "timers": "Timers"
+                    "timers": "Timers",
+                    "ui_device": "UI Devices"
                 },
                 "title": "Linksys Velop"
             },
@@ -395,10 +408,24 @@
                 },
                 "description": "Set the various timers for the integration.",
                 "title": "Linksys Velop"
+            },
+            "ui_device": {
+                "data": {
+                    "ui_devices": "Available devices"
+                },
+                "description": "Select the devices that you'd like to have created in the UI.",
+                "title": "Linksys Velop"
             }
         }
     },
     "selector": {
+        "events_options": {
+            "options": {
+                "new_device_found": "New device found on th mesh",
+                "new_node_found": "New node added to the mesh",
+                "new_primary_node": "New primary node detected"
+            }
+        },
         "logging_options": {
             "options": {
                 "include_serial": "Include serial number",
