@@ -24,7 +24,6 @@ class EventSubTypes(StrEnum):
 
     NEW_DEVICE_FOUND = auto()
     NEW_NODE_FOUND = auto()
-    NEW_PRIMARY_NODE = auto()
 
 
 @dataclass

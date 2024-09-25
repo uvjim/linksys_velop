@@ -3,13 +3,11 @@
 # region #-- imports --#
 import logging
 from dataclasses import dataclass
-from enum import StrEnum, auto
 from typing import Any
 
 from homeassistant.components.event import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.event import EventEntity, EventEntityDescription
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -18,7 +16,6 @@ from pyvelop.node import Node
 
 from .const import DOMAIN
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
-from .helpers import get_mesh_device_for_config_entry
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -36,6 +33,7 @@ ENTITY_DETAILS: list[EventDetails] = [
         description=EventEntityDescription(
             entity_category=EntityCategory.DIAGNOSTIC,
             event_types=[ev.value for ev in EventSubTypes],
+            has_entity_name=True,
             key="",
             name="Events",
             translation_key="mesh_events",
@@ -72,20 +70,6 @@ def _build_event_properties(
 class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
     """"""
 
-    def _fire(self, event_subtype: str, event_attributes: dict[str, Any]) -> None:
-        """"""
-        mesh_details: DeviceEntry = get_mesh_device_for_config_entry(
-            self.hass, self._config_entry
-        )
-        self.hass.bus.async_fire(
-            f"{DOMAIN}_event",
-            {
-                "mesh_device_id": mesh_details.id,
-                "subtype": event_subtype,
-                **event_attributes,
-            },
-        )
-
     async def _async_process_event_new_device_found(self, device: Device) -> None:
         """"""
 
@@ -107,7 +91,6 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         )
         self._trigger_event(EventSubTypes.NEW_DEVICE_FOUND.value, event_attributes)
         self.async_write_ha_state()
-        # self._fire("new_device", event_attributes)
 
     async def _async_process_event_new_node_found(self, node: Node) -> None:
         """"""
@@ -127,15 +110,6 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
             event_properties, node
         )
         self._trigger_event(EventSubTypes.NEW_NODE_FOUND.value, event_attributes)
-        self.async_write_ha_state()
-        # self._fire("new_device", event_attributes)
-
-    async def _async_process_event_new_primary_node(
-        self, details: dict[str, Any]
-    ) -> None:
-        """"""
-
-        self._trigger_event(EventSubTypes.NEW_PRIMARY_NODE.value, details)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
