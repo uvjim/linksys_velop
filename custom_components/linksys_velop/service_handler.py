@@ -59,13 +59,6 @@ class LinksysVelopServiceHandler:
     """Define and action serice calls."""
 
     SERVICES = {
-        "check_updates": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                }
-            )
-        },
         "delete_device": {
             "schema": vol.Schema(
                 {
@@ -113,13 +106,6 @@ class LinksysVelopServiceHandler:
                     vol.Required("mesh"): str,
                     vol.Required("device"): str,
                     vol.Required("new_name"): str,
-                }
-            )
-        },
-        "start_speedtest": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
                 }
             )
         },
@@ -216,25 +202,25 @@ class LinksysVelopServiceHandler:
         for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
-    @deprectated_service(solution="Use the button available on the mesh device.")
-    async def check_updates(
-        self, config_entry: LinksysVelopConfigEntry, **kwargs
-    ) -> None:
-        """Instruct the mesh to check for updates.
+    # @deprectated_service(solution="Use the button available on the mesh device.")
+    # async def check_updates(
+    #     self, config_entry: LinksysVelopConfigEntry, **kwargs
+    # ) -> None:
+    #     """Instruct the mesh to check for updates.
 
-        The update check could be a long-running task so a signal is also sent to listeners to update the status more
-        frequently.  This allows a more reactive UI but also paves the way for status messages later.
+    #     The update check could be a long-running task so a signal is also sent to listeners to update the status more
+    #     frequently.  This allows a more reactive UI but also paves the way for status messages later.
 
-        :return: None
-        """
-        _LOGGER.debug(self._log_formatter.format("entered"))
+    #     :return: None
+    #     """
+    #     _LOGGER.debug(self._log_formatter.format("entered"))
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
-        await _mesh.async_check_for_updates()
+    #     _mesh: Mesh = config_entry.runtime_data.coordinators.get(
+    #         CoordinatorTypes.MESH
+    #     ).data
+    #     await _mesh.async_check_for_updates()
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+    #     _LOGGER.debug(self._log_formatter.format("exited"))
 
     async def delete_device(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
@@ -394,25 +380,25 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    @deprectated_service(solution="Use the button available on the mesh device.")
-    async def start_speedtest(
-        self, config_entry: LinksysVelopConfigEntry, **kwargs
-    ) -> None:
-        """Start a Speedtest on the mesh.
+    # @deprectated_service(solution="Use the button available on the mesh device.")
+    # async def start_speedtest(
+    #     self, config_entry: LinksysVelopConfigEntry, **kwargs
+    # ) -> None:
+    #     """Start a Speedtest on the mesh.
 
-        The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
-        frequently.  This allows seeing the stages of the test in the UI.
+    #     The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
+    #     frequently.  This allows seeing the stages of the test in the UI.
 
-        :return:None
-        """
-        _LOGGER.debug(self._log_formatter.format("entered"))
+    #     :return:None
+    #     """
+    #     _LOGGER.debug(self._log_formatter.format("entered"))
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.SPEEDTEST
-        )._mesh
-        await _mesh.async_start_speedtest()
-        await config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.SPEEDTEST
-        ).async_refresh()
+    #     _mesh: Mesh = config_entry.runtime_data.coordinators.get(
+    #         CoordinatorTypes.SPEEDTEST
+    #     )._mesh
+    #     await _mesh.async_start_speedtest()
+    #     await config_entry.runtime_data.coordinators.get(
+    #         CoordinatorTypes.SPEEDTEST
+    #     ).async_refresh()
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+    #     _LOGGER.debug(self._log_formatter.format("exited"))
