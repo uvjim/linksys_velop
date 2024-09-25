@@ -399,10 +399,16 @@ trigger:
   - platform: state
     entity_id:
       - event.mesh_events
-    attribute: event_type
+    attribute: unique_id
     id: New Device
 condition: []
 action:
+  - condition: not
+    conditions:
+      - condition: state
+        entity_id: event.mesh_events
+        attribute: unique_id
+        state: ""
   - action: persistent_notification.create
     metadata: {}
     data:
