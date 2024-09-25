@@ -33,7 +33,8 @@
                 "data": {
                     "password": "Password"
                 },
-                "description": "Please update the password to reauthenticate to the Mesh"
+                "description": "Please update the password to reauthenticate to the Mesh",
+                "title":"Linksys Velop: Reauth"
             },
             "timers": {
                 "data": {
@@ -55,14 +56,6 @@
             }
         },
         "title": "Linksys Velop"
-    },
-    "device_automation": {
-        "trigger_type": {
-            "logging_stopped": "Logging stopped",
-            "new_device": "New device found",
-            "new_node": "New node found",
-            "new_primary_node": "Primary node changed"
-        }
     },
     "entity": {
         "binary_sensor": {
@@ -159,11 +152,12 @@
         },
         "event": {
             "mesh_events": {
-                "name": "Mesh Events",
+                "name": "Events",
                 "state_attributes": {
                     "event_type": {
                         "state": {
-                            "new_device_found": "New device found"
+                            "new_device_found": "New device found",
+                            "new_node_found": "New node found"
                         }
                     }
                 }
@@ -436,7 +430,7 @@
     "selector": {
         "events_options": {
             "options": {
-                "new_device_found": "New device found on th mesh",
+                "new_device_found": "New device found on the mesh",
                 "new_node_found": "New node added to the mesh",
                 "new_primary_node": "New primary node detected"
             }
