@@ -15,16 +15,18 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.issue_registry import IssueSeverity
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshNeedsGatherDetails
+from pyvelop.exceptions import MeshNeedsGatherDetails, MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
 from .const import (
+    CONF_API_REQUEST_TIMEOUT,
     CONF_EVENTS_OPTIONS,
     CONF_UI_DEVICES,
+    DEF_API_REQUEST_TIMEOUT,
     DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
@@ -33,6 +35,9 @@ from .const import (
     ISSUE_MISSING_UI_DEVICE,
     IntensiveTask,
 )
+from .exceptions import CoordinatorMeshTimeout, GeneralException
+from .helpers import include_serial_logging
+from .logger import Logger
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -105,6 +110,11 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
 
         self.config_entry: LinksysVelopConfigEntry
         self._mesh: Mesh = mesh
+        if include_serial_logging(self.config_entry):
+            self.log_formatter = Logger(self.config_entry.unique_id)
+        else:
+            self.log_formatter = Logger()
+
         super().__init__(
             hass,
             logger,
@@ -114,6 +124,8 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Refresh the mesh data."""
+
+        _LOGGER.debug(self.log_formatter.format("entered"))
 
         current_devices: list[str] = []
         previous_devices: list[str] = []
@@ -133,99 +145,127 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             except MeshNeedsGatherDetails:
                 pass
 
-        await self._mesh.async_gather_details()
-
-        # region #-- issue management --#
-        # region #-- missing ui devices --#
-        if len(self.config_entry.options.get(CONF_UI_DEVICES, [])) > 0:
-            current_devices = [device.unique_id for device in self._mesh.devices]
-            missing_ui_devices: set[str] = set(
-                self.config_entry.options.get(CONF_UI_DEVICES, [])
-            ).difference(current_devices)
-            missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
-            for ui_device in missing_ui_devices:
-                device_registry: DeviceRegistry = dr.async_get(self.hass)
-                found_device: DeviceEntry | None = device_registry.async_get_device(
-                    {(DOMAIN, ui_device)}
-                )
-                if found_device is not None:
-                    ir.async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        ISSUE_MISSING_UI_DEVICE,
-                        data={
-                            "config_entry": self.config_entry,
-                            "device_id": ui_device,
-                            "device_name": found_device.name_by_user
-                            or found_device.name,
-                        },
-                        is_fixable=True,
-                        is_persistent=False,
-                        severity=IssueSeverity.WARNING,
-                        translation_key=ISSUE_MISSING_UI_DEVICE,
-                        translation_placeholders={
-                            "device_name": found_device.name_by_user
-                            or found_device.name
-                        },
+        try:
+            await self._mesh.async_gather_details()
+        except MeshTimeoutError as err:
+            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                translation_domain=DOMAIN,
+                translation_key="mesh_timeout",
+                translation_placeholders={
+                    "current_timeout": self.config_entry.options.get(
+                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
                     )
-                else:
-                    new_options = copy.deepcopy(dict(**self.config_entry.options))
-                    if ui_device in new_options.get(CONF_UI_DEVICES, []):
-                        new_options.get(CONF_UI_DEVICES).remove(ui_device)
-                        self.hass.config_entries.async_update_entry(
-                            self.config_entry, options=new_options
-                        )
-        # endregion
-        # endregion
-
-        # region #-- event management --#
-        # region #-- check for new devices --#
-        if EventSubTypes.NEW_DEVICE_FOUND.value in self.config_entry.options.get(
-            CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-        ):
-            if len(current_devices) == 0:
-                current_devices = [device.unique_id for device in self._mesh.devices]
-            new_devices: set[str] = set(current_devices).difference(
-                set(previous_devices)
+                },
             )
-            device_info: list[Device] | Device
-            for device in new_devices:
-                if (
-                    device_info := [
-                        d for d in self._mesh.devices if d.unique_id == device
-                    ]
-                ) != []:
-                    device_info = device_info[0]
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
-                        device_info,
+            _LOGGER.warning(exc_mesh_timeout)
+            raise UpdateFailed(err) from err
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={"exc_type": type(err)},
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
+        else:
+            # region #-- issue management --#
+            # region #-- missing ui devices --#
+            if len(self.config_entry.options.get(CONF_UI_DEVICES, [])) > 0:
+                current_devices = [device.unique_id for device in self._mesh.devices]
+                missing_ui_devices: set[str] = set(
+                    self.config_entry.options.get(CONF_UI_DEVICES, [])
+                ).difference(current_devices)
+                missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
+                for ui_device in missing_ui_devices:
+                    device_registry: DeviceRegistry = dr.async_get(self.hass)
+                    found_device: DeviceEntry | None = device_registry.async_get_device(
+                        {(DOMAIN, ui_device)}
                     )
-        # endregion
+                    if found_device is not None:
+                        ir.async_create_issue(
+                            self.hass,
+                            DOMAIN,
+                            ISSUE_MISSING_UI_DEVICE,
+                            data={
+                                "config_entry": self.config_entry,
+                                "device_id": ui_device,
+                                "device_name": found_device.name_by_user
+                                or found_device.name,
+                            },
+                            is_fixable=True,
+                            is_persistent=False,
+                            severity=IssueSeverity.WARNING,
+                            translation_key=ISSUE_MISSING_UI_DEVICE,
+                            translation_placeholders={
+                                "device_name": found_device.name_by_user
+                                or found_device.name
+                            },
+                        )
+                    else:
+                        new_options = copy.deepcopy(dict(**self.config_entry.options))
+                        if ui_device in new_options.get(CONF_UI_DEVICES, []):
+                            new_options.get(CONF_UI_DEVICES).remove(ui_device)
+                            self.hass.config_entries.async_update_entry(
+                                self.config_entry, options=new_options
+                            )
+            # endregion
+            # endregion
 
-        # region #-- check for new nodes --#
-        if EventSubTypes.NEW_NODE_FOUND.value in self.config_entry.options.get(
-            CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-        ):
-            if len(previous_nodes) > 0:
-                current_nodes: list[str] = [node.unique_id for node in self._mesh.nodes]
-                new_nodes: set[str] = set(current_nodes).difference(set(previous_nodes))
-                node_info: list[Node] | Node
-                for node in new_nodes:
+            # region #-- event management --#
+            # region #-- check for new devices --#
+            if EventSubTypes.NEW_DEVICE_FOUND.value in self.config_entry.options.get(
+                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            ):
+                if len(current_devices) == 0:
+                    current_devices = [
+                        device.unique_id for device in self._mesh.devices
+                    ]
+                new_devices: set[str] = set(current_devices).difference(
+                    set(previous_devices)
+                )
+                device_info: list[Device] | Device
+                for device in new_devices:
                     if (
-                        node_info := [
-                            n for n in self._mesh.nodes if n.unique_id == node
+                        device_info := [
+                            d for d in self._mesh.devices if d.unique_id == device
                         ]
                     ) != []:
-                        node_info = node_info[0]
+                        device_info = device_info[0]
                         async_dispatcher_send(
                             self.hass,
-                            f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                            node_info,
+                            f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
+                            device_info,
                         )
-        # endregion
-        # endregion
+            # endregion
 
+            # region #-- check for new nodes --#
+            if EventSubTypes.NEW_NODE_FOUND.value in self.config_entry.options.get(
+                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            ):
+                if len(previous_nodes) > 0:
+                    current_nodes: list[str] = [
+                        node.unique_id for node in self._mesh.nodes
+                    ]
+                    new_nodes: set[str] = set(current_nodes).difference(
+                        set(previous_nodes)
+                    )
+                    node_info: list[Node] | Node
+                    for node in new_nodes:
+                        if (
+                            node_info := [
+                                n for n in self._mesh.nodes if n.unique_id == node
+                            ]
+                        ) != []:
+                            node_info = node_info[0]
+                            async_dispatcher_send(
+                                self.hass,
+                                f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
+                                node_info,
+                            )
+            # endregion
+            # endregion
+
+        _LOGGER.debug(self.log_formatter.format("exited"))
         return self._mesh
 
 

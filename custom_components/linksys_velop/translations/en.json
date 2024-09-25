@@ -323,8 +323,14 @@
         }
     },
     "exceptions": {
+        "coordinator_mesh_timeout": {
+            "message": "timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout."
+        },
         "failed_login": {
             "message": "Failed to login to the mesh."
+        },
+        "general": {
+            "message": "A currently uncaught exception was encountered, type: {exc_type}"
         },
         "intensive_task": {
             "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
