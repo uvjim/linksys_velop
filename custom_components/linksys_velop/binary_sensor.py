@@ -191,6 +191,7 @@ ENTITY_DETAILS: list[BinarySensorDetails] = [
         description=BinarySensorEntityDescription(
             device_class=BinarySensorDeviceClass.RUNNING,
             entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
             key="",
             name="Speedtest Status",
             translation_key="speedtest_status",
