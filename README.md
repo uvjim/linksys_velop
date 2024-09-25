@@ -12,16 +12,10 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
     * [Binary Sensors](#binary-sensors)
     * [Buttons](#buttons)
     * [Device Trackers](#device-trackers)
+    * [Event](#event)
     * [Select](#select)
     * [Sensors](#sensors)
     * [Switches](#switches)
-    * [Update](#update-only-if-hass--202240)
-  * [Events Fired](#events-fired)
-    * [logging_stopped](#logging_stopped)
-    * [new_device](#new_device)
-    * [new_node](#new_node)
-    * [new_primary_node](#new_primary_node)
-  * [Device Triggers](#device-triggers)
   * [Services](#services)
 * [Setup](#setup)
 * [Configurable Options](#configurable-options)
@@ -37,20 +31,25 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 
 ## Description
 
-This custom component has been designed to for Home Assistant and enables
-access to the functions that would be useful in the Home Assistant environment.
+This custom component has been designed for Home Assistant and enables access
+to the functions that would be useful (and probably some that aren't) in the
+Home Assistant environment.
 
 ### Installation
 
 The integration can be installed using [HACS](https://hacs.xyz/).  The
-integrations is not available in the default repositories, so will need to add
-a the URL of this repository as a custom repository to HACS (see
+integrations is not available in the default repositories, so you will need to
+add the URL of this repository as a custom repository to HACS (see
 [here](https://hacs.xyz/docs/faq/custom_repositories)).
+
+Alternatively you can use the button below.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=uvjim&repository=linksys_velop&category=Integration)
 
 ### Definitions
 
 * _Mesh_: the mesh is the network itself and refers to anything that is not
-  attributed to a single node or device in  the network.
+  attributed to a single node or device in the network.
 * _Node_: a node is a device that helps to form the mesh.
 * _Device_: a device is an endpoint that connects to the mesh network. Think
   of these as the endpoint devices, such as a laptop, phone or tablet.
@@ -70,7 +69,7 @@ enabled.
 * Device: Guest Network
 * Device: Reserved IP
 * Device: Connected
-* Mesh: Channel Scanning
+* Mesh: Channel Scanning _(disabled by default)_
 * Mesh: Client Steering _(disabled by default)_
 * Mesh: DHCP Server _(disabled by default)_
 * Mesh: Express Forwarding _(disabled by default)_
@@ -79,15 +78,14 @@ enabled.
   * mode, address list
 * Mesh: Node Steering _(disabled by default)_
 * Mesh: SIP _(disabled by default)_
-* Mesh: Speedtest state
+* Mesh: Speedtest state _(disabled by default)_
 * Mesh: UPnP _(disabled by default)_
 * Mesh: UPnP Allow Users to Configure _(disabled by default)_
 * Mesh: UPnP Allow Users to Disable Internet _(disabled by default)_
 * Mesh: WAN Status
   * IP, DNS, MAC
 * Node: Status
-  * IP, MAC, guest network
-* Node: Update Available (only if HASS < 2022.4.0)
+  * Guest network, IP, IPv6, MAC, Reservation
 
 #### Buttons
 
@@ -100,7 +98,7 @@ enabled.
 
 > **N.B.** Buttons with an interval in brackets start a long running task.
   When they are pressed or the corresponding `binary_sensor` realises that the
-  task is running a secondary timer is started, using the specified interval.
+  task is running updates are switched to the specified interval.
 >
 > **N.B.** There is deliberately no button provided to restart the Primary node.
 Restarting the Primary node will cause all nodes in the Mesh to reboot and
@@ -115,13 +113,22 @@ the Whole Mesh` button.
 These are selectable and are presented as part of the configuration at both
 install time and from reconfiguring the integration.
 
+Device trackers should be enabled by default and will be seen as entities of the
+mesh. This is achieved by adding the MAC address to the connections for the mesh
+and you will see these allocated to the Mesh device in the HASS UI. When the
+tracker is removed, the MAC is also removed from the Mesh device.
+
+#### Event
+
+This entity provides access to data for the events selected in the configuration.
+Available events are: -
+
+* New device found
+* New node found
+
 #### Select
 
-* Mesh: Devices _(disabled by default)_
-  * Once a device is selected (assuming a [temporary device](#advanced-options)
-    is not being used for display) the attributes will be updated to reflect
-    the following: connected adapters, description, manufacturer, model, name,
-    operating_system, parent name, serial, status and unique_id
+* Device: Devices _(only available if [temporary device](#advanced-options) is enabled_
 
 #### Sensors
 
@@ -140,8 +147,8 @@ install time and from reconfiguring the integration.
 * Device: Parent
 * Device: Serial
 * Device: Signal Strength _(i.e., RSSI)_
-* Device: UI Type _(The `entity_picture` attribute will be set if
-  `node_images` are configured, see [here](#advanced-options))_
+* Device: UI Type _(the `entity_picture` attribute will be set if `node_images`
+  are configured, see [here](#advanced-options))_
 * Mesh: DHCP Reservations _(disabled by default)_
   * list of DHCP reservations on the mesh
 * Mesh: Number of Offline Devices
@@ -150,7 +157,7 @@ install time and from reconfiguring the integration.
 * Mesh: Number of Online Devices
   * list of device objects containing names, unique IDs, IP addresses, adapter
     types and guest network state for the online devices
-* Mesh: Number of Guest Devices _(disabled by default)_
+* Mesh: Number of Guest Devices
   * list of device names, IP addresses, adapter types etc
 * Mesh: Speedtest Download Bandwidth _(disabled by default)_
 * Mesh: Speedtest Last Run _(disabled by default)_
@@ -166,25 +173,19 @@ install time and from reconfiguring the integration.
 * Node: Number of Connected Devices
   * list of names, IP addresses, type of connection and guest network state for
     the connected devices
-* Node: Backhaul Friendly Signal Strength _(only if not the primary node and
-  using a wireless backhaul)_
+* Node: Backhaul Friendly Signal Strength _(only if a wireless backhaul)_
 * Node: Backhaul Last Checked _(only if not the primary node)_
   _(disabled by default)_
-* Node: Backhaul Signal Strength _(only if not the primary node and using a
-  wireless backhaul)_
-* Node: Backhaul Speed _(only if not the primary node)_
-* Node: Backhaul Type _(only if not the primary node)_
-* Node: Current Firmware Version (only if HASS < 2022.4.0)
-* Node: Image _(disabled by default. Only available if `node_images` are
-  configured, see [here](#advanced-options))_
+* Node: Backhaul Signal Strength _(only if a wireless backhaul)_
+* Node: Backhaul Speed
+* Node: Backhaul Type
 * Node: Last Update Check _(disabled by default)_
-* Node: Model Number _(The `entity_picture` attribute will be set if
-  `node_images` are configured, see [here](#advanced-options))_
-* Node: Newest Firmware Version (only if HASS < 2022.4.0)
+* Node: Model _(The `entity_picture` attribute will be set if `node_images` are
+  configured, see [here](#advanced-options))_
 * Node: Parent Name _(only if the node is not the primary)_
   * IP address of the parent
 * Node: Serial Number
-* Node: Type of Node, e.g. Primary Secondary
+* Node: Type, e.g. Primary Secondary
 
 #### Switches
 
@@ -196,151 +197,20 @@ install time and from reconfiguring the integration.
   * list of the rules being applied
 * Mesh: WPS
 
-#### Update (only if HASS > 2022.4.0)
+#### Update
 
 * Node: Firmware update available.
   * includes current and latest firmware versions
-
-### Events Fired
-
-The integration fires an event with type `linksys_velop_event`. Withing the data
-object there is a `subtype` value which denotes the reason for the event. This
-section shows the available subtypes.
-
-#### `logging_stopped`
-
-This event is fired when logging was turned on in the configurable options
-(see [here](#logging)) and has stopped.
-
-The event looks as follows: -
-
-```yaml
-event_type: linksys_velop_event
-data:
-  name: 192.168.1.254
-  subtype: logging_stopped
-origin: LOCAL
-time_fired: "2022-10-05T14:06:34.120984+00:00"
-context:
-  id: 01GEM7GDM8VE5Q4S27P3WPNTX4
-  parent_id: null
-  user_id: null
-```
-
-#### `new_device`
-
-This event is fired when a brand-new device appears on the Mesh. A device is
-considered new if it presents a device ID (determined by the Velop) that was
-not seen at the last poll period. This means that it will not fire for
-devices that change from online to offline and vice-versa.
-
-The event is fired for each new device that is discovered. The data is as
-the Velop mesh sees it, i.e. there is no magic by the integration to
-establish the manufacturer, model, operating system or serial.
-
-> **N.B.** The name will default to `Network Device` if there is no name
-established by the Velop or assigned by the user.
-
-The event looks as follows: -
-
-```yaml
-event_type: linksys_velop_event
-data:
-  connected_adapters: []
-  description: null
-  manufacturer: null
-  model: null
-  name: Network Device
-  operating_system: null
-  parent_name: null
-  serial: null
-  status: false
-  unique_id: e053a99e-f8b6-4061-b9d3-7a19a38ec079
-  mesh_device_id: f31f325891bc59506bdf98a54e23fcdd
-  subtype: new_device
-origin: LOCAL
-time_fired: "2022-10-05T13:47:38.933813+00:00"
-context:
-  id: 01GEM6DS1NND3PG936RFBGTGFJ
-  parent_id: null
-  user_id: null
-```
-
-#### `new_node`
-
-This event is fired when a new node is found on the Mesh. A node is
-considered new if it is not currently configured in HASS. It may not be
-configured for a couple of reasons: the device was deleted from the UI, or
-you've added a new node to your Mesh.
-
-The event is fired for each new node that is discovered.
-
-The event looks as follows: -
-
-```yaml
-event_type: linksys_velop_event
-data:
-  backhaul: {}
-  connected_adapters: []
-  model: MX42
-  name: Utility
-  parent_name: null
-  serial: 123456789
-  status: false
-  unique_id: 80236f06-e622-faec-9410-e89f80603b3d
-  mesh_device_id: f31f325891bc59506bdf98a54e23fcdd
-  subtype: new_node
-origin: LOCAL
-time_fired: "2022-10-05T13:43:17.135224+00:00"
-context:
-  id: 01GEM65SCF8BVK3BEVFHXWS5F2
-  parent_id: null
-  user_id: null
-```
-
-#### `new_primary_node`
-
-This event is fired when a new primary node is detected. The check for this
-is based on the serial number and is currently only found as part of SSDP
-discovery. If the serial numbers do not match, this event is fired and the
-unique_id of the integration instance is update.
-
-This should stop the mesh being discovered again by SSDP when the primary
-node is changed.
-
-```yaml
-event_type: linksys_velop_event
-data:
-  host: 192.168.1.254
-  model: "velop ax4200 wifi 6 system"
-  serial: 1234567890
-  subtype: new_primary_node
-origin: LOCAL
-time_fired: "2022-10-05T13:43:17.135224+00:00"
-context:
-  id: 01GEM65SCF8BVK3BEVFHXWS5F2
-  parent_id: null
-  user_id: null
-```
-
-### Device Triggers
-
-All events are available in automations as device triggers on the Mesh device,
-as per the following screenshot.
-
-![Device Triggers](images/device_triggers.png)
 
 ### Services
 
 The following services are available. Each service is described in metadata
 so paramters are described in the Home Assistant Services page.
 
-* Check for Updates ^ - check if there are firmware updates for the nodes.
 * Control Internet Access for a Device - allow/block access to the Internet
   for a device.
 * Delete Device - delete a device from the Mesh device list.
-* Execute Speedtest &ast;^ - carry out a Speedtest from the Primary node.
-* Reboot Node ^ - reboot the given node.
+* Reboot Node - reboot the given node.
 * Rename Device - rename the given device in the Mesh device list.
 * Set Device Parental Controls - set the times a device is blocked from using
   the Internet.
@@ -367,6 +237,20 @@ When setting up the integration you will be asked for the following information.
   not be the same as the password for the application or web UI if you use
   the Linksys cloud service.
 
+![Configure Timers](images/config_timers.png)
+
+* `Scan Interval`: the frequency of updates for the sensors, default `60s`
+* `Device Tracker Interval`: the frequency of updates for the device
+  trackers, default `10s`
+* `Consider Home Period`: the time to wait before considering a device away
+  after it notifies of becoming disconnected, default `180s`
+* `Response Timeout`: the number of seconds to wait for a response from
+  an individual request to the API, default `10s`
+
+![Configure Device Trackers](images/config_device_trackers.png)
+
+* `Available devices`: a multi-select list of the devices found on the mesh.
+
 On successful set up the following screen will be seen detailing the Mesh
 device and the individual nodes found in the mesh.
 
@@ -380,21 +264,19 @@ It is possible to configure the following options for the integration.
 
 ![Configure Timers](images/config_timers.png)
 
-* `Scan Interval`: the frequency of updates for the sensors, default `30s`
+* `Scan Interval`: the frequency of updates for the sensors, default `60s`
 * `Device Tracker Interval`: the frequency of updates for the device
   trackers, default `10s`
 * `Consider Home Period`: the time to wait before considering a device away
   after it notifies of becoming disconnected, default `180s`
 * `Response Timeout`: the number of seconds to wait for a response from
-  an individual request to the API
+  an individual request to the API, default `10s`
 
 ### Device Trackers
 
 ![Configure Device Trackers](images/config_device_trackers.png)
 
 * `Available devices`: a multi-select list of the devices found on the mesh.
-  This list excludes any device which doesn't have a name - typically
-  displayed in the official interfaces as `Network Device`
 
 ### UI Devices
 
@@ -452,7 +334,7 @@ create automations based on a device signal strength, parent node or state
 configured in `configuration.yaml` and is only available if the
 [`logger`](https://www.home-assistant.io/integrations/logger/) integration is
 enabled in `configuration.yaml`.
-  * `off`: disable debug logging
+  * `Off`: disable debug logging
   * `Single poll`: only enable debug logging for a single poll requesting
   information from the Mesh.
 
@@ -476,10 +358,6 @@ logger:
 ```
 
 ### Diagnostics Integration
-
-Starting with Home Assistant 2022.2 a new diagnostics integration can be
-used to provide troubleshooting for integrations. This integration supports that
-as of version `2021.1.3`.
 
 The highlighted area in the image below shows where the link for downloading
 diagnostics can be found.
@@ -506,12 +384,12 @@ these are for example purposes only.**
   description: ''
   trigger:
     - platform: state
-      entity_id: binary_sensor.velop_utility_status
+      entity_id: binary_sensor.utility_status
       id: Node Online
       from: 'off'
       to: 'on'
     - platform: state
-      entity_id: binary_sensor.velop_utility_status
+      entity_id: binary_sensor.utility_status
       id: Node Offline
       from: 'on'
       to: 'off'
@@ -542,103 +420,65 @@ these are for example purposes only.**
   <summary>Notify on events</summary>
 
 ```yaml
-alias: "Notify: Velop Information"
+alias: Linksys Velop Events
 description: ""
 trigger:
-  - platform: event
-    event_type: linksys_velop_event
-    event_data:
-      subtype: new_device
-    id: Device Found
-  - platform: event
-    event_type: linksys_velop_event
-    event_data:
-      subtype: new_node
-    id: Node Found
-  - platform: event
-    event_type: linksys_velop_event
-    event_data:
-      subtype: new_primary_node
-    id: Primary Node Changed
-  - platform: event
-    event_type: linksys_velop_event
-    event_data:
-      subtype: logging_stopped
-    id: Logging Stopped
+  - platform: state
+    entity_id:
+      - event.mesh_events
+    attribute: event_type
+    id: New Device
 condition: []
 action:
-  - variables:
-      title_prefix: "Linksys Velop - "
-  - if:
-      - condition: template
-        value_template: "{{ trigger.id in [\"Logging Stopped\"] }}"
-    then:
-      - variables:
-          notification_id: logging_stopped
-          message: Logging has stopped for {{ trigger.event.data.get('name') }}
-      - service: persistent_notification.create
-        data:
-          notification_id: "{{ notification_id }}"
-          title: "{{ title_prefix }}{{ trigger.id }}"
-          message: "{{ message }}"
-    else:
-      - variables:
-          notification_id: >-
-            {{ trigger.event.event_type }}_{{
-            trigger.event.data.get('unique_id') or
-            trigger.event.data.get('serial') }}
-          message: >-
-            {% if trigger.event.data.get('name') is not none %}
-              ## {{ trigger.event.data.name }}
+  - action: persistent_notification.create
+    metadata: {}
+    data:
+      title: "{{ trigger.id or 'Just a test' }}"
+      message: |-
+        {% if trigger.entity_id %}
+          {% set entity_id = trigger.entity_id %}
+        {% else %}
+          {% set entity_id = "event.mesh_events" %}
+        {% endif %} {% set name_mappings = {
+          "description": "Description",
+          "guest_network": "Guest Device",
+          "ip": "IP",
+          "ipv6": "IPv6",
+          "mac": "MAC",
+          "manufacturer": "Manufacturer",
+          "model": "Model",
+          "name": "Name",
+          "operating_system": "Operating System",
+          "parent_name": "Parent",
+          "reservation": "Reserved Address",
+          "rssi": "RSSI",
+          "serial": "Serial #",
+          "signal_strength": "Signal Strength"
+        } %} {% set to_reject = [
+          "status",
+          "event_type",
+          "event_types",
+          "friendly_name",
+          "unique_id"
+        ] %} {% set ns = namespace(display={}) %} {% if states[entity_id] %} 
+          {% for attr, val in states[entity_id].attributes.items()
+          if val is not none and attr not in to_reject -%}
+            {% if attr == 'connected_adapters' %}
+              {% set adapter = val[0] %}
+              {% for adapter_attr, adapter_val in adapter.items() if adapter_val is not none and adapter_attr not in to_reject %}
+                {% set ns.display = dict(ns.display, **{name_mappings.get(adapter_attr) or adapter_attr: adapter_val}) %}
+              {% endfor %}
+            {% else %}
+              {% set ns.display = dict(ns.display, **{name_mappings.get(attr) or attr: val}) %}
             {% endif %}
-
-            |   |   |   |
-
-            |---|---|---| {% if trigger.event.data.get('mesh_device_id') is not
-            none %}
-
-            |Mesh:|&emsp;|{{ device_attr(trigger.event.data.mesh_device_id,
-            'name_by_user') or device_attr(trigger.event.data.mesh_device_id,
-            'name') }}| {% endif %} {% if trigger.event.data.get('parent_name')
-            is not none %}
-
-            |Parent:|&emsp;|{{ trigger.event.data.parent_name }}| {% endif %} {%
-            if trigger.event.data.get('host') is not none %}
-
-            |Host:|&emsp;|{{ trigger.event.data.host }}| {% endif %} {% if
-            trigger.event.data.get('connected_adapters') is not none and
-            trigger.event.data.get('connected_adapters') | count > 0 %}
-
-            |Guest:|&emsp;|{{ 'Yes' if
-            trigger.event.data.connected_adapters[0].get('guest_network', False)
-            is eq true else 'No' }}|
-
-            |IP:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('ip',
-            'N/A') }}|
-
-            |MAC:|&emsp;|{{ trigger.event.data.connected_adapters[0].get('mac',
-            'N/A') }}| {% endif %} {% if trigger.event.data.get('description')
-            is not none %}
-
-            |Description:|&emsp;|{{ trigger.event.data.description }}| {% endif
-            %} {% if trigger.event.data.get('manufacturer') is not none %}
-
-            |Manufacturer:|&emsp;|{{ trigger.event.data.manufacturer }}| {%
-            endif %} {% if trigger.event.data.get('model') is not none %}
-
-            |Model:|&emsp;|{{ trigger.event.data.model }}| {% endif %} {% if
-            trigger.event.data.get('serial') is not none %}
-
-            |Serial:|&emsp;|{{ trigger.event.data.serial }}| {% endif %} {% if
-            trigger.event.data.get('operating_system') is not none %}
-
-            |Operating System:|&emsp;|{{ trigger.event.data.operating_system }}|
-            {% endif %}
-      - service: persistent_notification.create
-        data:
-          notification_id: "{{ notification_id }}"
-          title: "{{ title_prefix }}{{ trigger.id }}"
-          message: "{{ message }}"
+          {% endfor %}
+          ## {{ ns.display.get("Name") }}
+          |   |   |   |
+          |---|---|---|
+          {% for label, value in ns.display.items() if label | lower != "name" -%}
+          |{{ label }}:|&emsp;|{{value}}|
+          {% endfor -%}
+        {% endif %}
 mode: parallel
 ```
 
