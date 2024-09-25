@@ -101,7 +101,7 @@ ENTITY_DETAILS: list[ButtonDetails] = [
         press_func=_async_start_check_for_updates,
     ),
     ButtonDetails(
-        coordinator_type=CoordinatorTypes.SPEEDTEST,
+        coordinator_type=CoordinatorTypes.CHANNEL_SCAN,
         description=ButtonEntityDescription(
             key="",
             name="Start Channel Scan",
