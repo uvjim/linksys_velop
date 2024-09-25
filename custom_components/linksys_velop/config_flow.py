@@ -13,10 +13,6 @@ import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
-from homeassistant.components.logger import DOMAIN as LOGGER_DOMAIN
-from homeassistant.components.logger import (
-    SERVICE_SET_LEVEL as LOGGER_SERVICE_SET_LEVEL,
-)
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
@@ -34,7 +30,7 @@ from pyvelop.exceptions import (
 )
 from pyvelop.mesh import Mesh, Node
 
-from . import LinksysVelopConfigEntry, async_logging_state
+from . import LinksysVelopConfigEntry
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
     CONF_API_REQUEST_TIMEOUT,
@@ -42,14 +38,6 @@ from .const import (
     CONF_DEVICE_TRACKERS_TO_REMOVE,
     CONF_EVENTS_OPTIONS,
     CONF_FLOW_NAME,
-    CONF_LOGGING_JNAP_RESPONSE,
-    CONF_LOGGING_MODE,
-    CONF_LOGGING_MODE_OFF,
-    CONF_LOGGING_MODE_SINGLE,
-    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
-    CONF_LOGGING_OPTION_INCLUDE_SERIAL,
-    CONF_LOGGING_OPTIONS,
-    CONF_LOGGING_SERIAL,
     CONF_NODE,
     CONF_NODE_IMAGES,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
@@ -62,8 +50,6 @@ from .const import (
     DEF_CONSIDER_HOME,
     DEF_EVENTS_OPTIONS,
     DEF_FLOW_NAME,
-    DEF_LOGGING_MODE,
-    DEF_LOGGING_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
@@ -71,8 +57,6 @@ from .const import (
     DOMAIN,
     ST_IGD,
 )
-
-# from .events import EVENT_TYPE, EventSubType
 from .logger import Logger
 from .types import EventSubTypes
 
@@ -86,7 +70,6 @@ class Steps(StrEnum):
     FINALISE = auto()
     GATHER_DETAILS = auto()
     INIT = auto()
-    LOGGING = auto()
     LOGIN = auto()
     REAUTH_CONFIRM = auto()
     TIMERS = auto()
@@ -181,52 +164,6 @@ async def _async_build_schema_with_user_input(
                 )
             }
         )
-    elif step == Steps.LOGGING:
-        # region #-- migrate old values into the dropdown --#
-        if CONF_LOGGING_OPTIONS not in user_input:
-            user_input[CONF_LOGGING_OPTIONS] = DEF_LOGGING_OPTIONS
-            if user_input.get(CONF_LOGGING_SERIAL):
-                user_input[CONF_LOGGING_OPTIONS].append(
-                    CONF_LOGGING_OPTION_INCLUDE_SERIAL
-                )
-            if user_input.get(CONF_LOGGING_JNAP_RESPONSE):
-                user_input[CONF_LOGGING_OPTIONS].append(
-                    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE
-                )
-        # endregion
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_LOGGING_OPTIONS,
-                    default=user_input.get(CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS),
-                ): selector.SelectSelector(
-                    config=selector.SelectSelectorConfig(
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        multiple=True,
-                        options=[
-                            CONF_LOGGING_OPTION_INCLUDE_SERIAL,
-                            CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
-                        ],
-                        translation_key="logging_options",
-                    )
-                ),
-            }
-        )
-        if kwargs.get("logging_mode"):
-            schema = schema.extend(
-                schema={
-                    vol.Required(
-                        CONF_LOGGING_MODE,
-                        default=user_input.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE),
-                    ): selector.SelectSelector(
-                        config=selector.SelectSelectorConfig(
-                            mode=selector.SelectSelectorMode.LIST,
-                            options=[CONF_LOGGING_MODE_OFF, CONF_LOGGING_MODE_SINGLE],
-                            translation_key="logging_modes",
-                        )
-                    )
-                }
-            )
     elif step == Steps.REAUTH_CONFIRM:
         schema = vol.Schema(
             {
@@ -734,7 +671,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             if user_input.get(CONF_NODE_IMAGES) == "*":
                 user_input[CONF_NODE_IMAGES] = ""
             self._options.update(user_input)
-            return await self.async_step_logging()
+            return await self.async_step_finalise()
 
         return self.async_show_form(
             step_id=Steps.ADVANCED_OPTIONS,
@@ -839,8 +776,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         # endregion
 
         # region #-- remove up the old options --#
-        self._options.pop(CONF_LOGGING_JNAP_RESPONSE, None)
-        self._options.pop(CONF_LOGGING_SERIAL, None)
+        self._options.pop("logging_jnap_response", None)
+        self._options.pop("logging_serial", None)
+        self._options.pop("logging_mode", None)
+        self._options.pop("logging_options", None)
         self._options.pop("ui_devices_missing", None)
         self._options.pop("tracked_missing", None)
         # endregion
@@ -859,7 +798,6 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             Steps.TIMERS,
             Steps.DEVICE_TRACKERS,
             Steps.UI_DEVICE,
-            Steps.LOGGING,
         ]
         if self.show_advanced_options:
             menu_options.insert(3, Steps.EVENTS)
@@ -868,51 +806,6 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id=Steps.INIT,
             menu_options=menu_options,
-        )
-
-    async def async_step_logging(self, user_input=None) -> data_entry_flow.FlowResult:
-        """Manage settings for logging."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-
-        if user_input is not None:
-            self._options.update(user_input)
-            if self._options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE) == "off":
-                await async_logging_state(
-                    config_entry=self._config_entry,
-                    hass=self.hass,
-                    log_formatter=self._log_formatter,
-                    state=False,
-                )
-            return await self.async_step_finalise()
-
-        # -- check logging enabled --#
-        if self.hass.services.has_service(
-            domain=LOGGER_DOMAIN, service=LOGGER_SERVICE_SET_LEVEL
-        ):
-            return self.async_show_form(
-                step_id=Steps.LOGGING,
-                data_schema=await _async_build_schema_with_user_input(
-                    Steps.LOGGING, self._options, logging_mode=True
-                ),
-                description_placeholders={"logging_mode_warning": ""},
-                errors=self._errors,
-                last_step=False,
-            )
-
-        return self.async_show_form(
-            step_id=Steps.LOGGING,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.LOGGING, self._options, logging_mode=False
-            ),
-            description_placeholders={
-                "logging_mode_warning": (
-                    "\n\n___The [`logger`](https://www.home-assistant.io/integrations/logger/) integration "
-                    "is not enabled."
-                    "\nIt is required for logging modes to be available.___"
-                )
-            },
-            errors=self._errors,
-            last_step=False,
         )
 
     async def async_step_timers(self, user_input=None) -> data_entry_flow.FlowResult:

@@ -14,7 +14,6 @@ from pyvelop.device import Device, ParentalControl
 from pyvelop.mesh import Mesh
 
 from .const import DOMAIN
-from .helpers import include_serial_logging
 from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
@@ -130,10 +129,7 @@ class LinksysVelopServiceHandler:
                     config_entry_id
                 )
                 if config_entry.domain == DOMAIN:
-                    if include_serial_logging(config_entry):
-                        self._log_formatter = Logger(unique_id=config_entry.unique_id)
-                    else:
-                        self._log_formatter = Logger()
+                    self._log_formatter = Logger(unique_id=config_entry.unique_id)
                     break
 
         return config_entry

@@ -1,16 +1,11 @@
 """Helpers."""
 
 # region #-- imports --#
-from __future__ import annotations
-
-import copy
 import logging
-from typing import List
 
 from homeassistant.config_entries import device_registry as dr
 from homeassistant.config_entries import entity_registry as er
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.device_registry import (
     DeviceEntry,
     DeviceEntryType,
@@ -21,13 +16,7 @@ from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
 from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 
-from .const import (
-    CONF_LOGGING_OPTION_INCLUDE_SERIAL,
-    CONF_LOGGING_OPTIONS,
-    DEF_LOGGING_OPTIONS,
-    DOMAIN,
-)
-from .logger import Logger
+from .const import DOMAIN
 from .types import LinksysVelopConfigEntry
 
 # endregion
@@ -47,17 +36,9 @@ def get_mesh_device_for_config_entry(
     return found_mesh
 
 
-def include_serial_logging(config_entry: LinksysVelopConfigEntry):
-    """Establish if the serial number should be logged."""
-    return CONF_LOGGING_OPTION_INCLUDE_SERIAL in config_entry.options.get(
-        CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS
-    )
-
-
 def remove_velop_device_from_registry(hass: HomeAssistant, device_id: str) -> None:
     """"""
 
-    _LOGGER.debug("remove_velop_device_from_registry: entered, (%s)", device_id)
     device_registry: DeviceRegistry = dr.async_get(hass)
     found_device: DeviceEntry | None
     if (
@@ -67,15 +48,12 @@ def remove_velop_device_from_registry(hass: HomeAssistant, device_id: str) -> No
     else:
         _LOGGER.debug("remove_velop_device_from_registry: device not found")
 
-    _LOGGER.debug("remove_velop_device_from_registry: exited")
-
 
 def remove_velop_entity_from_registry(
     hass: HomeAssistant, config_entry_id: str, unique_id: str
 ) -> None:
     """Remove an entity from the registry."""
 
-    _LOGGER.debug("remove_velop_entity_from_registry: entered, (%s)", unique_id)
     entity_registry: EntityRegistry = er.async_get(hass)
     config_entities: list[RegistryEntry] = er.async_entries_for_config_entry(
         entity_registry, config_entry_id
@@ -83,10 +61,6 @@ def remove_velop_entity_from_registry(
     found_entity: list[RegistryEntry]
     if found_entity := [e for e in config_entities if e.unique_id == unique_id]:
         entity_registry.async_remove(found_entity[0].entity_id)
-    else:
-        _LOGGER.debug("remove_velop_entity_from_registry: entity not found")
-
-    _LOGGER.debug("remove_velop_entity_from_registry: exited, (%s)", unique_id)
 
 
 #

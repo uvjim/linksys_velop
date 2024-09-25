@@ -26,7 +26,7 @@ from .const import (
     DOMAIN,
     SIGNAL_DEVICE_TRACKER_UPDATE,
 )
-from .helpers import get_mesh_device_for_config_entry, include_serial_logging
+from .helpers import get_mesh_device_for_config_entry
 from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
@@ -90,10 +90,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._consider_home_cancel: CALLBACK_TYPE | None = None
         self._ip_address: str = self._get_ip_address(device)
         self._is_connected: bool = device.status
-        if include_serial_logging(self._config_entry):
-            self._log_formatter: Logger = Logger(self._config_entry.unique_id)
-        else:
-            self._log_formatter: Logger = Logger()
+        self._log_formatter: Logger = Logger(self._config_entry.unique_id)
         self._mac_address: str = self._get_mac_address(device)
         self._mesh: Mesh = mesh
 

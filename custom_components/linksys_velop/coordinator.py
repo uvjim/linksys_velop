@@ -36,7 +36,6 @@ from .const import (
     IntensiveTask,
 )
 from .exceptions import CoordinatorMeshTimeout, GeneralException
-from .helpers import include_serial_logging
 from .logger import Logger
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
@@ -109,12 +108,6 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         """Initialise."""
 
         self.config_entry: LinksysVelopConfigEntry
-        self._mesh: Mesh = mesh
-        if include_serial_logging(self.config_entry):
-            self.log_formatter = Logger(self.config_entry.unique_id)
-        else:
-            self.log_formatter = Logger()
-
         super().__init__(
             hass,
             logger,
@@ -122,10 +115,11 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval_secs),
         )
 
+        self.log_formatter = Logger(self.config_entry.unique_id)
+        self._mesh: Mesh = mesh
+
     async def _async_update_data(self):
         """Refresh the mesh data."""
-
-        _LOGGER.debug(self.log_formatter.format("entered"))
 
         current_devices: list[str] = []
         previous_devices: list[str] = []
@@ -265,7 +259,6 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             # endregion
             # endregion
 
-        _LOGGER.debug(self.log_formatter.format("exited"))
         return self._mesh
 
 
@@ -355,8 +348,14 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 self.update_interval = self.progress_update_interval
             else:
                 self.update_interval = self.normal_update_interval
-        except Exception:
-            raise
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={"exc_type": type(err)},
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
 
         return ret
 
@@ -405,7 +404,13 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                     self.config_entry.runtime_data.intensive_running_tasks.remove(
                         IntensiveTask.CHANNEL_SCAN
                     )
-        except Exception:
-            raise
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={"exc_type": type(err)},
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
 
         return ret

@@ -441,18 +441,6 @@
                 "new_primary_node": "New primary node detected"
             }
         },
-        "logging_options": {
-            "options": {
-                "include_serial": "Include serial number",
-                "include_query_response": "Include query responses"
-            }
-        },
-        "logging_modes": {
-            "options": {
-                "off": "Off",
-                "single": "Single poll"
-            }
-        },
         "pc_times": {
             "options": {
                 "00:00-00:00": "All Day",

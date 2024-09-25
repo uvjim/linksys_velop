@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import entity_registry as er
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ServiceNotFound
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -33,18 +33,12 @@ from .const import (
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_TO_REMOVE,
     CONF_EVENTS_OPTIONS,
-    CONF_LOGGING_MODE,
-    CONF_LOGGING_MODE_OFF,
-    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
-    CONF_LOGGING_OPTIONS,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_UI_DEVICES_TO_REMOVE,
     DEF_API_REQUEST_TIMEOUT,
     DEF_EVENTS_OPTIONS,
-    DEF_LOGGING_MODE,
-    DEF_LOGGING_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
@@ -64,7 +58,6 @@ from .coordinator import (
 from .exceptions import IntensiveTaskRunning
 from .helpers import (
     get_mesh_device_for_config_entry,
-    include_serial_logging,
     remove_velop_device_from_registry,
     remove_velop_entity_from_registry,
 )
@@ -77,70 +70,6 @@ from .types import CoordinatorTypes, LinksysVelopConfigEntry, LinksysVelopData
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _SETUP_PLATFORMS: list[str] = []
 
-LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
-LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
-LOGGING_REVERT: str = logging.getLevelName(logging.getLogger("").level)
-LOGGING_DISABLED: bool = False
-
-
-async def async_logging_state(
-    config_entry: ConfigEntry, hass: HomeAssistant, log_formatter: Logger, state: bool
-) -> None:
-    """Turn logging on or off."""
-    global LOGGING_DISABLED  # pylint: disable=global-statement
-
-    logging_level: str = LOGGING_ON if state else LOGGING_OFF
-    if (
-        logging_level == LOGGING_ON
-        and CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE
-        in config_entry.options.get(CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS)
-    ):
-        logging_level_jnap_response: str = LOGGING_ON
-    else:
-        logging_level_jnap_response: str = LOGGING_REVERT
-    if not state:
-        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
-        _LOGGER.debug(
-            log_formatter.format("JNAP response log state: %s"),
-            logging_level_jnap_response,
-        )
-    try:
-        await hass.services.async_call(
-            blocking=True,
-            domain="logger",
-            service="set_level",
-            service_data={
-                f"custom_components.{DOMAIN}": logging_level,
-                PYVELOP_NAME: logging_level,
-                f"{PYVELOP_NAME}.jnap.verbose": logging_level_jnap_response,
-            },
-        )
-    except ServiceNotFound:
-        if not LOGGING_DISABLED:
-            _LOGGER.warning(
-                log_formatter.format(
-                    "The logger integration is not enabled. Turning integration logging off."
-                )
-            )
-            options: dict[str, Any] = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
-            hass.config_entries.async_update_entry(entry=config_entry, options=options)
-            LOGGING_DISABLED = True
-    else:
-        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
-        _LOGGER.debug(
-            log_formatter.format("JNAP response log state: %s"),
-            logging_level_jnap_response,
-        )
-        if (
-            not state
-            and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-            != CONF_LOGGING_MODE_OFF
-        ):
-            options: dict[str, Any] = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
-            hass.config_entries.async_update_entry(entry=config_entry, options=options)
-
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant,  # pylint: disable=unused-argument
@@ -151,10 +80,7 @@ async def async_remove_config_entry_device(
 
     Do not allow the Mesh device to be removed
     """
-    if include_serial_logging(config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
+    log_formatter = Logger(unique_id=config_entry.unique_id)
 
     mesh_id: set = {(DOMAIN, config_entry.entry_id)}
     if device_entry.identifiers.intersection(mesh_id):
@@ -173,34 +99,14 @@ async def async_setup_entry(
 
     global _SETUP_PLATFORMS
 
-    # region #-- setup logging --#
-    if include_serial_logging(config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
-    # endregion
-
-    # region #-- start logging if needed --#
-    logging_mode: bool = config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-    if logging_mode != CONF_LOGGING_MODE_OFF:
-        await async_logging_state(
-            config_entry=config_entry,
-            hass=hass,
-            log_formatter=log_formatter,
-            state=True,
-        )
-    # endregion
-
+    log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
-    _LOGGER.debug(
-        log_formatter.format("logging mode: %s"),
-        logging_mode,
-    )
 
     # region #-- initialise runtime data --#
     config_entry.runtime_data = LinksysVelopData()
     # endregion
 
+    _LOGGER.debug(log_formatter.format("setting up Mesh for the coordinator"))
     mesh: Mesh = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
@@ -220,24 +126,26 @@ async def async_setup_entry(
     # endregion
 
     # region #-- setup the coordinators --#
-    _LOGGER.debug(log_formatter.format("setting up Mesh for the coordinator"))
     # region #--- mesh coordinator --#
     _LOGGER.debug(log_formatter.format("setting up the mesh coordinator"))
-    coordinator_name = DOMAIN
+    coordinator_name = f"{DOMAIN} mesh"
     if getattr(log_formatter, "_unique_id"):
         coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    coordinator = LinksysVelopUpdateCoordinator(
-        hass,
-        _LOGGER,
-        mesh,
-        coordinator_name,
-        update_interval_secs=config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-        ),
+    config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
+        LinksysVelopUpdateCoordinator(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
+        )
     )
-    await coordinator.async_config_entry_first_refresh()
-    config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = coordinator
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.MESH
+    ].async_config_entry_first_refresh()
     # endregion
     # region #-- speedtest coordinator --#
     _LOGGER.debug(log_formatter.format("setting up the speedtest coordinator"))
@@ -245,17 +153,20 @@ async def async_setup_entry(
     if getattr(log_formatter, "_unique_id"):
         coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    coordinator = LinksysVelopUpdateCoordinatorSpeedtest(
-        hass,
-        _LOGGER,
-        mesh,
-        coordinator_name,
-        update_interval_secs=config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-        ),
+    config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
+        LinksysVelopUpdateCoordinatorSpeedtest(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
+        )
     )
-    await coordinator.async_config_entry_first_refresh()
-    config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = coordinator
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.SPEEDTEST
+    ].async_config_entry_first_refresh()
     # endregion
     # region #-- channel scan coordinator --#
     _LOGGER.debug(log_formatter.format("setting up the channel scan coordinator"))
@@ -263,17 +174,20 @@ async def async_setup_entry(
     if getattr(log_formatter, "_unique_id"):
         coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    coordinator = LinksysVelopUpdateCoordinatorChannelScan(
-        hass,
-        _LOGGER,
-        mesh,
-        coordinator_name,
-        update_interval_secs=config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-        ),
+    config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
+        LinksysVelopUpdateCoordinatorChannelScan(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
+        )
     )
-    await coordinator.async_config_entry_first_refresh()
-    config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = coordinator
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.CHANNEL_SCAN
+    ].async_config_entry_first_refresh()
     # endregion
     # endregion
 
@@ -436,14 +350,6 @@ async def async_setup_entry(
 
     _LOGGER.debug(log_formatter.format("exited"))
 
-    if logging_mode == "single":
-        await async_logging_state(
-            config_entry=config_entry,
-            hass=hass,
-            log_formatter=log_formatter,
-            state=False,
-        )
-
     return True
 
 
@@ -451,11 +357,7 @@ async def async_unload_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
     """Cleanup when unloading a config entry."""
-    if include_serial_logging(config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
-
+    log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
 
     # region #-- remove services but only if there are no other instances --#
