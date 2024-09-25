@@ -53,6 +53,12 @@
                     "on": "mdi:wifi"
                 }
             },
+            "internet_access": {
+                "state": {
+                    "off": "mdi:web-off",
+                    "on": "mdi:web"
+                }
+            },
             "parental_control": {
                 "state": {
                     "off": "mdi:account-off",

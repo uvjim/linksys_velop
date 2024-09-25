@@ -10,6 +10,8 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.device import Device, ParentalControl
+from pyvelop.mesh import Mesh
 
 from . import LinksysVelopConfigEntry
 from .entities import (
@@ -19,6 +21,7 @@ from .entities import (
     LinksysVelopEntity,
     build_entities,
 )
+from .types import CoordinatorTypes
 
 # endregion
 
@@ -28,11 +31,64 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 @dataclass
 class SwitchDetails(EntityDetails):
     description: SwitchEntityDescription
-    off_func: str = field(kw_only=True)
-    on_func: str = field(kw_only=True)
+    off_func: Callable | str = field(kw_only=True)
+    on_func: Callable | str = field(kw_only=True)
+
+
+def _get_device_internet_access_state(device_details: Device) -> bool | None:
+    """Get the state of interent access for the device."""
+    blocked_internet_access: dict[str, str] = (
+        device_details.parental_control_schedule.get("blocked_internet_access", {})
+    )
+
+    if len(blocked_internet_access.values()) == 0:
+        return True
+
+    return not all(
+        ",".join(hrs) == "00:00-00:00" for hrs in blocked_internet_access.values()
+    )
+
+
+async def _async_set_device_internet_access_state_off(
+    config_entry: LinksysVelopConfigEntry, device_details: Device
+) -> None:
+    """Turn off Internet access for the given device."""
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)._mesh
+    off_rules: dict[str, str] = {
+        k: v[0]
+        for k, v in ParentalControl.binary_to_human_readable(
+            ParentalControl.ALL_PAUSED_SCHEDULE()
+        ).items()
+    }
+    await mesh.async_set_parental_control_rules(
+        device_details.unique_id,
+        off_rules,
+    )
+
+
+async def _async_set_device_internet_access_state_on(
+    config_entry: LinksysVelopConfigEntry, device_details: Device
+) -> None:
+    """Turn on Internet access for the given device."""
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)._mesh
+    await mesh.async_set_parental_control_rules(device_details.unique_id, {})
 
 
 ENTITY_DETAILS: list[SwitchDetails] = [
+    # region #-- device switches --#
+    SwitchDetails(
+        description=SwitchEntityDescription(
+            entity_category=EntityCategory.CONFIG,
+            key="",
+            name="Internet Access",
+            translation_key="internet_access",
+        ),
+        entity_type=EntityType.DEVICE,
+        off_func=_async_set_device_internet_access_state_off,
+        on_func=_async_set_device_internet_access_state_on,
+        state_value_func=_get_device_internet_access_state,
+    ),
+    # endregion
     # region #-- mesh switches --#
     SwitchDetails(
         description=SwitchEntityDescription(
@@ -134,14 +190,20 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """"""
-        if (func := getattr(self.coordinator.data, self._on_func, None)) is not None:
+        if isinstance(self._on_func, Callable):
+            await self._on_func(self._config_entry, self._context_data)
+            await self.coordinator.async_refresh()
+        elif (func := getattr(self.coordinator.data, self._on_func, None)) is not None:
             if isinstance(func, Callable):
                 await func(True)
                 await self.coordinator.async_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """"""
-        if (func := getattr(self.coordinator.data, self._on_func, None)) is not None:
+        if isinstance(self._off_func, Callable):
+            await self._off_func(self._config_entry, self._context_data)
+            await self.coordinator.async_refresh()
+        elif (func := getattr(self.coordinator.data, self._off_func, None)) is not None:
             if isinstance(func, Callable):
                 await func(False)
                 await self.coordinator.async_refresh()
