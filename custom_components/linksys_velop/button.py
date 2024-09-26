@@ -198,19 +198,21 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
     async def _async_delete_device(self) -> None:
         """"""
 
-        mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
-        await mesh.async_delete_device_by_id(self._context_data.unique_id)
-        async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
+        if self._context_data is not None:
+            mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
+                CoordinatorTypes.MESH
+            ).data
+            await mesh.async_delete_device_by_id(self._context_data.unique_id)
+            async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
 
     async def _async_restart_node(self) -> None:
         """"""
 
-        mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
-        await mesh.async_reboot_node(self._context_data.name)
+        if self._context_data is not None:
+            mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
+                CoordinatorTypes.MESH
+            ).data
+            await mesh.async_reboot_node(self._context_data.name)
 
     async def async_press(self) -> None:
         """"""
