@@ -404,6 +404,9 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                     self.config_entry.runtime_data.intensive_running_tasks.remove(
                         IntensiveTask.CHANNEL_SCAN
                     )
+                self.update_interval = self.normal_update_interval
+            else:
+                self.update_interval = self.progress_update_interval
         except Exception as err:
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
