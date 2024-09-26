@@ -284,7 +284,15 @@
                 "name": "Speedtest Latency"
             },
             "speedtest_progress": {
-                "name": "Speedtest Progress"
+                "name": "Speedtest Progress",
+                "state":{
+                    "checking_download_speed": "Checking download speed",
+                    "checking_latency": "Checking latency",
+                    "checking_upload_speed": "Checking upload speed",
+                    "detecting_server": "Detecting server",
+                    "finished": " ",
+                    "unknown": "Unknown"
+                }
             },
             "speedtest_result": {
                 "name": "Speedtest Result"
