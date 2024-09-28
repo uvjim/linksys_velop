@@ -144,7 +144,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         except MeshTimeoutError as err:
             exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                 translation_domain=DOMAIN,
-                translation_key="mesh_timeout",
+                translation_key="coordinator_mesh_timeout",
                 translation_placeholders={
                     "current_timeout": self.config_entry.options.get(
                         CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
@@ -348,6 +348,18 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 self.update_interval = self.progress_update_interval
             else:
                 self.update_interval = self.normal_update_interval
+        except MeshTimeoutError as err:
+            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                translation_domain=DOMAIN,
+                translation_key="coordinator_mesh_timeout",
+                translation_placeholders={
+                    "current_timeout": self.config_entry.options.get(
+                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                    )
+                },
+            )
+            _LOGGER.warning(exc_mesh_timeout)
+            raise UpdateFailed(err) from err
         except Exception as err:
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
@@ -407,6 +419,18 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 self.update_interval = self.normal_update_interval
             else:
                 self.update_interval = self.progress_update_interval
+        except MeshTimeoutError as err:
+            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                translation_domain=DOMAIN,
+                translation_key="coordinator_mesh_timeout",
+                translation_placeholders={
+                    "current_timeout": self.config_entry.options.get(
+                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                    )
+                },
+            )
+            _LOGGER.warning(exc_mesh_timeout)
+            raise UpdateFailed(err) from err
         except Exception as err:
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
