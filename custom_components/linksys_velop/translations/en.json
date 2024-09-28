@@ -338,7 +338,7 @@
             "message": "Failed to login to the mesh."
         },
         "general": {
-            "message": "A currently uncaught exception was encountered, type: {exc_type}"
+            "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}"
         },
         "intensive_task": {
             "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."

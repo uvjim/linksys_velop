@@ -157,7 +157,10 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
                 translation_key="general",
-                translation_placeholders={"exc_type": type(err)},
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
             )
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
@@ -364,7 +367,10 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
                 translation_key="general",
-                translation_placeholders={"exc_type": type(err)},
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
             )
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
@@ -435,7 +441,10 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,
                 translation_key="general",
-                translation_placeholders={"exc_type": type(err)},
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
             )
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
