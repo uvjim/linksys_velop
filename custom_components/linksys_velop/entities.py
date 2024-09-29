@@ -14,9 +14,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 from pyvelop.const import DEF_EMPTY_NAME
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
@@ -26,6 +23,9 @@ from .const import (
     CONF_UI_DEVICES,
     DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
+    PYVELOP_AUTHOR,
+    PYVELOP_NAME,
+    PYVELOP_VERSION,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
 from .logger import Logger

@@ -3,6 +3,7 @@
 # region #-- imports --#
 import uuid
 from enum import StrEnum
+from importlib.metadata import PackageNotFoundError, distribution, version
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
@@ -55,6 +56,14 @@ PLATFORMS: list[str | None] = [
     SWITCH_DOMAIN,
     UPDATE_DOMAIN,
 ]
+
+try:
+    PYVELOP_NAME: str = "pyvelop"
+    PYVELOP_AUTHOR: str = distribution(PYVELOP_NAME).metadata.get("Author")
+    PYVELOP_VERSION: str = version(PYVELOP_NAME)
+except PackageNotFoundError:
+    pass
+
 
 SIGNAL_DEVICE_TRACKER_UPDATE: str = f"{DOMAIN}_device_tracker_update"
 SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE: str = f"{DOMAIN}_ui_placeholder_update"

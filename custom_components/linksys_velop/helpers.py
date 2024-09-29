@@ -12,11 +12,8 @@ from homeassistant.helpers.device_registry import (
     DeviceRegistry,
 )
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
 
-from .const import DOMAIN
+from .const import DOMAIN, PYVELOP_AUTHOR, PYVELOP_NAME, PYVELOP_VERSION
 from .types import LinksysVelopConfigEntry
 
 # endregion

@@ -18,7 +18,6 @@ from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.issue_registry import IssueSeverity
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
