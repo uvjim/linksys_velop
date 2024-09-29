@@ -114,6 +114,7 @@ class LinksysVelopServiceHandler:
         """Initialise."""
         self._hass: HomeAssistant = hass
         self._log_formatter: Logger = Logger()
+        self._mesh: Mesh | None = None
 
     def _get_config_entry_from_mesh_id(
         self, mesh_id: str
@@ -141,6 +142,7 @@ class LinksysVelopServiceHandler:
         details.
         """
         ret: list[Device] | None = None
+
         if isinstance(self._mesh, Mesh):
             ret = [
                 device
@@ -162,15 +164,15 @@ class LinksysVelopServiceHandler:
         if (
             config_entry := self._get_config_entry_from_mesh_id(args.pop("mesh", ""))
         ) is not None:
-            _mesh: Mesh = config_entry.runtime_data.coordinators.get(
+            self._mesh = config_entry.runtime_data.coordinators.get(
                 CoordinatorTypes.MESH
-            )
-            _LOGGER.debug(self._log_formatter.format("Using %s"), _mesh)
+            )._mesh
+            _LOGGER.debug(self._log_formatter.format("Using %s"), self._mesh)
             method = getattr(self, call.service, None)
             if method:
                 try:
                     await method(**args, config_entry=config_entry)
-                except Exception as err:  # pylint: disable=broad-except
+                except Exception as err:
                     _LOGGER.warning(
                         self._log_formatter.format("%s", include_caller=False), err
                     )
@@ -198,40 +200,17 @@ class LinksysVelopServiceHandler:
         for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
-    # @deprectated_service(solution="Use the button available on the mesh device.")
-    # async def check_updates(
-    #     self, config_entry: LinksysVelopConfigEntry, **kwargs
-    # ) -> None:
-    #     """Instruct the mesh to check for updates.
-
-    #     The update check could be a long-running task so a signal is also sent to listeners to update the status more
-    #     frequently.  This allows a more reactive UI but also paves the way for status messages later.
-
-    #     :return: None
-    #     """
-    #     _LOGGER.debug(self._log_formatter.format("entered"))
-
-    #     _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-    #         CoordinatorTypes.MESH
-    #     ).data
-    #     await _mesh.async_check_for_updates()
-
-    #     _LOGGER.debug(self._log_formatter.format("exited"))
-
     async def delete_device(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
         try:
             _ = uuid.UUID(kwargs.get("device"))
-            await _mesh.async_delete_device_by_id(device=kwargs.get("device"))
+            await self._mesh.async_delete_device_by_id(device=kwargs.get("device"))
         except ValueError:
-            await _mesh.async_delete_device_by_name(device=kwargs.get("device"))
+            await self._mesh.async_delete_device_by_name(device=kwargs.get("device"))
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
@@ -241,9 +220,6 @@ class LinksysVelopServiceHandler:
         """Change state of Internet access for a device."""
         _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
         try:
             _ = uuid.UUID(kwargs.get("device"))
             device: list[Device] | None = self._get_device(
@@ -270,7 +246,7 @@ class LinksysVelopServiceHandler:
                 )
             )
 
-        await _mesh.async_set_parental_control_rules(
+        await self._mesh.async_set_parental_control_rules(
             device_id=device[0].unique_id,
             force_enable=True if kwargs.get("pause", False) else False,
             rules=rules_to_apply,
@@ -285,9 +261,6 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
 
         device: list[Device] | None = None
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
         try:
             _ = uuid.UUID(kwargs.get("device"))
             device = self._get_device(
@@ -312,14 +285,16 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("rules_to_apply: %s"), rules_to_apply)
 
-        await _mesh.async_set_parental_control_rules(
+        await self._mesh.async_set_parental_control_rules(
             device_id=device[0].unique_id,
             rules=rules_to_apply,
         )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    @deprectated_service(solution="Use the button available on the node device.")
+    @deprectated_service(
+        solution="Use the button available on the node device or mesh."
+    )
     async def reboot_node(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
@@ -332,10 +307,7 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
-        await _mesh.async_reboot_node(
+        await self._mesh.async_reboot_node(
             node_name=kwargs.get("node_name", ""),
             force=kwargs.get("is_primary", False),
         )
@@ -348,9 +320,6 @@ class LinksysVelopServiceHandler:
         """Rename a device on the Mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
-        _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data
         try:
             _ = uuid.UUID(kwargs.get("device"))
             device: list[Device] | None = self._get_device(
@@ -370,31 +339,8 @@ class LinksysVelopServiceHandler:
                 self._log_formatter.format("renaming device: %s"),
                 device[0].unique_id,
             )
-            await _mesh.async_rename_device(
+            await self._mesh.async_rename_device(
                 device_id=device[0].unique_id, name=kwargs.get("new_name")
             )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
-
-    # @deprectated_service(solution="Use the button available on the mesh device.")
-    # async def start_speedtest(
-    #     self, config_entry: LinksysVelopConfigEntry, **kwargs
-    # ) -> None:
-    #     """Start a Speedtest on the mesh.
-
-    #     The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
-    #     frequently.  This allows seeing the stages of the test in the UI.
-
-    #     :return:None
-    #     """
-    #     _LOGGER.debug(self._log_formatter.format("entered"))
-
-    #     _mesh: Mesh = config_entry.runtime_data.coordinators.get(
-    #         CoordinatorTypes.SPEEDTEST
-    #     )._mesh
-    #     await _mesh.async_start_speedtest()
-    #     await config_entry.runtime_data.coordinators.get(
-    #         CoordinatorTypes.SPEEDTEST
-    #     ).async_refresh()
-
-    #     _LOGGER.debug(self._log_formatter.format("exited"))
