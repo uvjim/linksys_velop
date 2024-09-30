@@ -112,6 +112,22 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         self._trigger_event(EventSubTypes.NEW_NODE_FOUND.value, event_attributes)
         self.async_write_ha_state()
 
+    async def _async_process_event_node_removed(self, node: Node) -> None:
+        """"""
+
+        event_properties: list[str] = [
+            "model",
+            "name",
+            "serial",
+            "unique_id",
+        ]
+
+        event_attributes: dict[str, Any] = _build_event_properties(
+            event_properties, node
+        )
+        self._trigger_event(EventSubTypes.NODE_REMOVED.value, event_attributes)
+        self.async_write_ha_state()
+
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         for event in self.event_types:
