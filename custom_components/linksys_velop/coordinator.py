@@ -6,7 +6,7 @@ import copy
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from enum import IntFlag, StrEnum, auto
+from enum import StrEnum, auto
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -32,6 +32,7 @@ from .const import (
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
     DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
+    ISSUE_MISSING_NODE,
     ISSUE_MISSING_UI_DEVICE,
     IntensiveTask,
 )
@@ -43,15 +44,6 @@ from .types import EventSubTypes, LinksysVelopConfigEntry
 
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-
-class Events(IntFlag):
-    """Available events."""
-
-    NONE = 0
-    NEW_DEVICE = auto()
-    NEW_NODE = auto()
-    ALL = NEW_DEVICE | NEW_NODE
 
 
 class SpeedtestStatus(StrEnum):
@@ -124,20 +116,20 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         current_devices: list[str] = []
         previous_devices: list[str] = []
         previous_nodes: list[str] = []
+        previous_nodes_details: list[Node] = []
 
-        if any(
-            [
-                est in [EventSubTypes.NEW_DEVICE_FOUND, EventSubTypes.NEW_NODE_FOUND]
-                for est in self.config_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                )
-            ]
-        ):
-            try:
-                previous_devices = [device.unique_id for device in self._mesh.devices]
+        configured_events: list[str] = self.config_entry.options.get(
+            CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+        )
+
+        try:
+            previous_nodes_details = list(self._mesh.nodes)
+            if EventSubTypes.NEW_NODE_FOUND.value in configured_events:
                 previous_nodes = [node.unique_id for node in self._mesh.nodes]
-            except MeshNeedsGatherDetails:
-                pass
+            if EventSubTypes.NEW_DEVICE_FOUND.value in configured_events:
+                previous_devices = [device.unique_id for device in self._mesh.devices]
+        except MeshNeedsGatherDetails:
+            pass
 
         try:
             await self._mesh.async_gather_details()
@@ -173,8 +165,8 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                     self.config_entry.options.get(CONF_UI_DEVICES, [])
                 ).difference(current_devices)
                 missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
+                device_registry: DeviceRegistry = dr.async_get(self.hass)
                 for ui_device in missing_ui_devices:
-                    device_registry: DeviceRegistry = dr.async_get(self.hass)
                     found_device: DeviceEntry | None = device_registry.async_get_device(
                         {(DOMAIN, ui_device)}
                     )
@@ -182,7 +174,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                         ir.async_create_issue(
                             self.hass,
                             DOMAIN,
-                            ISSUE_MISSING_UI_DEVICE,
+                            f"{ISSUE_MISSING_UI_DEVICE}::{ui_device}",
                             data={
                                 "config_entry": self.config_entry,
                                 "device_id": ui_device,
@@ -206,13 +198,44 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                                 self.config_entry, options=new_options
                             )
             # endregion
+            # region #-- missing nodes --#
+            current_nodes: list[str] = [node.unique_id for node in self._mesh.nodes]
+            removed_nodes: set[str] = set(previous_nodes).difference(set(current_nodes))
+            device_registry: DeviceRegistry = dr.async_get(self.hass)
+            for node in removed_nodes:
+                node_info: list[Node]
+                if node_info := [
+                    n for n in previous_nodes_details if n.unique_id == node
+                ]:
+                    found_device: DeviceEntry | None = device_registry.async_get_device(
+                        {(DOMAIN, node_info[0].serial)}
+                    )
+                    if found_device is not None:
+                        ir.async_create_issue(
+                            self.hass,
+                            DOMAIN,
+                            f"{ISSUE_MISSING_NODE}::{node_info[0].serial}",
+                            data={
+                                "config_entry": self.config_entry,
+                                "device_id": node_info[0].serial,
+                                "device_name": found_device.name_by_user
+                                or found_device.name,
+                            },
+                            is_fixable=True,
+                            is_persistent=False,
+                            severity=IssueSeverity.WARNING,
+                            translation_key=ISSUE_MISSING_NODE,
+                            translation_placeholders={
+                                "device_name": found_device.name_by_user
+                                or found_device.name
+                            },
+                        )
+            # endregion
             # endregion
 
             # region #-- event management --#
             # region #-- check for new devices --#
-            if EventSubTypes.NEW_DEVICE_FOUND.value in self.config_entry.options.get(
-                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            ):
+            if EventSubTypes.NEW_DEVICE_FOUND.value in configured_events:
                 if len(current_devices) == 0:
                     current_devices = [
                         device.unique_id for device in self._mesh.devices
@@ -236,9 +259,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             # endregion
 
             # region #-- check for new nodes --#
-            if EventSubTypes.NEW_NODE_FOUND.value in self.config_entry.options.get(
-                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            ):
+            if EventSubTypes.NEW_NODE_FOUND.value in configured_events:
                 if len(previous_nodes) > 0:
                     current_nodes: list[str] = [
                         node.unique_id for node in self._mesh.nodes
@@ -246,18 +267,15 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                     new_nodes: set[str] = set(current_nodes).difference(
                         set(previous_nodes)
                     )
-                    node_info: list[Node] | Node
+                    node_info: list[Node]
                     for node in new_nodes:
-                        if (
-                            node_info := [
-                                n for n in self._mesh.nodes if n.unique_id == node
-                            ]
-                        ) != []:
-                            node_info = node_info[0]
+                        if node_info := [
+                            n for n in self._mesh.nodes if n.unique_id == node
+                        ]:
                             async_dispatcher_send(
                                 self.hass,
                                 f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                                node_info,
+                                node_info[0],
                             )
             # endregion
             # endregion

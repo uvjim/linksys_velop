@@ -47,6 +47,7 @@ DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS: float = 1
 DEF_UI_PLACEHOLDER_DEVICE_ID: str = str(uuid.UUID(int=0))
 
 ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
+ISSUE_MISSING_NODE: str = "missing_node"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
 
 PLATFORMS: list[str | None] = [
