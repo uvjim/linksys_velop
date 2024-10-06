@@ -157,8 +157,7 @@
                     "event_type": {
                         "state": {
                             "new_device_found": "New device found",
-                            "new_node_found": "New node found",
-                            "node_removed": "Node removed"
+                            "new_node_found": "New node found"
                         }
                     }
                 }
@@ -457,8 +456,7 @@
         "events_options": {
             "options": {
                 "new_device_found": "New device found on the mesh",
-                "new_node_found": "New node added to the mesh",
-                "node_removed": "Node removed from the mesh"
+                "new_node_found": "New node added to the mesh"
             }
         },
         "pc_times": {
