@@ -66,5 +66,12 @@
                 }
             }
         }
+    },
+    "services": {
+        "delete_device": "mdi:delete-outline",
+        "device_internet_access": "mdi:web",
+        "device_internet_rules": "mdi:security-network",
+        "reboot_node": "mdi:restart",
+        "rename_device": "mdi:form-textbox"
     }
 }
