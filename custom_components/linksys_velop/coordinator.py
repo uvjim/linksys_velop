@@ -123,24 +123,11 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         )
 
         try:
-<<<<<<< HEAD
             previous_nodes_details = list(self._mesh.nodes)
             if EventSubTypes.NEW_NODE_FOUND.value in configured_events:
                 previous_nodes = [node.unique_id for node in self._mesh.nodes]
             if EventSubTypes.NEW_DEVICE_FOUND.value in configured_events:
                 previous_devices = [device.unique_id for device in self._mesh.devices]
-=======
-            if (
-                EventSubTypes.NEW_NODE_FOUND.value in configured_events
-                or EventSubTypes.NODE_REMOVED.value in configured_events
-            ):
-                previous_nodes = [node.unique_id for node in self._mesh.nodes]
-            if EventSubTypes.NODE_REMOVED.value in configured_events:
-                previous_nodes_details = list(self._mesh.nodes)
-            if EventSubTypes.NEW_DEVICE_FOUND.value in configured_events:
-                previous_devices = [device.unique_id for device in self._mesh.devices]
-
->>>>>>> a6871bf6cb950028d240d28e03bdf3c66db55823
         except MeshNeedsGatherDetails:
             pass
 

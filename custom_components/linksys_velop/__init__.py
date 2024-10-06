@@ -54,7 +54,7 @@ from .coordinator import (
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
-from .exceptions import IntensiveTaskRunning
+from .exceptions import GeneralException, IntensiveTaskRunning
 from .helpers import (
     get_mesh_device_for_config_entry,
     remove_velop_device_from_registry,
@@ -249,9 +249,25 @@ async def async_setup_entry(
                 )
                 _LOGGER.warning(exc)
             else:
-                _LOGGER.error(err)
-        except MeshException as err:
-            _LOGGER.error(err)
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": err,
+                    },
+                )
+                _LOGGER.warning(exc_general)
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
+            )
+            _LOGGER.warning(exc_general)
 
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         scan_interval = config_entry.options.get(
