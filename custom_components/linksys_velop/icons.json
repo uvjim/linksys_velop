@@ -1,0 +1,77 @@
+{
+    "entity": {
+        "button": {
+            "channel_scan": {
+                "default": "mdi:wifi-sync"
+            },
+            "check_for_updates": {
+                "default": "mdi:update"
+            },
+            "delete": {
+                "default": "mdi:delete"
+            },
+            "speedtest": {
+                "default": "mdi:refresh"
+            }
+        },
+        "sensor": {
+            "available_storage": {
+                "default": "mdi:nas"
+            },
+            "backhaul_connection_type": {
+                "state": {
+                    "wired": "mdi:lan-connect",
+                    "wireless": "mdi:wifi"
+                }
+            },
+            "download_bandwidth": {
+                "default": "mdi:cloud-download-outline"
+            },
+            "parent_name": {
+                "default": "mdi:family-tree"
+            },
+            "serial": {
+                "default": "mdi:barcode"
+            },
+            "speedtest_latency": {
+                "default": "mdi:timer-sync-outline"
+            },
+            "speedtest_result": {
+                "default": "mdi:keyboard-return"
+            },
+            "upload_bandwidth": {
+                "default": "mdi:cloud-upload-outline"
+            },
+            "wan_ip": {
+                "default": "mdi:ip-network-outline"
+            }
+        },
+        "switch": {
+            "guest_wifi": {
+                "state": {
+                    "off": "mdi:wifi-off",
+                    "on": "mdi:wifi"
+                }
+            },
+            "internet_access": {
+                "state": {
+                    "off": "mdi:web-off",
+                    "on": "mdi:web"
+                }
+            },
+            "parental_control": {
+                "state": {
+                    "off": "mdi:account-off",
+                    "on": "mdi:account"
+                }
+            }
+        }
+    },
+    "services": {
+        "delete_device": "mdi:delete-outline",
+        "device_internet_access": "mdi:web",
+        "device_internet_rules": "mdi:security-network",
+        "reboot_node": "mdi:restart",
+        "rename_device": "mdi:form-textbox"
+    }
+}

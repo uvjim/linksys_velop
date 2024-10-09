@@ -1,4 +1,4 @@
-"""Manage the services for the pyvelop integration."""
+"""Manage the services for the Linksys Velop integration."""
 
 # region #-- imports --#
 from __future__ import annotations
@@ -6,19 +6,16 @@ from __future__ import annotations
 import functools
 import logging
 import uuid
-from typing import Dict, List
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.device import Device, ParentalControl
 from pyvelop.mesh import Mesh
 
-from .const import CONF_COORDINATOR, DOMAIN, SIGNAL_UPDATE_SPEEDTEST_STATUS
-from .helpers import include_serial_logging
+from .const import DOMAIN
 from .logger import Logger
+from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
 
@@ -61,13 +58,6 @@ class LinksysVelopServiceHandler:
     """Define and action serice calls."""
 
     SERVICES = {
-        "check_updates": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                }
-            )
-        },
         "delete_device": {
             "schema": vol.Schema(
                 {
@@ -118,13 +108,6 @@ class LinksysVelopServiceHandler:
                 }
             )
         },
-        "start_speedtest": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                }
-            )
-        },
     }
 
     def __init__(self, hass: HomeAssistant) -> None:
@@ -133,13 +116,33 @@ class LinksysVelopServiceHandler:
         self._log_formatter: Logger = Logger()
         self._mesh: Mesh | None = None
 
-    def _get_device(self, attribute: str, value: str) -> List[Device] | None:
+    def _get_config_entry_from_mesh_id(
+        self, mesh_id: str
+    ) -> LinksysVelopConfigEntry | None:
+        """"""
+        config_entry: LinksysVelopConfigEntry | None = None
+        config_entry_id: str | None = None
+        device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
+        device: dr.DeviceEntry | None = device_registry.async_get(device_id=mesh_id)
+        if device:
+            for config_entry_id in device.config_entries:
+                config_entry = self._hass.config_entries.async_get_entry(
+                    config_entry_id
+                )
+                if config_entry.domain == DOMAIN:
+                    self._log_formatter = Logger(unique_id=config_entry.unique_id)
+                    break
+
+        return config_entry
+
+    def _get_device(self, attribute: str, value: str) -> list[Device] | None:
         """Get a device from the Mesh using the given attribute.
 
         N.B. this uses the devices from the last poll to retrieve
         details.
         """
-        ret: List[Device] | None = None
+        ret: list[Device] | None = None
+
         if isinstance(self._mesh, Mesh):
             ret = [
                 device
@@ -148,36 +151,6 @@ class LinksysVelopServiceHandler:
             ]
 
         return ret or None
-
-    def _get_mesh(self, mesh_id: str) -> Mesh | None:
-        """Get the Mesh class for the service call to operate against.
-
-        :param mesh_id: the device id of the mesh
-        :return: the Mesh class or None
-        """
-        config_entry: ConfigEntry | None = None
-        config_entry_id: str | None = None
-        device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
-        device: dr.DeviceEntry | None = device_registry.async_get(device_id=mesh_id)
-        if device:
-            for config_entry_id in device.config_entries:
-                config_entry = self._hass.config_entries.async_get_entry(
-                    entry_id=config_entry_id
-                )
-                if config_entry.domain == DOMAIN:
-                    if include_serial_logging(config=config_entry):
-                        self._log_formatter = Logger(unique_id=config_entry.unique_id)
-                    else:
-                        self._log_formatter = Logger()
-                    break
-
-        ret = (
-            self._hass.data[DOMAIN][config_entry_id][CONF_COORDINATOR].data
-            if config_entry
-            else None
-        )
-
-        return ret
 
     async def _async_service_call(self, call: ServiceCall) -> None:
         """Call the required method based on the given argument.
@@ -188,23 +161,27 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("entered, call: %s"), call)
 
         args = call.data.copy()
-        self._mesh = self._get_mesh(mesh_id=args.pop("mesh", ""))
-        if not self._mesh:
+        if (
+            config_entry := self._get_config_entry_from_mesh_id(args.pop("mesh", ""))
+        ) is not None:
+            self._mesh = config_entry.runtime_data.coordinators.get(
+                CoordinatorTypes.MESH
+            )._mesh
+            _LOGGER.debug(self._log_formatter.format("Using %s"), self._mesh)
+            method = getattr(self, call.service, None)
+            if method:
+                try:
+                    await method(**args, config_entry=config_entry)
+                except Exception as err:
+                    _LOGGER.warning(
+                        self._log_formatter.format("%s", include_caller=False), err
+                    )
+        else:
             _LOGGER.warning(
                 self._log_formatter.format(
                     "Unknown Mesh specified", include_caller=False
                 )
             )
-        else:
-            _LOGGER.debug(self._log_formatter.format("Using %s"), self._mesh)
-            method = getattr(self, call.service, None)
-            if method:
-                try:
-                    await method(**args)
-                except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.warning(
-                        self._log_formatter.format("%s", include_caller=False), err
-                    )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
@@ -223,22 +200,9 @@ class LinksysVelopServiceHandler:
         for service_name in self.SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
-    @deprectated_service(solution="Use the associated button.press native service.")
-    async def check_updates(self) -> None:
-        """Instruct the mesh to check for updates.
-
-        The update check could be a long-running task so a signal is also sent to listeners to update the status more
-        frequently.  This allows a more reactive UI but also paves the way for status messages later.
-
-        :return: None
-        """
-        _LOGGER.debug(self._log_formatter.format("entered"))
-
-        await self._mesh.async_check_for_updates()
-
-        _LOGGER.debug(self._log_formatter.format("exited"))
-
-    async def delete_device(self, **kwargs) -> None:
+    async def delete_device(
+        self, config_entry: LinksysVelopConfigEntry, **kwargs
+    ) -> None:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
@@ -250,24 +214,26 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    async def device_internet_access(self, **kwargs) -> None:
+    async def device_internet_access(
+        self, config_entry: LinksysVelopConfigEntry, **kwargs
+    ) -> None:
         """Change state of Internet access for a device."""
         _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
 
         try:
             _ = uuid.UUID(kwargs.get("device"))
-            device: List[Device] | None = self._get_device(
+            device: list[Device] | None = self._get_device(
                 attribute="unique_id", value=kwargs.get("device", "")
             )
         except ValueError:
-            device: List[Device] | None = self._get_device(
+            device: list[Device] | None = self._get_device(
                 attribute="name", value=kwargs.get("device", "")
             )
 
         if device is None:
             raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        rules_to_apply: Dict[str, str] = {}
+        rules_to_apply: dict[str, str] = {}
         if kwargs.get("pause", False):
             rules_to_apply = dict(
                 map(
@@ -288,11 +254,13 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    async def device_internet_rules(self, **kwargs) -> None:
+    async def device_internet_rules(
+        self, config_entry: LinksysVelopConfigEntry, **kwargs
+    ) -> None:
         """Set Parental Control rules for the device."""
         _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
 
-        device: List[Device] | None = None
+        device: list[Device] | None = None
         try:
             _ = uuid.UUID(kwargs.get("device"))
             device = self._get_device(
@@ -304,7 +272,7 @@ class LinksysVelopServiceHandler:
         if device is None:
             raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        rules_to_apply: Dict[str, str] = {}
+        rules_to_apply: dict[str, str] = {}
         rules_to_apply = dict(
             map(
                 lambda weekday: (
@@ -324,10 +292,15 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    async def reboot_node(self, **kwargs) -> None:
+    @deprectated_service(
+        solution="Use the button available on the node device or mesh."
+    )
+    async def reboot_node(
+        self, config_entry: LinksysVelopConfigEntry, **kwargs
+    ) -> None:
         """Instruct the mesh to restart a node.
 
-        N.B. Rebooting the primary node will cause all ndoes to reboot. To reboot the primary node you should also
+        N.B. Rebooting the primary node will cause all nodes to reboot. To reboot the primary node you should also
         turn the is_primary toggle on.
 
         :return:None
@@ -335,21 +308,25 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
         await self._mesh.async_reboot_node(
-            node_name=kwargs.get("node_name", ""), force=kwargs.get("is_primary", False)
+            node_name=kwargs.get("node_name", ""),
+            force=kwargs.get("is_primary", False),
         )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    async def rename_device(self, **kwargs) -> None:
+    async def rename_device(
+        self, config_entry: LinksysVelopConfigEntry, **kwargs
+    ) -> None:
         """Rename a device on the Mesh."""
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+
         try:
             _ = uuid.UUID(kwargs.get("device"))
-            device: List[Device] | None = self._get_device(
+            device: list[Device] | None = self._get_device(
                 attribute="unique_id", value=kwargs.get("device", "")
             )
         except ValueError:
-            device: List[Device] | None = self._get_device(
+            device: list[Device] | None = self._get_device(
                 attribute="name", value=kwargs.get("device", "")
             )
 
@@ -359,26 +336,11 @@ class LinksysVelopServiceHandler:
         # only make the request to rename if they are different
         if device[0].name != kwargs.get("new_name"):
             _LOGGER.debug(
-                self._log_formatter.format("renaming device: %s"), device[0].unique_id
+                self._log_formatter.format("renaming device: %s"),
+                device[0].unique_id,
             )
             await self._mesh.async_rename_device(
                 device_id=device[0].unique_id, name=kwargs.get("new_name")
             )
-
-        _LOGGER.debug(self._log_formatter.format("exited"))
-
-    @deprectated_service(solution="Use the associated button.press native service.")
-    async def start_speedtest(self) -> None:
-        """Start a Speedtest on the mesh.
-
-        The Speedtest is a long-running task so a signal is also sent to listeners to update the status more
-        frequently.  This allows seeing the stages of the test in the UI.
-
-        :return:None
-        """
-        _LOGGER.debug(self._log_formatter.format("entered"))
-
-        await self._mesh.async_start_speedtest()
-        async_dispatcher_send(self._hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
 
         _LOGGER.debug(self._log_formatter.format("exited"))

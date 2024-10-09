@@ -1,164 +1,73 @@
 """The Linksys Velop integration."""
 
 # region #-- imports --#
-from __future__ import annotations
-
-import datetime
+import copy
 import logging
-from datetime import timedelta
-from typing import Any, Callable, Dict, List, Mapping, Set
+from datetime import datetime, timedelta
+from typing import Any
 
-import homeassistant.helpers.entity_registry as er
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.config_entries import device_registry as dr
+from homeassistant.config_entries import entity_registry as er
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
-from homeassistant.core import CoreState, HomeAssistant
-from homeassistant.exceptions import ServiceNotFound
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceEntryType
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-from homeassistant.util import slugify
-from pyvelop.const import _PACKAGE_AUTHOR as PYVELOP_AUTHOR
-from pyvelop.const import _PACKAGE_NAME as PYVELOP_NAME
-from pyvelop.const import _PACKAGE_VERSION as PYVELOP_VERSION
+from homeassistant.helpers.issue_registry import IssueSeverity
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
     MeshDeviceNotFoundResponse,
     MeshException,
-    MeshInvalidOutput,
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh
-from pyvelop.node import Node, NodeType
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
-    CONF_COORDINATOR,
-    CONF_COORDINATOR_MESH,
     CONF_DEVICE_TRACKERS,
-    CONF_DEVICE_TRACKERS_MISSING,
-    CONF_DEVICE_UI,
-    CONF_DEVICE_UI_MISSING,
-    CONF_ENTRY_RELOAD,
-    CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE,
-    CONF_LOGGING_OPTIONS,
-    CONF_LOGGING_MODE,
-    CONF_LOGGING_MODE_OFF,
+    CONF_DEVICE_TRACKERS_TO_REMOVE,
+    CONF_EVENTS_OPTIONS,
     CONF_NODE,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
-    CONF_SERVICES_HANDLER,
-    CONF_UNSUB_UPDATE_LISTENER,
+    CONF_UI_DEVICES_TO_REMOVE,
     DEF_API_REQUEST_TIMEOUT,
-    DEF_LOGGING_MODE,
-    DEF_LOGGING_OPTIONS,
+    DEF_EVENTS_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-    DEF_UI_DEVICE_ID,
+    DEF_SELECT_TEMP_UI_DEVICE,
+    DEVICE_TRACKER_DOMAIN,
     DOMAIN,
-    ENTITY_SLUG,
+    EVENT_DOMAIN,
+    ISSUE_MISSING_DEVICE_TRACKER,
     PLATFORMS,
-    SIGNAL_UPDATE_DEVICE_TRACKER,
-    SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
-    SIGNAL_UPDATE_SPEEDTEST_STATUS,
+    SELECT_DOMAIN,
+    SIGNAL_DEVICE_TRACKER_UPDATE,
 )
-from .events import EVENT_TYPE, EventSubType, build_payload
+from .coordinator import (
+    LinksysVelopUpdateCoordinator,
+    LinksysVelopUpdateCoordinatorChannelScan,
+    LinksysVelopUpdateCoordinatorSpeedtest,
+)
+from .exceptions import GeneralException, IntensiveTaskRunning
 from .helpers import (
-    dr_nodes_for_mesh,
-    include_serial_logging,
-    mesh_intensive_action_running,
-    stop_tracking_device,
+    get_mesh_device_for_config_entry,
+    remove_velop_device_from_registry,
+    remove_velop_entity_from_registry,
 )
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
+from .types import CoordinatorTypes, LinksysVelopConfigEntry, LinksysVelopData
 
 # endregion
 
-_LOGGER = logging.getLogger(__name__)
-
-LOGGING_ON: str = logging.getLevelName(logging.DEBUG)
-LOGGING_OFF: str = logging.getLevelName(_LOGGER.level)
-LOGGING_REVERT: str = logging.getLevelName(logging.getLogger("").level)
-LOGGING_DISABLED: bool = False
-
-
-async def async_logging_state(
-    config_entry: ConfigEntry, hass: HomeAssistant, log_formatter: Logger, state: bool
-) -> None:
-    """Turn logging on or off."""
-    global LOGGING_DISABLED  # pylint: disable=global-statement
-
-    logging_level: str = LOGGING_ON if state else LOGGING_OFF
-    if (
-        logging_level == LOGGING_ON
-        and CONF_LOGGING_OPTION_INCLUDE_QUERY_RESPONSE
-        in config_entry.options.get(CONF_LOGGING_OPTIONS, DEF_LOGGING_OPTIONS)
-    ):
-        logging_level_jnap_response: str = LOGGING_ON
-    else:
-        logging_level_jnap_response: str = LOGGING_REVERT
-    if not state:
-        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
-        _LOGGER.debug(
-            log_formatter.format("JNAP response log state: %s"),
-            logging_level_jnap_response,
-        )
-    try:
-        await hass.services.async_call(
-            blocking=True,
-            domain="logger",
-            service="set_level",
-            service_data={
-                f"custom_components.{DOMAIN}": logging_level,
-                PYVELOP_NAME: logging_level,
-                f"{PYVELOP_NAME}.jnap.verbose": logging_level_jnap_response,
-            },
-        )
-    except ServiceNotFound:
-        if not LOGGING_DISABLED:
-            _LOGGER.warning(
-                log_formatter.format(
-                    "The logger integration is not enabled. Turning integration logging off."
-                )
-            )
-            options: Dict = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
-            hass.config_entries.async_update_entry(entry=config_entry, options=options)
-            LOGGING_DISABLED = True
-    else:
-        _LOGGER.debug(log_formatter.format("log state: %s"), logging_level)
-        _LOGGER.debug(
-            log_formatter.format("JNAP response log state: %s"),
-            logging_level_jnap_response,
-        )
-        if (
-            not state
-            and config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-            != CONF_LOGGING_MODE_OFF
-        ):
-            options: Dict = dict(**config_entry.options)
-            options[CONF_LOGGING_MODE] = CONF_LOGGING_MODE_OFF
-            hass.config_entries.async_update_entry(entry=config_entry, options=options)
-            if hass.state != CoreState.stopping:
-                hass.bus.async_fire(
-                    event_type=EVENT_TYPE,
-                    event_data=build_payload(
-                        config_entry=config_entry,
-                        event=EventSubType.LOGGING_STOPPED,
-                        hass=hass,
-                    ),
-                )
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+_SETUP_PLATFORMS: list[str] = []
 
 
 async def async_remove_config_entry_device(
@@ -170,18 +79,10 @@ async def async_remove_config_entry_device(
 
     Do not allow the Mesh device to be removed
     """
-    if include_serial_logging(config=config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
+    log_formatter = Logger(unique_id=config_entry.unique_id)
 
-    if all(
-        [  # check for Mesh device
-            device_entry.name == "Mesh",
-            device_entry.manufacturer == PYVELOP_AUTHOR,
-            device_entry.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-        ]
-    ):
+    mesh_id: set = {(DOMAIN, config_entry.entry_id)}
+    if device_entry.identifiers.intersection(mesh_id):
         _LOGGER.error(
             log_formatter.format("Attempt to remove the Mesh device rejected")
         )
@@ -190,71 +91,22 @@ async def async_remove_config_entry_device(
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> bool:
     """Create a config entry."""
-    if include_serial_logging(config=config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
 
-    # region #-- start logging if needed --#
-    logging_mode: bool = config_entry.options.get(CONF_LOGGING_MODE, DEF_LOGGING_MODE)
-    if logging_mode != CONF_LOGGING_MODE_OFF:
-        await async_logging_state(
-            config_entry=config_entry,
-            hass=hass,
-            log_formatter=log_formatter,
-            state=True,
-        )
-    # endregion
+    global _SETUP_PLATFORMS
 
+    log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
-    _LOGGER.debug(
-        log_formatter.format("logging mode: %s"),
-        logging_mode,
-    )
 
-    # region #-- prepare the memory storage --#
-    _LOGGER.debug(log_formatter.format("preparing memory storage"))
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault(config_entry.entry_id, {})
-    hass.data[DOMAIN][config_entry.entry_id]["intensive_running"] = None
+    # region #-- initialise runtime data --#
+    config_entry.runtime_data = LinksysVelopData()
     # endregion
 
-    # region #-- old entry cleanup --#
-    # region #-- remove any device trackers that are no longer selected --#
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING, [])) != 0:
-        _LOGGER.debug(
-            log_formatter.format(
-                "removing device tracker entities that are no longer selected"
-            )
-        )
-        stop_tracking_device(
-            config_entry=config_entry,
-            device_id=config_entry.options.get(CONF_DEVICE_TRACKERS_MISSING),
-            hass=hass,
-            device_type=CONF_DEVICE_TRACKERS_MISSING,
-            raise_repair=False,
-        )
-    # endregion
-    # region #-- remove ui devices that are no longer needed --#
-    if len(config_entry.options.get(CONF_DEVICE_UI_MISSING, [])) != 0:
-        _LOGGER.debug(
-            log_formatter.format("removing ui devices that are no longer selected")
-        )
-        stop_tracking_device(
-            config_entry=config_entry,
-            device_id=config_entry.options.get(CONF_DEVICE_UI_MISSING),
-            hass=hass,
-            device_type=CONF_DEVICE_UI_MISSING,
-            raise_repair=False,
-        )
-    # endregion
-    # endregion
-
-    # region #-- setup the coordinator for data updates --#
     _LOGGER.debug(log_formatter.format("setting up Mesh for the coordinator"))
-    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = Mesh(
+    mesh: Mesh = Mesh(
         node=config_entry.options[CONF_NODE],
         password=config_entry.options[CONF_PASSWORD],
         request_timeout=config_entry.options.get(
@@ -263,415 +115,279 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         session=async_get_clientsession(hass=hass),
     )
 
-    async def _async_get_mesh_data() -> Mesh:
-        """Fetch the latest data from the Mesh.
-
-        Will signal relevant sensors that have a state that needs updating more frequently
-        """
-        _LOGGER.debug(log_formatter.format("entered"))
-
-        mesh: Mesh = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH]
-        device_registry: dr.DeviceRegistry = dr.async_get(hass=hass)
-
-        # region #-- get current known devices --#
-        _LOGGER.debug(
-            log_formatter.format("retrieving existing devices for comparison")
+    # region #-- test auth --#
+    valid_auth: bool = await mesh.async_test_credentials()
+    if not valid_auth:
+        raise ConfigEntryAuthFailed(
+            translation_domain=DOMAIN,
+            translation_key="failed_login",
         )
-        device: Device
-        try:
-            previous_devices: Set[str] = {device.unique_id for device in mesh.devices}
-        except MeshException:
-            previous_devices: Set[str] = {}
-        # endregion
+    # endregion
 
-        # region #-- get current known nodes --#
-        previous_nodes_serials: Set[str] = {}
-        _LOGGER.debug(log_formatter.format("retrieving existing nodes for comparison"))
-        if (
-            previous_nodes := dr_nodes_for_mesh(
-                config=config_entry, device_registry=device_registry
-            )
-        ) is not None:
-            try:
-                previous_nodes_serials = {
-                    next(iter(prev_node.identifiers))[1]  # serial number of node
-                    for prev_node in previous_nodes
-                }
-            except StopIteration:
-                pass
-            _LOGGER.debug(
-                log_formatter.format("previous_node_serials: %s"),
-                previous_nodes_serials,
-            )
-        # endregion
-
-        try:
-            _LOGGER.debug(log_formatter.format("gathering details"))
-            await mesh.async_gather_details()
-            if mesh.speedtest_status:
-                _LOGGER.debug(log_formatter.format("dispatching speedtest signal"))
-                async_dispatcher_send(hass, SIGNAL_UPDATE_SPEEDTEST_STATUS)
-        except MeshTimeoutError as err:
-            _LOGGER.warning(
-                log_formatter.format(
-                    "timeout gathering data from the mesh (current timeout: %.2f) - consider increasing the timeout"
-                ),
-                config_entry.options.get(
-                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                ),
-            )
-            raise UpdateFailed(err) from err
-        except Exception as err:
-            _LOGGER.debug(log_formatter.format("error type: %s"), type(err))
-            _LOGGER.error(log_formatter.format(err))
-            raise UpdateFailed(err) from err
-        else:
-            # region #-- device comparisons --#
-            current_devices: Set[str] = {device.unique_id for device in mesh.devices}
-            if not previous_devices:
-                _LOGGER.debug(
-                    log_formatter.format(
-                        "no previous devices - ignoring comparison for new devices"
-                    )
-                )
-            else:
-                # region #-- new devices --#
-                _LOGGER.debug(log_formatter.format("looking for new devices"))
-                new_devices: Set[str] = current_devices.difference(previous_devices)
-                if new_devices:
-                    _LOGGER.debug(
-                        log_formatter.format("new device%s found: %d"),
-                        "" if len(new_devices) == 1 else "s",
-                        len(new_devices),
-                    )
-                    for device in mesh.devices:
-                        if device.unique_id in new_devices:
-                            # -- fire the event --#
-                            payload = build_payload(
-                                config_entry=config_entry,
-                                device=device,
-                                event=EventSubType.NEW_DEVICE,
-                                hass=hass,
-                            )
-                            _LOGGER.debug(
-                                log_formatter.format("%s: %s"),
-                                EventSubType.NEW_DEVICE.value,
-                                payload,
-                            )
-                            hass.bus.async_fire(
-                                event_type=EVENT_TYPE,
-                                event_data=payload,
-                            )
-                _LOGGER.debug(log_formatter.format("devices compared"))
-                # endregion
-            # region #-- missing devices --#
-            missing_devices: set[str] = set(
-                config_entry.options.get(CONF_DEVICE_UI, [])
-            ).difference(current_devices)
-            # ignore the placeholder device if we need to
-            if config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE):
-                missing_devices.discard(DEF_UI_DEVICE_ID)
-            if len(missing_devices) != 0:
-                _LOGGER.debug(
-                    log_formatter.format("missing devices: %s"), missing_devices
-                )
-                for device_id in missing_devices:
-                    stop_tracking_device(
-                        config_entry=config_entry,
-                        device_id=device_id,
-                        device_type=CONF_DEVICE_UI,
-                        hass=hass,
-                        raise_repair=device_id != DEF_UI_DEVICE_ID,
-                    )
-            # endregion
-            # endregion
-
-            # region #-- check for new or update nodes --#
-            if not previous_nodes:
-                _LOGGER.debug(
-                    log_formatter.format("no previous nodes - ignoring comparison")
-                )
-            else:
-                _LOGGER.debug(log_formatter.format("comparing nodes"))
-                node: Node
-                current_nodes: Set[str] = {node.serial for node in mesh.nodes}
-                # region #-- process new nodes --#
-                new_nodes: Set[str] = current_nodes.difference(previous_nodes_serials)
-                is_reloading = (
-                    hass.data[DOMAIN]
-                    .get(CONF_ENTRY_RELOAD, {})
-                    .get(config_entry.entry_id)
-                )
-                if new_nodes and not is_reloading:
-                    for node in mesh.nodes:
-                        if node.serial in new_nodes:
-                            _LOGGER.debug(
-                                log_formatter.format("new node found: %s"), node.serial
-                            )
-                            if hass.state == CoreState.running:  # reload the config
-                                if CONF_ENTRY_RELOAD not in hass.data[DOMAIN]:
-                                    hass.data[DOMAIN][CONF_ENTRY_RELOAD] = {}
-                                hass.data[DOMAIN][CONF_ENTRY_RELOAD][
-                                    config_entry.entry_id
-                                ] = True
-                                await hass.config_entries.async_reload(
-                                    config_entry.entry_id
-                                )
-                                hass.data[DOMAIN].get(CONF_ENTRY_RELOAD, {}).pop(
-                                    config_entry.entry_id, None
-                                )
-
-                            # -- fire the event --#
-                            payload = build_payload(
-                                config_entry=config_entry,
-                                device=node,
-                                event=EventSubType.NEW_NODE,
-                                hass=hass,
-                            )
-                            _LOGGER.debug(
-                                log_formatter.format("%s: %s"),
-                                EventSubType.NEW_NODE,
-                                payload,
-                            )
-                            hass.bus.async_fire(
-                                event_type=EVENT_TYPE, event_data=payload
-                            )
-                # endregion
-                # region #-- look for updates to nodes --#
-                update_properties = ["name"]
-                for node in mesh.nodes:
-                    previous_node: List[
-                        DeviceEntry
-                    ] = [  # get the node from the device registry based on serial
-                        prev_node
-                        for prev_node in previous_nodes
-                        if next(iter(prev_node.identifiers))[1].lower()
-                        == node.serial.lower()
-                    ]
-                    if not previous_node:
-                        continue
-
-                    for prop in update_properties:
-                        if getattr(previous_node[0], prop, None) != getattr(
-                            node, prop, None
-                        ):
-                            _LOGGER.debug(
-                                log_formatter.format("updating %s for %s (%s --> %s)"),
-                                prop,
-                                node.serial,
-                                getattr(previous_node[0], prop, None),
-                                getattr(node, prop),
-                            )
-                            device_registry.async_update_device(
-                                device_id=previous_node[0].id, name=getattr(node, prop)
-                            )
-
-                # endregion
-                _LOGGER.debug(log_formatter.format("nodes compared"))
-            # endregion
-
-            # region #-- check for a primary node change --#
-            primary_node: List[Node] = [
-                node for node in mesh.nodes if node.type == "primary"
-            ]
-            if primary_node and primary_node[0].serial != config_entry.unique_id:
-                _LOGGER.debug(
-                    log_formatter.format("assuming the primary node has changed")
-                )
-                if hass.state == CoreState.running:
-                    if hass.config_entries.async_update_entry(
-                        entry=config_entry, unique_id=primary_node[0].serial
-                    ):
-                        payload: Dict[str, Any] = build_payload(
-                            config_entry=config_entry,
-                            device=primary_node[0],
-                            event=EventSubType.NEW_PRIMARY_NODE,
-                            hass=hass,
-                        )
-                        hass.bus.async_fire(
-                            event_type=EventSubType.NEW_PRIMARY_NODE, event_data=payload
-                        )
-                else:
-                    _LOGGER.debug(
-                        log_formatter.format(
-                            "backing off updates until HASS is fully running"
-                        )
-                    )
-            # endregion
-
-            hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR_MESH] = mesh
-
-        _LOGGER.debug(log_formatter.format("exited"))
-        return mesh
-
-    _LOGGER.debug(log_formatter.format("setting up the coordinator"))
-    coordinator_name = DOMAIN
+    # region #-- setup the coordinators --#
+    # region #--- mesh coordinator --#
+    _LOGGER.debug(log_formatter.format("setting up the mesh coordinator"))
+    coordinator_name = f"{DOMAIN} mesh"
     if getattr(log_formatter, "_unique_id"):
         coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
-    coordinator = DataUpdateCoordinator(
-        hass=hass,
-        logger=_LOGGER,
-        name=coordinator_name,
-        update_interval=timedelta(
-            seconds=config_entry.options.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL)
-        ),
-        update_method=_async_get_mesh_data,
-    )
-    await coordinator.async_config_entry_first_refresh()
 
-    hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR] = coordinator
-    # endregion
-
-    if logging_mode == "single":
-        await async_logging_state(
-            config_entry=config_entry,
-            hass=hass,
-            log_formatter=log_formatter,
-            state=False,
+    config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
+        LinksysVelopUpdateCoordinator(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
         )
+    )
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.MESH
+    ].async_config_entry_first_refresh()
+    # endregion
+    # region #-- speedtest coordinator --#
+    _LOGGER.debug(log_formatter.format("setting up the speedtest coordinator"))
+    coordinator_name = f"{DOMAIN} speedtest"
+    if getattr(log_formatter, "_unique_id"):
+        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    # region #-- setup the platforms --#
-    setup_platforms: List[str] = list(filter(None, PLATFORMS))
-    _LOGGER.debug(log_formatter.format("setting up platforms: %s"), setup_platforms)
-    await hass.config_entries.async_forward_entry_setups(config_entry, setup_platforms)
+    config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
+        LinksysVelopUpdateCoordinatorSpeedtest(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
+        )
+    )
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.SPEEDTEST
+    ].async_config_entry_first_refresh()
+    # endregion
+    # region #-- channel scan coordinator --#
+    _LOGGER.debug(log_formatter.format("setting up the channel scan coordinator"))
+    coordinator_name = f"{DOMAIN} channel scan"
+    if getattr(log_formatter, "_unique_id"):
+        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
+
+    config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
+        LinksysVelopUpdateCoordinatorChannelScan(
+            hass,
+            _LOGGER,
+            mesh,
+            coordinator_name,
+            update_interval_secs=config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+            ),
+        )
+    )
+    await config_entry.runtime_data.coordinators[
+        CoordinatorTypes.CHANNEL_SCAN
+    ].async_config_entry_first_refresh()
+    # endregion
     # endregion
 
-    # region #-- Service Definition --#
-    _LOGGER.debug(log_formatter.format("registering services"))
-    services = LinksysVelopServiceHandler(hass=hass)
-    services.register_services()
-    hass.data[DOMAIN][config_entry.entry_id][CONF_SERVICES_HANDLER] = services
-    # endregion
-
-    # region #-- listen for config changes --#
-    _LOGGER.debug(log_formatter.format("listening for config changes"))
-    hass.data[DOMAIN][config_entry.entry_id][
-        CONF_UNSUB_UPDATE_LISTENER
-    ] = config_entry.add_update_listener(_async_update_listener)
-    # endregion
-
-    async def device_tracker_update(_: datetime.datetime) -> None:
-        """Manage the device tracker updates.
-
-        Uses the _ variable to ignore IDE checking for unused variables
-
-        Gets the device status from the mesh before dispatching the message
-
-        :param _: datetime object for when the event was fired
-        :return: None
-        """
-        mesh: Mesh = coordinator.data
-        if mesh is not None:
-            devices: List[Device] = []
-            try:
-                devices = await mesh.async_get_device_from_id(
-                    device_id=config_entry.options.get(CONF_DEVICE_TRACKERS),
-                    force_refresh=True,
-                )
-            except (MeshConnectionError, MeshTimeoutError) as err:
-                # check if an intensive action is running so we can suppress warnings
-                is_running, action = mesh_intensive_action_running(
-                    config_entry=config_entry, hass=hass
-                )
-                if is_running:
-                    if (
-                        hass.data[DOMAIN][config_entry.entry_id]["intensive_running"]
-                        is None
-                    ):
-                        hass.data[DOMAIN][config_entry.entry_id][
-                            "intensive_running"
-                        ] = is_running
-                        _LOGGER.warning(
-                            log_formatter.format(
-                                "%s is running. Ignoring errors at this time."
-                            ),
-                            action,
-                        )
-                else:
-                    _LOGGER.warning(log_formatter.format("%s"), err)
-                    hass.data[DOMAIN][config_entry.entry_id]["intensive_running"] = None
-                    return
-            except MeshDeviceNotFoundResponse as err:
-                stop_tracking_device(
-                    config_entry=config_entry,
-                    device_id=err.devices,
-                    hass=hass,
-                    device_type=CONF_DEVICE_TRACKERS,
-                    raise_repair=True,
-                )
-            except MeshInvalidOutput:
-                _LOGGER.warning(
-                    log_formatter.format(
-                        "Invalid output received when checking device tracker status."
-                    )
-                )
-                return
-
-            # dispatch a message for the ones that were found
-            device: Device
+    # region #-- setup the timer for device trackers --#
+    async def async_device_tracker_update(_: datetime) -> None:
+        """Retrieve the tracked devices from the Mesh."""
+        try:
+            devices: list[Device] = await mesh.async_get_device_from_id(
+                config_entry.options.get(CONF_DEVICE_TRACKERS, []), True
+            )
             for device in devices:
                 async_dispatcher_send(
                     hass,
-                    f"{SIGNAL_UPDATE_DEVICE_TRACKER}_{device.unique_id}",
+                    f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{device.unique_id}",
                     device,
                 )
+        except MeshDeviceNotFoundResponse as err:
+            for tracker_missing in err.devices:
+                entity_registry: er.EntityRegistry = er.async_get(hass)
+                config_entities: list[er.RegistryEntry] = (
+                    er.async_entries_for_config_entry(
+                        entity_registry, config_entry.entry_id
+                    )
+                )
+                tracker_entity: list[er.RegistryEntry]
+                if tracker_entity := [
+                    e
+                    for e in config_entities
+                    if e.unique_id
+                    == f"{config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker_missing}"
+                ]:
+                    # region #-- raise an issue --#
+                    ir.async_create_issue(
+                        hass,
+                        DOMAIN,
+                        ISSUE_MISSING_DEVICE_TRACKER,
+                        data={
+                            "device_id": tracker_entity[0].entity_id,
+                            "device_name": tracker_entity[0].name
+                            or tracker_entity[0].original_name,
+                        },
+                        is_fixable=True,
+                        is_persistent=False,
+                        severity=IssueSeverity.ERROR,
+                        translation_key=ISSUE_MISSING_DEVICE_TRACKER,
+                        translation_placeholders={
+                            "device_name": tracker_entity[0].name
+                            or tracker_entity[0].original_name
+                        },
+                    )
+                    # endregion
+        except (MeshConnectionError, MeshTimeoutError) as err:
+            if len(config_entry.runtime_data.intensive_running_tasks) > 0:
+                exc: IntensiveTaskRunning = IntensiveTaskRunning(
+                    translation_domain=DOMAIN,
+                    translation_key="intensive_task",
+                    translation_placeholders={
+                        "tasks": config_entry.runtime_data.intensive_running_tasks
+                    },
+                )
+                _LOGGER.warning(exc)
+            else:
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": err,
+                    },
+                )
+                _LOGGER.warning(exc_general)
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
+            )
+            _LOGGER.warning(exc_general)
 
-    # region #-- set up the timer for checking device trackers --#
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) != 0:
-        _LOGGER.debug(log_formatter.format("setting up device trackers"))
-        # update before setting the timer
-        await device_tracker_update(datetime.datetime.now())
+    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         scan_interval = config_entry.options.get(
             CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
         )
         config_entry.async_on_unload(
             async_track_time_interval(
-                hass, device_tracker_update, timedelta(seconds=scan_interval)
+                hass, async_device_tracker_update, timedelta(seconds=scan_interval)
             )
         )
+    # endregion
+
+    # region #-- setup the platforms --#
+    _SETUP_PLATFORMS = list(filter(None, PLATFORMS))
+    if len(config_entry.options.get(CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS)) > 0:
+        _SETUP_PLATFORMS.append(EVENT_DOMAIN)
     else:
-        _LOGGER.debug(log_formatter.format("no device trackers set"))
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{EVENT_DOMAIN}::events",
+        )
+    if config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE):
+        _SETUP_PLATFORMS.append(SELECT_DOMAIN)
+    else:
+        if SELECT_DOMAIN in _SETUP_PLATFORMS:
+            _SETUP_PLATFORMS.remove(SELECT_DOMAIN)
+    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
+        _SETUP_PLATFORMS.append(DEVICE_TRACKER_DOMAIN)
+    else:
+        if DEVICE_TRACKER_DOMAIN in _SETUP_PLATFORMS:
+            _SETUP_PLATFORMS.remove(DEVICE_TRACKER_DOMAIN)
+    _LOGGER.debug(log_formatter.format("setting up platforms: %s"), _SETUP_PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(config_entry, _SETUP_PLATFORMS)
+    # endregion
+
+    # region #-- remove unnecessary ui devices --#
+    _LOGGER.debug(log_formatter.format("cleaning up ui devices"))
+    for ui_device in config_entry.options.get(CONF_UI_DEVICES_TO_REMOVE, []):
+        remove_velop_device_from_registry(hass, ui_device)
+    new_options = copy.deepcopy(dict(config_entry.options))
+    new_options.get(CONF_UI_DEVICES_TO_REMOVE, []).clear()
+    hass.config_entries.async_update_entry(config_entry, options=new_options)
+    # endregion
+
+    # region #-- remove unnecessary device trackers --#
+    _LOGGER.debug(log_formatter.format("cleaning up device trackers"))
+    connections: set[tuple[str, str]] = set()
+    mesh_device: DeviceEntry = get_mesh_device_for_config_entry(hass, config_entry)
+    if mesh_device is not None:
+        connections = mesh_device.connections
+    for tracker in config_entry.options.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []):
+        # region #-- remove entity --#
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker}",
+        )
+        # endregion
+        # region #-- remove connection from the mesh device --#
+        device: Device
+        if device := [d for d in mesh.devices if d.unique_id == tracker]:
+            if adapter := [a for a in device[0].network]:
+                connections.discard(
+                    (
+                        dr.CONNECTION_NETWORK_MAC,
+                        dr.format_mac(adapter[0].get("mac", "")),
+                    )
+                )
+        # endregion
+
+    # region #-- update the mesh device --#
+    device_registry: DeviceRegistry = dr.async_get(hass)
+    mesh_device: DeviceEntry = get_mesh_device_for_config_entry(hass, config_entry)
+    device_registry.async_update_device(mesh_device.id, new_connections=connections)
+    # endregion
+
+    new_options = copy.deepcopy(dict(config_entry.options))
+    new_options.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []).clear()
+    hass.config_entries.async_update_entry(config_entry, options=new_options)
+    # endregion
+
+    # region #-- service definition --#
+    _LOGGER.debug(log_formatter.format("registering services"))
+    config_entry.runtime_data.service_handler = LinksysVelopServiceHandler(hass)
+    config_entry.runtime_data.service_handler.register_services()
+    # endregion
+
+    # region #-- listen for config changes --#
+    _LOGGER.debug(log_formatter.format("listening for config changes"))
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(_async_update_listener)
+    )
     # endregion
 
     _LOGGER.debug(log_formatter.format("exited"))
+
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> bool:
     """Cleanup when unloading a config entry."""
-    if include_serial_logging(config=config_entry):
-        log_formatter = Logger(unique_id=config_entry.unique_id)
-    else:
-        log_formatter = Logger()
-
+    log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
-
-    # region #-- unsubscribe from listening for updates --#
-    if hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]:
-        _LOGGER.debug(log_formatter.format("stop listening for updates"))
-        hass.data[DOMAIN][config_entry.entry_id][CONF_UNSUB_UPDATE_LISTENER]()
-    # endregion
 
     # region #-- remove services but only if there are no other instances --#
     all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
     _LOGGER.debug(log_formatter.format("%i instances"), len(all_config_entries))
     if len(all_config_entries) == 1:
         _LOGGER.debug(log_formatter.format("unregistering services"))
-        services: LinksysVelopServiceHandler = hass.data[DOMAIN][config_entry.entry_id][
-            CONF_SERVICES_HANDLER
-        ]
-        services.unregister_services()
+        config_entry.runtime_data.service_handler.unregister_services()
     # endregion
 
     # region #-- clean up the platforms --#
-    _LOGGER.debug(log_formatter.format("cleaning up platforms"))
-    ret = await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
-    if ret:
-        _LOGGER.debug(log_formatter.format("removing data from memory"))
-        hass.data[DOMAIN].pop(config_entry.entry_id)
-        ret = True
-    else:
-        ret = False
+    _LOGGER.debug(log_formatter.format("cleaning up platforms: %s"), _SETUP_PLATFORMS)
+    ret = await hass.config_entries.async_unload_platforms(
+        config_entry, _SETUP_PLATFORMS
+    )
     # endregion
 
     _LOGGER.debug(log_formatter.format("exited"))
@@ -683,364 +399,3 @@ async def _async_update_listener(
 ) -> None:
     """Reload the config entry."""
     await hass.config_entries.async_reload(config_entry.entry_id)
-
-
-# region #-- base entities --#
-class LinksysVelopDeviceEntity(CoordinatorEntity):
-    """Representation of a device on the Mesh."""
-
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry,
-        description,
-        device_id: str,
-    ) -> None:
-        """Initialise Device entity."""
-        super().__init__(coordinator=coordinator)
-        self._config = config_entry
-        self._log_formatter: Logger = Logger(unique_id=config_entry.unique_id)
-        self._mesh: Mesh = coordinator.data
-        self._device_id: str = device_id
-        self._device: Device | None = self._get_device()
-
-        self.entity_description = description
-
-        if not getattr(self, "entity_domain", None):
-            self.entity_domain: str = ""
-
-        if hasattr(self, "_additional_description") and hasattr(
-            self._additional_description, "entity_picture"
-        ):
-            if isinstance(self._additional_description.entity_picture, Callable):
-                self._attr_entity_picture = self._additional_description.entity_picture(
-                    self._device
-                )
-            else:
-                self._attr_entity_picture = self._additional_description.entity_picture
-
-        try:
-            _ = self.has_entity_name
-            self._attr_has_entity_name = True
-        except AttributeError:
-            self._attr_name = f"{ENTITY_SLUG} Device: {self.entity_description.name}"
-
-        self._attr_unique_id = (
-            f"{self._device.unique_id}::"
-            f"{self.entity_domain.lower()}::"
-            f"{slugify(self.entity_description.name)}"
-        )
-
-    def _get_device(self) -> Device | None:
-        """Get the device from the mesh."""
-        if self._device_id == DEF_UI_DEVICE_ID:
-            return Device(
-                deviceID=DEF_UI_DEVICE_ID, friendlyName=f"{DOMAIN} Placeholder"
-            )
-
-        devices: List[Device] = [
-            _dev for _dev in self._mesh.devices if _dev.unique_id == self._device_id
-        ]
-        if len(devices):
-            return devices[0]
-
-        return None
-
-    def _handle_coordinator_update(self) -> None:
-        """Update the information when the coordinator updates."""
-        if self.coordinator.data is not None:
-            self._mesh = self.coordinator.data
-            if (device := self._get_device()) is not None:
-                self._device = device
-                self._attr_available = True
-            else:
-                self._attr_available = False
-        else:
-            self._attr_available = False
-        super()._handle_coordinator_update()
-
-    def _update_device_id(self, device_id: str) -> None:
-        """Update the device id."""
-        self._device_id = device_id
-        self._handle_coordinator_update()
-
-    async def async_added_to_hass(self) -> None:
-        """Register for callbacks."""
-        await super().async_added_to_hass()
-        if self.unique_id.startswith(DEF_UI_DEVICE_ID):
-            self.async_on_remove(
-                async_dispatcher_connect(
-                    hass=self.hass,
-                    signal=SIGNAL_UPDATE_PLACEHOLDER_UI_DEVICE,
-                    target=self._update_device_id,
-                )
-            )
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device information of the entity."""
-        ret = DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            manufacturer=self._device.manufacturer or "",
-            model=self._device.model or "",
-            name=self._device.name,
-        )
-        if self._device_id != DEF_UI_DEVICE_ID:
-            ret["connections"] = {
-                (
-                    dr.CONNECTION_NETWORK_MAC,
-                    next(iter(self._device.network), {}).get("mac", ""),
-                )
-            }
-        return ret
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Additional attributes for the entity."""
-        if hasattr(self, "_additional_description") and hasattr(
-            self._additional_description, "extra_attributes"
-        ):
-            if isinstance(self._additional_description.extra_attributes, Callable):
-                return self._additional_description.extra_attributes(self._device)
-
-            if isinstance(self._additional_description.extra_attributes, dict):
-                return self._additional_description.extra_attributes
-
-            if isinstance(self._additional_description.extra_attributes, str):
-                if (
-                    esa := getattr(
-                        self._device, self._additional_description.extra_attributes
-                    )
-                ) is not None:
-                    if not isinstance(esa, dict):
-                        _LOGGER.debug(
-                            self._log_formatter.format(
-                                "%s is not a dictionary or None"
-                            ),
-                            self._additional_description.extra_attributes,
-                        )
-                    else:
-                        return esa
-
-        return None
-
-
-class LinksysVelopMeshEntity(CoordinatorEntity):
-    """Representation of a Mesh entity."""
-
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry,
-        description,
-    ) -> None:
-        """Initialise Mesh entity."""
-        super().__init__(coordinator=coordinator)
-        self._config = config_entry
-        self._log_formatter: Logger = Logger(unique_id=config_entry.unique_id)
-        self._mesh: Mesh = coordinator.data
-
-        self.entity_description = description
-
-        if not getattr(self, "entity_domain", None):
-            self.entity_domain: str = ""
-
-        try:
-            _ = self.has_entity_name
-            self._attr_has_entity_name = True
-        except AttributeError:
-            self._attr_name = f"{ENTITY_SLUG} Mesh: {self.entity_description.name}"
-
-        self._attr_unique_id = (
-            f"{config_entry.entry_id}::"
-            f"{self.entity_domain.lower()}::"
-            f"{slugify(self.entity_description.name)}"
-        )
-
-    def _handle_coordinator_update(self) -> None:
-        """Update the information when the coordinator updates."""
-        if self.coordinator.data is not None:
-            self._mesh = self.coordinator.data
-            self._attr_available = True
-        else:
-            self._attr_available = False
-        super()._handle_coordinator_update()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device information of the entity."""
-        # noinspection HttpUrlsUsage
-        ret = DeviceInfo(
-            configuration_url=f"http://{self._mesh.connected_node}",
-            entry_type=DeviceEntryType.SERVICE,
-            identifiers={(DOMAIN, self._config.entry_id)},
-            manufacturer=PYVELOP_AUTHOR,
-            model=f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            name="Mesh",
-            sw_version="",
-        )
-        return ret
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Additional attributes for the entity."""
-        if hasattr(self, "_additional_description") and hasattr(
-            self._additional_description, "extra_attributes"
-        ):
-            if isinstance(self._additional_description.extra_attributes, Callable):
-                return self._additional_description.extra_attributes(self._mesh)
-
-            if isinstance(self._additional_description.extra_attributes, str):
-                if (
-                    esa := getattr(
-                        self._mesh, self._additional_description.extra_attributes
-                    )
-                ) is not None:
-                    if not isinstance(esa, dict):
-                        _LOGGER.debug(
-                            self._log_formatter.format(
-                                "%s is not a dictionary or None"
-                            ),
-                            self._additional_description.extra_attributes,
-                        )
-                    else:
-                        return esa
-
-        return None
-
-
-class LinksysVelopNodeEntity(CoordinatorEntity):
-    """Representation of a Node entity."""
-
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        config_entry: ConfigEntry,
-        description,
-        node: Node,
-    ) -> None:
-        """Initialise the Node entity."""
-        super().__init__(coordinator=coordinator)
-
-        self.entity_description = description
-        if not getattr(self, "entity_description", None):
-            self.entity_domain: str = ""
-        else:
-            if hasattr(self, "_additional_description") and hasattr(
-                self._additional_description, "entity_picture"
-            ):
-                self._attr_entity_picture = self._additional_description.entity_picture
-
-        self._config = config_entry
-        self._mesh: Mesh = coordinator.data
-        self._node_id: str = node.unique_id
-        self._node: Node = self._get_node()
-
-        try:
-            _ = self.has_entity_name
-            self._attr_has_entity_name = True
-        except AttributeError:
-            self._attr_name = (
-                f"{ENTITY_SLUG} {self._node.name}: {self.entity_description.name}"
-            )
-
-        self._attr_unique_id = (
-            f"{self._node.unique_id}::"
-            f"{self.entity_domain.lower()}::"
-            f"{slugify(self.entity_description.name)}"
-        )
-
-    def _get_node(self) -> Node | None:
-        """Get the current node."""
-        node = [n for n in self._mesh.nodes if n.unique_id == self._node_id]
-        if node:
-            return node[0]
-
-        return None
-
-    def _handle_coordinator_update(self) -> None:
-        """Update the information when the coordinator updates."""
-        if self.coordinator.data is not None:
-            self._mesh = self.coordinator.data
-            if (node := self._get_node()) is not None:
-                self._node = node
-                self._attr_available = True
-            else:
-                self._attr_available = False
-        else:
-            self._attr_available = False
-        super()._handle_coordinator_update()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device information of the entity."""
-        ret = DeviceInfo(
-            hw_version=self._node.hardware_version,
-            identifiers={(DOMAIN, self._node.serial)},
-            model=self._node.model,
-            name=self._node.name,
-            manufacturer=self._node.manufacturer,
-            sw_version=self._node.firmware.get("version", ""),
-        )
-        if self._node.connected_adapters:
-            ret["configuration_url"] = (
-                f"http://{self._node.connected_adapters[0].get('ip')}"
-                f"{'/ca' if self._node.type is NodeType.SECONDARY else ''}"
-            )
-
-        return ret
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        """Additional attributes for the entity."""
-        if (
-            hasattr(self, "_additional_description")
-            and hasattr(self._additional_description, "extra_attributes")
-            and isinstance(self._additional_description.extra_attributes, Callable)
-            and self._node
-        ):
-            return self._additional_description.extra_attributes(self._node)
-
-        return None
-
-
-# endregion
-
-
-# region #-- cleanup entities --#
-def entity_cleanup(
-    config_entry: ConfigEntry,
-    entities: List[LinksysVelopMeshEntity | LinksysVelopNodeEntity],
-    hass: HomeAssistant,
-):
-    """Remove entities from the registry if they are no longer needed."""
-    if include_serial_logging(config=config_entry):
-        log_formatter = Logger(
-            unique_id=config_entry.unique_id,
-            prefix=f"{entities[0].__class__.__name__} --> ",
-        )
-    else:
-        log_formatter = Logger(
-            prefix=f"{entities[0].__class__.__name__} --> ",
-        )
-
-    _LOGGER.debug(log_formatter.format("entered"))
-
-    entity_registry: er.EntityRegistry = er.async_get(hass=hass)
-    er_entries: List[er.RegistryEntry] = er.async_entries_for_config_entry(
-        registry=entity_registry, config_entry_id=config_entry.entry_id
-    )
-
-    cleanup_unique_ids = [e.unique_id for e in entities]
-    for entity in er_entries:
-        if entity.unique_id not in cleanup_unique_ids:
-            continue
-
-        # remove the entity
-        _LOGGER.debug(log_formatter.format("removing %s"), entity.entity_id)
-        entity_registry.async_remove(entity_id=entity.entity_id)
-
-    _LOGGER.debug(log_formatter.format("exited"))
-
-
-# endregion

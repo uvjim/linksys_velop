@@ -1,25 +1,6 @@
 # Linksys Velop services
-# TODO: name and description keys can be removed when setting minimum to 2023.8.0
-# TODO: options: !include includes/schedule_times.yaml can be removed when setting minimum to 2023.8.0
-
-check_updates:
-  name: Check for Updates
-  description: Instruct the mesh to check for firmware updates
-  fields:
-    mesh:
-      name: Mesh
-      description: The Mesh that the action should be executed on
-      required: true
-      selector:
-        device:
-          integration: linksys_velop
-          manufacturer: uvjim
 
 delete_device:
-  name: Delete Device
-  description:
-    Delete a device from the mesh Device List (only a single device can be deleted at a time).
-    The mesh will reject the request if the device is not marked as offline.
   fields:
     mesh:
       name: Mesh
@@ -37,8 +18,6 @@ delete_device:
         text:
 
 device_internet_access:
-  name: Control Internet Access for a Device
-  description: Pause/Resume a device's access to the Internet via the Mesh
   fields:
     mesh:
       name: Mesh
@@ -62,8 +41,6 @@ device_internet_access:
         boolean:
 
 device_internet_rules:
-  name: Set Device Parental Controls
-  description: Set the rules for blocking Internet access for a device
   fields:
     mesh:
       name: Mesh
@@ -151,8 +128,6 @@ device_internet_rules:
           translation_key: pc_times
 
 reboot_node:
-  name: "Reboot Node"
-  description: Instruct the mesh to reboot a node
   fields:
     mesh:
       name: Mesh
@@ -178,8 +153,6 @@ reboot_node:
         boolean:
 
 rename_device:
-  name: Rename Device
-  description: Rename a device on the Mesh
   fields:
     mesh:
       name: Mesh
@@ -201,16 +174,3 @@ rename_device:
       required: true
       selector:
         text:
-
-start_speedtest:
-  name: Execute Speedtest
-  description: Instruct the mesh to carry out a Speedtest
-  fields:
-    mesh:
-      name: Mesh
-      description: The Mesh that the action should be executed on
-      required: true
-      selector:
-        device:
-          integration: linksys_velop
-          manufacturer: uvjim

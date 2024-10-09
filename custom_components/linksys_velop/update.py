@@ -1,12 +1,8 @@
-"""Update entities for nodes."""
+"""Update entities for Linksys Velop."""
 
 # region #-- imports --#
-from __future__ import annotations
-
-import dataclasses
 import logging
-from abc import ABC
-from typing import List
+from dataclasses import dataclass
 
 from homeassistant.components.update import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.update import (
@@ -14,104 +10,74 @@ from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from pyvelop.mesh import Mesh
-from pyvelop.node import Node
 
-from . import LinksysVelopNodeEntity, entity_cleanup
-from .const import CONF_COORDINATOR, CONF_NODE_IMAGES, DOMAIN
+from . import LinksysVelopConfigEntry
+from .const import CONF_NODE_IMAGES
+from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
 
 # endregion
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class UpdateDetails(EntityDetails):
+    description: UpdateEntityDescription
+
+
+ENTITY_DETAILS: list[UpdateDetails] = [
+    UpdateDetails(
+        description=UpdateEntityDescription(
+            device_class=UpdateDeviceClass.FIRMWARE,
+            key="",
+            name="Update",
+            translation_key="update",
+        ),
+        entity_type=EntityType.NODE,
+        pic_value_func=lambda n, c: (
+            f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
+            if c.options.get(CONF_NODE_IMAGES, "")
+            else None
+        ),
+    )
+]
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: LinksysVelopConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the sensors from a config entry."""
-    coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
-    mesh: Mesh = coordinator.data
+    """Initialize an update entity."""
 
-    update_entities: List[LinksysVelopNodeUpdate] = []
+    entities_to_add: list[LinksysVelopUpdate] = []
 
-    # region #-- node sensors --#
-    node: Node
-    for node in mesh.nodes:
-        update_entities.append(
-            LinksysVelopNodeUpdate(
-                config_entry=config_entry,
-                coordinator=coordinator,
-                node=node,
-                description=UpdateEntityDescription(
-                    device_class=UpdateDeviceClass.FIRMWARE,
-                    key="",
-                    name="Update",
-                    translation_key="update",
-                ),
-            ),
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
+    entities_to_add = [LinksysVelopUpdate(**entity) for entity in entities]
+
+    if len(entities_to_add) > 0:
+        async_add_entities(entities_to_add)
+
+
+class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
+    """Linksys Velop update entity."""
+
+    @callback
+    def _update_attr_value(self) -> None:
+        """"""
+
+        if self._context_data is None:
+            self._attr_auto_update = False
+            self._attr_installed_version = None
+            self._attr_latest_version = None
+            return
+
+        self._attr_auto_update = (
+            self.coordinator.data.firmware_update_setting != "manual"
         )
-    # endregion
-
-    async_add_entities(update_entities)
-
-    sensors_to_remove: List = []
-    if sensors_to_remove:
-        entity_cleanup(config_entry=config_entry, entities=sensors_to_remove, hass=hass)
-
-
-class LinksysVelopNodeUpdate(LinksysVelopNodeEntity, UpdateEntity, ABC):
-    """Representation of an update entity for a node."""
-
-    entity_description: UpdateEntityDescription
-
-    def __init__(
-        self,
-        coordinator: DataUpdateCoordinator,
-        node: Node,
-        config_entry: ConfigEntry,
-        description: UpdateEntityDescription,
-    ) -> None:
-        """Initialise."""
-        self.entity_domain = ENTITY_DOMAIN
-        super().__init__(
-            config_entry=config_entry,
-            coordinator=coordinator,
-            description=description,
-            node=node,
+        self._attr_installed_version = self._context_data.firmware.get("version", None)
+        self._attr_latest_version = self._context_data.firmware.get(
+            "latest_version", None
         )
-
-    @property
-    def auto_update(self) -> bool:
-        """Return the status of auto-update.
-
-        N.B. Velop sets auto update at the mesh level (on/off for all nodes)
-        Using a property here because the value of self._mesh is update at each
-        DataUpdateCoordinator update interval
-        """
-        return self._mesh.firmware_update_setting != "manual"
-
-    @property
-    def entity_picture(self) -> str | None:
-        """Retrieve the entity picture for the node."""
-        ret = None
-        parent_path = self._config.options.get(CONF_NODE_IMAGES)
-        if parent_path:
-            ret = f"{parent_path.rstrip('/ ').strip()}/{self._node.model}.png"
-
-        return ret
-
-    @property
-    def installed_version(self) -> str | None:
-        """Retrieve the currently installed firmware version."""
-        return self._node.firmware.get("version", None)
-
-    @property
-    def latest_version(self) -> str | None:
-        """Retrieve the latest firmware version available."""
-        return self._node.firmware.get("latest_version", None)

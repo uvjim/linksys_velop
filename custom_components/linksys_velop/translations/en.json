@@ -5,6 +5,7 @@
             "already_configured": "Device already configured.",
             "not_found": "Device not found.",
             "not_velop": "Not a Velop device.",
+            "reauth_successful": "Password updated.",
             "single_instance_allowed": "Integration already configured."
         },
         "error": {
@@ -26,7 +27,14 @@
                     "tracked": "Available devices"
                 },
                 "description": "Select the devices you would like to use for presence tracking",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Device Trackers"
+            },
+            "reauth_confirm": {
+                "data": {
+                    "password": "Password"
+                },
+                "description": "Please update the password to reauthenticate to the Mesh",
+                "title":"Linksys Velop: Reauth"
             },
             "timers": {
                 "data": {
@@ -36,7 +44,7 @@
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "description": "Set the various timers for the integration",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Timers"
             },
             "user": {
                 "data": {
@@ -48,14 +56,6 @@
             }
         },
         "title": "Linksys Velop"
-    },
-    "device_automation": {
-        "trigger_type": {
-            "logging_stopped": "Logging stopped",
-            "new_device": "New device found",
-            "new_node": "New node found",
-            "new_primary_node": "Primary node changed"
-        }
     },
     "entity": {
         "binary_sensor": {
@@ -148,6 +148,19 @@
             },
             "speedtest": {
                 "name": "Start Speedtest"
+            }
+        },
+        "event": {
+            "mesh_events": {
+                "name": "Events",
+                "state_attributes": {
+                    "event_type": {
+                        "state": {
+                            "new_device_found": "New device found",
+                            "new_node_found": "New node found"
+                        }
+                    }
+                }
             }
         },
         "select": {
@@ -271,7 +284,15 @@
                 "name": "Speedtest Latency"
             },
             "speedtest_progress": {
-                "name": "Speedtest Progress"
+                "name": "Speedtest Progress",
+                "state":{
+                    "checking_download_speed": "Checking download speed",
+                    "checking_latency": "Checking latency",
+                    "checking_upload_speed": "Checking upload speed",
+                    "detecting_server": "Detecting server",
+                    "finished": " ",
+                    "unknown": "Unknown"
+                }
             },
             "speedtest_result": {
                 "name": "Speedtest Result"
@@ -309,6 +330,20 @@
             }
         }
     },
+    "exceptions": {
+        "coordinator_mesh_timeout": {
+            "message": "timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout."
+        },
+        "failed_login": {
+            "message": "Failed to login to the mesh."
+        },
+        "general": {
+            "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}"
+        },
+        "intensive_task": {
+            "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
+        }
+    },
     "issues": {
         "missing_device_tracker": {
             "title": "{device_name} is missing",
@@ -321,13 +356,24 @@
                 }
             }
         },
+        "missing_node": {
+            "title": "Node is missing: {device_name}",
+            "fix_flow": {
+                "step": {
+                    "confirm_removal": {
+                        "title": "Remove the node",
+                        "description": "The {device_name} node is no longer on the Mesh or it's unique ID has changed. Click submit to remove it from Home Assistant."
+                    }
+                }
+            }
+        },
         "missing_ui_device": {
-            "title": "{device_name} is missing",
+            "title": "UI device is missing: {device_name}",
             "fix_flow": {
                 "step": {
                     "confirm_removal": {
                         "title": "Remove the device",
-                        "description": "{device_name} is no longer on the Mesh or it's unique ID has changed. Click submit to remove the device from Home Assistant."
+                        "description": "The {device_name} UI device is no longer on the Mesh or it's unique ID has changed. Click submit to remove it from Home Assistant."
                     }
                 }
             }
@@ -347,29 +393,30 @@
                     "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
                 "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
-                "title": "Linksys Velop"
-            },
-            "device_ui": {
-                "data": {
-                    "ui_devices": "Available devices"
-                },
-                "description": "Select the devices that you'd like to have created in the UI.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Advanced Options"
             },
             "device_trackers": {
                 "data": {
                     "tracked": "Available devices"
                 },
                 "description": "Select the devices you would like to use for presence tracking.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Device Trackers"
+            },
+            "events": {
+                "data": {
+                    "events_options": "Available events"
+                },
+                "description": "Select the events that you would like to be notified of.",
+                "title": "Linksys Velop: Events"
             },
             "init": {
                 "menu_options": {
                     "advanced_options": "Advanced Options",
-                    "device_ui": "UI Devices",
                     "device_trackers": "Device Trackers",
+                    "events": "Events",
                     "logging": "Logging",
-                    "timers": "Timers"
+                    "timers": "Timers",
+                    "ui_device": "UI Devices"
                 },
                 "title": "Linksys Velop"
             },
@@ -384,7 +431,7 @@
                     "logging_mode": "The mode setting has no effect if logging for the integration is defined in configuration.yaml"
                 },
                 "description": "Configure logging details and state.{logging_mode_warning}",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Logging"
             },
             "timers": {
                 "data": {
@@ -394,21 +441,22 @@
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "description": "Set the various timers for the integration.",
-                "title": "Linksys Velop"
+                "title": "Linksys Velop: Timers"
+            },
+            "ui_device": {
+                "data": {
+                    "ui_devices": "Available devices"
+                },
+                "description": "Select the devices that you'd like to have created in the UI.",
+                "title": "Linksys Velop: UI Devices"
             }
         }
     },
     "selector": {
-        "logging_options": {
+        "events_options": {
             "options": {
-                "include_serial": "Include serial number",
-                "include_query_response": "Include query responses"
-            }
-        },
-        "logging_modes": {
-            "options": {
-                "off": "Off",
-                "single": "Single poll"
+                "new_device_found": "New device found on the mesh",
+                "new_node_found": "New node added to the mesh"
             }
         },
         "pc_times": {
