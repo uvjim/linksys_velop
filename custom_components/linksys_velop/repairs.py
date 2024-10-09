@@ -35,7 +35,7 @@ async def async_create_fix_flow(
         return IssueMissingDeviceTrackerRepairFlow()
 
     if issue_id.startswith(ISSUE_MISSING_NODE):
-        return IssueMissingDeviceTrackerRepairFlow()
+        return IssueMissingNodeRepairFlow()
 
     if issue_id.startswith(ISSUE_MISSING_UI_DEVICE):
         return IssueMissingUIDeviceRepairFlow()

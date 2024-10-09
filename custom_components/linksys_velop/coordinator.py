@@ -222,7 +222,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                                 or found_device.name,
                             },
                             is_fixable=True,
-                            is_persistent=False,
+                            is_persistent=True,
                             severity=IssueSeverity.WARNING,
                             translation_key=ISSUE_MISSING_NODE,
                             translation_placeholders={
@@ -257,7 +257,6 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                             device_info,
                         )
             # endregion
-
             # region #-- check for new nodes --#
             if EventSubTypes.NEW_NODE_FOUND.value in configured_events:
                 if len(previous_nodes) > 0:
@@ -267,16 +266,20 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                     new_nodes: set[str] = set(current_nodes).difference(
                         set(previous_nodes)
                     )
-                    node_info: list[Node]
-                    for node in new_nodes:
-                        if node_info := [
-                            n for n in self._mesh.nodes if n.unique_id == node
-                        ]:
-                            async_dispatcher_send(
-                                self.hass,
-                                f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                                node_info[0],
-                            )
+                    if len(new_nodes) > 0:
+                        node_info: list[Node]
+                        for node in new_nodes:
+                            if node_info := [
+                                n for n in self._mesh.nodes if n.unique_id == node
+                            ]:
+                                async_dispatcher_send(
+                                    self.hass,
+                                    f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
+                                    node_info[0],
+                                )
+                        self.hass.config_entries.async_schedule_reload(
+                            self.config_entry.entry_id
+                        )
             # endregion
             # endregion
 
