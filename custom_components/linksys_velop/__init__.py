@@ -54,7 +54,7 @@ from .coordinator import (
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
-from .exceptions import GeneralException, IntensiveTaskRunning
+from .exceptions import DeviceTrackerMeshTimeout, GeneralException, IntensiveTaskRunning
 from .helpers import (
     get_mesh_device_for_config_entry,
     remove_velop_device_from_registry,
@@ -249,15 +249,10 @@ async def async_setup_entry(
                 )
                 _LOGGER.warning(exc)
             else:
-                exc_general: GeneralException = GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(err),
-                        "exc_msg": err,
-                    },
+                exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
+                    translation_domain=DOMAIN, translation_key="device_tracker_timeout"
                 )
-                _LOGGER.warning(exc_general)
+                _LOGGER.warning(exc_timeout)
         except Exception as err:
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,

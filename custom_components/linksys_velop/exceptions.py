@@ -5,6 +5,10 @@ class CoordinatorMeshTimeout(HomeAssistantError):
     """Gathering mesh data timed out."""
 
 
+class DeviceTrackerMeshTimeout(HomeAssistantError):
+    """Gathering device tracker data timed out."""
+
+
 class GeneralException(HomeAssistantError):
     """A currently untracked exception was encountered."""
 
