@@ -332,13 +332,16 @@
     },
     "exceptions": {
         "coordinator_mesh_timeout": {
-            "message": "timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout."
+            "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
+        },
+        "device_tracker_timeout": {
+            "message": "Timeout whilst gathering device tracker details."
         },
         "failed_login": {
             "message": "Failed to login to the mesh."
         },
         "general": {
-            "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}"
+            "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}."
         },
         "intensive_task": {
             "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
