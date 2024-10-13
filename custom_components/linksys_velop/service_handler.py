@@ -9,11 +9,14 @@ import uuid
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from pyvelop.device import Device, ParentalControl
+from pyvelop.exceptions import MeshInvalidInput
 from pyvelop.mesh import Mesh
 
-from .const import DOMAIN
+from .const import DOMAIN, IntensiveTask
+from .exceptions import InvalidInput
 from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
@@ -172,6 +175,16 @@ class LinksysVelopServiceHandler:
             if method:
                 try:
                     await method(**args, config_entry=config_entry)
+                except MeshInvalidInput as exc:
+                    if call.service == "reboot_node":
+                        raise ServiceValidationError(
+                            translation_domain=DOMAIN,
+                            translation_key="invalid_input",
+                            translation_placeholders={
+                                "action": call.service,
+                                "original_msg": str(exc),
+                            },
+                        ) from exc
                 except Exception as err:
                     _LOGGER.warning(
                         self._log_formatter.format("%s", include_caller=False), err
@@ -306,6 +319,17 @@ class LinksysVelopServiceHandler:
         :return:None
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+
+        # region #-- flag the reboot --#
+        if (
+            kwargs.get("is_primary", False)
+            and IntensiveTask.REBOOT.value
+            not in config_entry.runtime_data.intensive_running_tasks
+        ):
+            config_entry.runtime_data.intensive_running_tasks.append(
+                IntensiveTask.REBOOT.value
+            )
+        # endregion
 
         await self._mesh.async_reboot_node(
             node_name=kwargs.get("node_name", ""),

@@ -76,3 +76,4 @@ class IntensiveTask(StrEnum):
     """"""
 
     CHANNEL_SCAN = "Channel Scan"
+    REBOOT = "Reboot"

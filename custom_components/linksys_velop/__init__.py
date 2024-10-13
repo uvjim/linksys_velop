@@ -22,7 +22,6 @@ from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
     MeshDeviceNotFoundResponse,
-    MeshException,
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh
@@ -48,6 +47,7 @@ from .const import (
     PLATFORMS,
     SELECT_DOMAIN,
     SIGNAL_DEVICE_TRACKER_UPDATE,
+    IntensiveTask,
 )
 from .coordinator import (
     LinksysVelopUpdateCoordinator,
@@ -240,29 +240,37 @@ async def async_setup_entry(
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
             if len(config_entry.runtime_data.intensive_running_tasks) > 0:
-                exc: IntensiveTaskRunning = IntensiveTaskRunning(
-                    translation_domain=DOMAIN,
-                    translation_key="intensive_task",
-                    translation_placeholders={
-                        "tasks": config_entry.runtime_data.intensive_running_tasks
-                    },
-                )
-                _LOGGER.warning(exc)
+                if (
+                    IntensiveTask.REBOOT.value
+                    not in config_entry.runtime_data.intensive_running_tasks
+                ):
+                    exc: IntensiveTaskRunning = IntensiveTaskRunning(
+                        translation_domain=DOMAIN,
+                        translation_key="intensive_task",
+                        translation_placeholders={
+                            "tasks": config_entry.runtime_data.intensive_running_tasks
+                        },
+                    )
+                    _LOGGER.warning(exc)
             else:
                 exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
                     translation_domain=DOMAIN, translation_key="device_tracker_timeout"
                 )
                 _LOGGER.warning(exc_timeout)
         except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err),
-                    "exc_msg": err,
-                },
-            )
-            _LOGGER.warning(exc_general)
+            if (
+                IntensiveTask.REBOOT.value
+                not in config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": str(err),
+                    },
+                )
+                _LOGGER.warning(exc_general)
 
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         scan_interval = config_entry.options.get(

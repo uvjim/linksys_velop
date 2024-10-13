@@ -15,3 +15,7 @@ class GeneralException(HomeAssistantError):
 
 class IntensiveTaskRunning(HomeAssistantError):
     """Intensive task running whilst checking for state."""
+
+
+class InvalidInput(HomeAssistantError):
+    """Invalid input when executing an action."""
