@@ -42,8 +42,7 @@
                 "description": "Wprowadź dane, potrzebne do połączenia się z siecią Linksys Velop",
                 "title": "Linksys Velop"
             }
-        },
-        "title": "Linksys Velop"
+        }
     },
     "device_automation": {
         "trigger_type": {

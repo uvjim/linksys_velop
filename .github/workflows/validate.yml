@@ -1,11 +1,21 @@
 name: Validate
 
 on:
-  pull_request:
-  push:
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
+  schedule:
+    - cron:  "0 0 * * *"
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'images/**'
+      - 'README.md'
+  pull_request:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'images/**'
+      - 'README.md'
 
 jobs:
   validate:
