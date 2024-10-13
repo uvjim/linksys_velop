@@ -1,7 +1,7 @@
 #Linksys Velop services
 
 #anchors
-device_internet_rules_day: &pc_times
+device_internet_rules_day: &day_settings
   description: Select times the device should be blocked
   required: false
   selector:
@@ -119,25 +119,25 @@ device_internet_rules:
         text:
     sunday:
       name: Sunday
-      <<: *pc_times
+      <<: *day_settings
     monday:
       name: Monday
-      <<: *pc_times
+      <<: *day_settings
     tuesday:
       name: Tuesday
-      <<: *pc_times
+      <<: *day_settings
     wednesday:
       name: Wednesday
-      <<: *pc_times
+      <<: *day_settings
     thursday:
       name: Thursday
-      <<: *pc_times
+      <<: *day_settings
     friday:
       name: Friday
-      <<: *pc_times
+      <<: *day_settings
     saturday:
       name: Saturday
-      <<: *pc_times
+      <<: *day_settings
 
 reboot_node:
   fields:
