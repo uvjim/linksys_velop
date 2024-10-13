@@ -38,8 +38,8 @@ jobs:
       - name: Update manifest version
         uses: mikefarah/yq@master
         with:
-          cmd: yq -i -o json '.version="${{ github.ref_name }}"' '${{ github.workspace }}/custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
+          cmd: yq -i -o json '.version="${{ github.ref_name }}"' 'custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
 
       - name: Display manifest
         run: |
-          cat '${{ github.workspace }}/custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
+          cat 'custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
