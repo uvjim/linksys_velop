@@ -285,17 +285,20 @@ class LinksysVelopServiceHandler:
         if device is None:
             raise ValueError(f"Unknown device: {kwargs.get('device', '')}") from None
 
-        rules_to_apply: dict[str, str] = {}
-        rules_to_apply = dict(
-            map(
-                lambda weekday: (
-                    weekday.name,
-                    ",".join(kwargs.get(weekday.name, [])) or None,
-                ),
-                ParentalControl.WEEKDAYS,
-            )
-        )
+        def _process_times() -> dict[str, str]:
+            """Process the times from the service call."""
+            ret: dict[str, str] = {}
+            for day in ParentalControl.WEEKDAYS:
+                times: list[str] = kwargs.get(day.name, [])
+                if times:
+                    times = ["00:00-00:00" if t == "all_day" else t for t in times]
+                    ret[day.name] = ",".join(times)
+                else:
+                    ret[day.name] = None
 
+            return ret
+
+        rules_to_apply: dict[str, str] = _process_times()
         _LOGGER.debug(self._log_formatter.format("rules_to_apply: %s"), rules_to_apply)
 
         await self._mesh.async_set_parental_control_rules(

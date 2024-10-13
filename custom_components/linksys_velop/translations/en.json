@@ -466,7 +466,7 @@
         },
         "pc_times": {
             "options": {
-                "00:00-00:00": "All Day"
+                "all_day": "All day"
             }
         }
     },

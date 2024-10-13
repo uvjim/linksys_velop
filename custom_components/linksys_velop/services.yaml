@@ -66,7 +66,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -125,7 +125,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -184,7 +184,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -243,7 +243,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -302,7 +302,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -361,7 +361,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
@@ -420,7 +420,7 @@ device_internet_rules:
           mode: dropdown
           multiple: true
           options:
-            - 00:00-00:00
+            - all_day
             - 00:00-00:30
             - 00:30-01:00
             - 01:00-01:30
