@@ -324,9 +324,9 @@ class LinksysVelopServiceHandler:
         if (
             kwargs.get("is_primary", False)
             and IntensiveTask.REBOOT.value
-            not in self.config_entry.runtime_data.intensive_running_tasks
+            not in config_entry.runtime_data.intensive_running_tasks
         ):
-            config_entry.runtime_data.intensive_running_tasks += (
+            config_entry.runtime_data.intensive_running_tasks.append(
                 IntensiveTask.REBOOT.value
             )
         # endregion
