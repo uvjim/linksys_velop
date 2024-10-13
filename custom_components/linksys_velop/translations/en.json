@@ -54,8 +54,7 @@
                 "description": "Enter the details to connect to the Linksys Velop mesh",
                 "title": "Linksys Velop"
             }
-        },
-        "title": "Linksys Velop"
+        }
     },
     "entity": {
         "binary_sensor": {
