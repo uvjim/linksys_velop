@@ -40,6 +40,19 @@ jobs:
         with:
           cmd: yq -i -o json '.version="${{ github.ref_name }}"' 'custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
 
-      - name: Display manifest
+      - name: Prepare artifacts location
         run: |
-          cat 'custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
+          mkdir -p '${{ env.ARTIFACT_PATH }}'
+
+      - name: Create the zip file
+        run: |
+          zip '${{ env.PACKAGE_NAME}}.zip' -r ./
+          mv '${{ env.PACKAGE_NAME }}.zip' '${{ env.ARTIFACT_PATH }}'
+
+      - name: Upload the artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ env.PACKAGE_NAME }}"
+          path: "${{ env.ARTIFACT_PATH }}"
+          if-no-files-found: error
+          retention-days: 1  
