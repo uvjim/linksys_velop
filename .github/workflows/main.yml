@@ -1,0 +1,45 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "[0-9][0-9][0-9][0-9].[1-9][0-2]?.[0-9]"
+      - "[0-9][0-9][0-9][0-9].[1-9][0-2]?.[0-9]+b[0-9]+"
+
+run-name: "Build and release ${{ github.ref_name }}"
+
+env:
+  ARTIFACT_PATH: artifacts
+  BETA_RELEASE: ${{ contains(github.ref_name, 'b') }} 
+  PACKAGE_NAME: linksys_velop
+
+jobs:
+  init:
+    name: Initialise
+    outputs:
+      beta_release: ${{ steps.variables.outputs.beta_release }}
+      
+    runs-on: ubuntu-latest
+    steps:
+      - name: Variables
+        id: variables
+        run: |
+          echo "beta_release=${{ env.BETA_RELEASE }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build
+    needs:
+      - init
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update manifest version
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq -i -o json '.version="${{ github.ref_name }}"' '${{ github.workspace }}/custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
+
+      - name: Display manifest
+        run: |
+          cat '${{ github.workspace }}/custom_components/${{ env.PACKAGE_NAME }}/manifest.json'
