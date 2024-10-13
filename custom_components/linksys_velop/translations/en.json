@@ -289,7 +289,7 @@
                     "checking_latency": "Checking latency",
                     "checking_upload_speed": "Checking upload speed",
                     "detecting_server": "Detecting server",
-                    "finished": " ",
+                    "finished": "N/A",
                     "unknown": "Unknown"
                 }
             },
