@@ -1,4 +1,6 @@
 {
+  "domain": "linksys_velop",
+  "name": "Linksys Velop",
   "codeowners": [
     "@uvjim"
   ],
@@ -6,7 +8,6 @@
   "dependencies": [
     "ssdp"
   ],
-  "domain": "linksys_velop",
   "documentation": "https://github.com/uvjim/linksys_velop",
   "integration_type": "hub",
   "iot_class": "local_polling",
@@ -14,7 +15,6 @@
   "loggers": [
     "pyvelop"
   ],
-  "name": "Linksys Velop",
   "requirements": [
     "pyvelop==2024.10.1"
   ],
