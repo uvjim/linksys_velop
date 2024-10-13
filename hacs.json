@@ -1,5 +1,7 @@
 {
+  "filename": "linksys_velop.zip",
   "homeassistant": "2024.5.0",
   "name": "Linksys Velop",
-  "render_readme": true
+  "render_readme": true,
+  "zip_release": true
 }
