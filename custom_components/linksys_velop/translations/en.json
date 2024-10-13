@@ -345,6 +345,9 @@
         },
         "intensive_task": {
             "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
+        },
+        "invalid_input": {
+            "message": "The {action} action has failed. ({original_msg})"
         }
     },
     "issues": {
