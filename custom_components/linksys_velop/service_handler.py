@@ -13,7 +13,7 @@ from homeassistant.helpers import device_registry as dr
 from pyvelop.device import Device, ParentalControl
 from pyvelop.mesh import Mesh
 
-from .const import DOMAIN
+from .const import DOMAIN, IntensiveTask
 from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
@@ -306,6 +306,17 @@ class LinksysVelopServiceHandler:
         :return:None
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+
+        # region #-- flag the reboot --#
+        if (
+            kwargs.get("is_primary", False)
+            and IntensiveTask.REBOOT.value
+            not in self.config_entry.runtime_data.intensive_running_tasks
+        ):
+            config_entry.runtime_data.intensive_running_tasks += (
+                IntensiveTask.REBOOT.value
+            )
+        # endregion
 
         await self._mesh.async_reboot_node(
             node_name=kwargs.get("node_name", ""),

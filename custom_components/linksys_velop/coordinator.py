@@ -133,29 +133,46 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
 
         try:
             await self._mesh.async_gather_details()
+            # region #-- clear the reboot task--#
+            if (
+                IntensiveTask.REBOOT.value
+                in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                self.config_entry.runtime_data.intensive_running_tasks.remove(
+                    IntensiveTask.REBOOT.value
+                )
+            # endregion
         except MeshTimeoutError as err:
-            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
-                translation_domain=DOMAIN,
-                translation_key="coordinator_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": self.config_entry.options.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    )
-                },
-            )
-            _LOGGER.warning(exc_mesh_timeout)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="coordinator_mesh_timeout",
+                    translation_placeholders={
+                        "current_timeout": self.config_entry.options.get(
+                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                        )
+                    },
+                )
+                _LOGGER.warning(exc_mesh_timeout)
+                raise UpdateFailed(err) from err
         except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err),
-                    "exc_msg": err,
-                },
-            )
-            _LOGGER.warning(exc_general)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": err,
+                    },
+                )
+                _LOGGER.warning(exc_general)
+                raise UpdateFailed(err) from err
         else:
             # region #-- issue management --#
             # region #-- missing ui devices --#
@@ -347,6 +364,15 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
         ]
         try:
             responses = await asyncio.gather(*api_calls)
+            # region #-- clear the reboot task--#
+            if (
+                IntensiveTask.REBOOT.value
+                in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                self.config_entry.runtime_data.intensive_running_tasks.remove(
+                    IntensiveTask.REBOOT.value
+                )
+            # endregion
             result: dict[str, Any] = responses[0][0]
             slug_friendly_status: str = slugify(responses[1])
             friendly_status: str
@@ -373,28 +399,36 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
             else:
                 self.update_interval = self.normal_update_interval
         except MeshTimeoutError as err:
-            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
-                translation_domain=DOMAIN,
-                translation_key="coordinator_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": self.config_entry.options.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    )
-                },
-            )
-            _LOGGER.warning(exc_mesh_timeout)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="coordinator_mesh_timeout",
+                    translation_placeholders={
+                        "current_timeout": self.config_entry.options.get(
+                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                        )
+                    },
+                )
+                _LOGGER.warning(exc_mesh_timeout)
+                raise UpdateFailed(err) from err
         except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err),
-                    "exc_msg": err,
-                },
-            )
-            _LOGGER.warning(exc_general)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": err,
+                    },
+                )
+                _LOGGER.warning(exc_general)
+                raise UpdateFailed(err) from err
 
         return ret
 
@@ -430,6 +464,15 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
         ]
         try:
             responses = await asyncio.gather(*api_calls)
+            # region #-- clear the reboot task--#
+            if (
+                IntensiveTask.REBOOT.value
+                in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                self.config_entry.runtime_data.intensive_running_tasks.remove(
+                    IntensiveTask.REBOOT.value
+                )
+            # endregion
             result: dict[str, Any] = responses[0]
             ret: ChannelScanInfo = ChannelScanInfo(
                 connected_node=self._mesh.connected_node,
@@ -447,27 +490,35 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
             else:
                 self.update_interval = self.progress_update_interval
         except MeshTimeoutError as err:
-            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
-                translation_domain=DOMAIN,
-                translation_key="coordinator_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": self.config_entry.options.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    )
-                },
-            )
-            _LOGGER.warning(exc_mesh_timeout)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="coordinator_mesh_timeout",
+                    translation_placeholders={
+                        "current_timeout": self.config_entry.options.get(
+                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                        )
+                    },
+                )
+                _LOGGER.warning(exc_mesh_timeout)
+                raise UpdateFailed(err) from err
         except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err),
-                    "exc_msg": err,
-                },
-            )
-            _LOGGER.warning(exc_general)
-            raise UpdateFailed(err) from err
+            if (
+                IntensiveTask.REBOOT.value
+                not in self.config_entry.runtime_data.intensive_running_tasks
+            ):
+                exc_general: GeneralException = GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err),
+                        "exc_msg": err,
+                    },
+                )
+                _LOGGER.warning(exc_general)
+                raise UpdateFailed(err) from err
 
         return ret

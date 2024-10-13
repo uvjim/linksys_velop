@@ -53,6 +53,13 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
     ]
     if len(primary_node) > 0:
         primary_node = primary_node[0]
+        if (
+            IntensiveTask.REBOOT.value
+            not in config_entry.runtime_data.intensive_running_tasks
+        ):
+            config_entry.runtime_data.intensive_running_tasks += (
+                IntensiveTask.REBOOT.value
+            )
         await mesh.async_reboot_node(node_name=primary_node, force=True)
 
 
