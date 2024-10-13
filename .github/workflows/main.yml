@@ -46,7 +46,7 @@ jobs:
 
       - name: Create the zip file
         run: |
-          zip '${{ env.PACKAGE_NAME}}.zip' -r 'custom_components/${{ env.PACKAGE_NAME}}'
+          zip '${{ env.PACKAGE_NAME}}.zip' -r 'custom_components/${{ env.PACKAGE_NAME}}/'
           mv '${{ env.PACKAGE_NAME }}.zip' '${{ env.ARTIFACT_PATH }}'
 
       - name: Upload the artifacts
