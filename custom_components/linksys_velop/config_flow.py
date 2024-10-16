@@ -679,7 +679,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 Steps.ADVANCED_OPTIONS, self._options
             ),
             errors=self._errors,
-            last_step=False,
+            last_step=True,
         )
 
     async def async_step_device_trackers(
@@ -800,8 +800,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             Steps.UI_DEVICE,
         ]
         if self.show_advanced_options:
-            menu_options.insert(3, Steps.EVENTS)
-            menu_options.insert(-1, Steps.ADVANCED_OPTIONS)
+            menu_options.append(Steps.EVENTS)
+            menu_options.append(Steps.ADVANCED_OPTIONS)
 
         return self.async_show_menu(
             step_id=Steps.INIT,
