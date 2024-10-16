@@ -266,15 +266,6 @@ async def async_setup_entry(
                 )
                 _LOGGER.warning(exc_general)
         else:
-            if config_entry.runtime_data.mesh_is_rebooting:
-                config_entry.runtime_data.mesh_is_rebooting = False
-                if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                ):
-                    async_dispatcher_send(
-                        hass,
-                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-                    )
             for device in devices:
                 async_dispatcher_send(
                     hass,

@@ -326,7 +326,7 @@ class LinksysVelopServiceHandler:
         # region #-- flag the reboot --#
         if kwargs.get("is_primary", False):
             config_entry.runtime_data.mesh_is_rebooting = True
-            if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+            if EventSubTypes.MESH_REBOOTING.value in config_entry.options.get(
                 CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
             ):
                 async_dispatcher_send(
