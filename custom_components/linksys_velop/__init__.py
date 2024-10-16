@@ -62,7 +62,12 @@ from .helpers import (
 )
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
-from .types import CoordinatorTypes, LinksysVelopConfigEntry, LinksysVelopData
+from .types import (
+    CoordinatorTypes,
+    EventSubTypes,
+    LinksysVelopConfigEntry,
+    LinksysVelopData,
+)
 
 # endregion
 
@@ -197,12 +202,6 @@ async def async_setup_entry(
             devices: list[Device] = await mesh.async_get_device_from_id(
                 config_entry.options.get(CONF_DEVICE_TRACKERS, []), True
             )
-            for device in devices:
-                async_dispatcher_send(
-                    hass,
-                    f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{device.unique_id}",
-                    device,
-                )
         except MeshDeviceNotFoundResponse as err:
             for tracker_missing in err.devices:
                 entity_registry: er.EntityRegistry = er.async_get(hass)
@@ -239,11 +238,8 @@ async def async_setup_entry(
                     )
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
-            if len(config_entry.runtime_data.intensive_running_tasks) > 0:
-                if (
-                    IntensiveTask.REBOOT.value
-                    not in config_entry.runtime_data.intensive_running_tasks
-                ):
+            if not config_entry.runtime_data.mesh_is_rebooting:
+                if len(config_entry.runtime_data.intensive_running_tasks) > 0:
                     exc: IntensiveTaskRunning = IntensiveTaskRunning(
                         translation_domain=DOMAIN,
                         translation_key="intensive_task",
@@ -252,16 +248,14 @@ async def async_setup_entry(
                         },
                     )
                     _LOGGER.warning(exc)
-            else:
-                exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
-                    translation_domain=DOMAIN, translation_key="device_tracker_timeout"
-                )
-                _LOGGER.warning(exc_timeout)
+                else:
+                    exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
+                        translation_domain=DOMAIN,
+                        translation_key="device_tracker_timeout",
+                    )
+                    _LOGGER.warning(exc_timeout)
         except Exception as err:
-            if (
-                IntensiveTask.REBOOT.value
-                not in config_entry.runtime_data.intensive_running_tasks
-            ):
+            if not config_entry.runtime_data.mesh_is_rebooting:
                 exc_general: GeneralException = GeneralException(
                     translation_domain=DOMAIN,
                     translation_key="general",
@@ -271,6 +265,22 @@ async def async_setup_entry(
                     },
                 )
                 _LOGGER.warning(exc_general)
+        else:
+            if config_entry.runtime_data.mesh_is_rebooting:
+                config_entry.runtime_data.mesh_is_rebooting = False
+                if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+                ):
+                    async_dispatcher_send(
+                        hass,
+                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+                    )
+            for device in devices:
+                async_dispatcher_send(
+                    hass,
+                    f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{device.unique_id}",
+                    device,
+                )
 
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         scan_interval = config_entry.options.get(

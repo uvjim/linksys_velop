@@ -11,14 +11,14 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.device import Device, ParentalControl
 from pyvelop.exceptions import MeshInvalidInput
 from pyvelop.mesh import Mesh
 
-from .const import DOMAIN, IntensiveTask
-from .exceptions import InvalidInput
+from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
 from .logger import Logger
-from .types import CoordinatorTypes, LinksysVelopConfigEntry
+from .types import CoordinatorTypes, EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
 
@@ -324,14 +324,15 @@ class LinksysVelopServiceHandler:
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
         # region #-- flag the reboot --#
-        if (
-            kwargs.get("is_primary", False)
-            and IntensiveTask.REBOOT.value
-            not in config_entry.runtime_data.intensive_running_tasks
-        ):
-            config_entry.runtime_data.intensive_running_tasks.append(
-                IntensiveTask.REBOOT.value
-            )
+        if kwargs.get("is_primary", False):
+            config_entry.runtime_data.mesh_is_rebooting = True
+            if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            ):
+                async_dispatcher_send(
+                    self._hass,
+                    f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
+                )
         # endregion
 
         await self._mesh.async_reboot_node(

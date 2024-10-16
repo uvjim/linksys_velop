@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.device import Device
 from pyvelop.node import Node
 
-from .const import DOMAIN
+from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
@@ -112,20 +112,16 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         self._trigger_event(EventSubTypes.NEW_NODE_FOUND.value, event_attributes)
         self.async_write_ha_state()
 
-    async def _async_process_event_node_removed(self, node: Node) -> None:
-        """"""
+    async def _async_process_event_mesh_rebooted(self) -> None:
+        """Process the mesh rebooted event."""
 
-        event_properties: list[str] = [
-            "model",
-            "name",
-            "serial",
-            "unique_id",
-        ]
+        self._trigger_event(EventSubTypes.MESH_REBOOTED)
+        self.async_write_ha_state()
 
-        event_attributes: dict[str, Any] = _build_event_properties(
-            event_properties, node
-        )
-        self._trigger_event(EventSubTypes.NODE_REMOVED.value, event_attributes)
+    async def _async_process_event_mesh_rebooting(self) -> None:
+        """Process the mesh rebooting event."""
+
+        self._trigger_event(EventSubTypes.MESH_REBOOTING)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

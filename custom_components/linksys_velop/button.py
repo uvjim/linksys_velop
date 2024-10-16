@@ -11,7 +11,7 @@ from homeassistant.components.button import (
     ButtonEntity,
     ButtonEntityDescription,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh
@@ -19,7 +19,10 @@ from pyvelop.node import Node, NodeType
 
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
+    CONF_EVENTS_OPTIONS,
     DEF_ALLOW_MESH_REBOOT,
+    DEF_EVENTS_OPTIONS,
+    DOMAIN,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
     IntensiveTask,
 )
@@ -31,7 +34,7 @@ from .entities import (
     build_entities,
 )
 from .helpers import remove_velop_entity_from_registry
-from .types import CoordinatorTypes, LinksysVelopConfigEntry
+from .types import CoordinatorTypes, EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
 
@@ -53,12 +56,14 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
     ]
     if len(primary_node) > 0:
         primary_node = primary_node[0]
-        if (
-            IntensiveTask.REBOOT.value
-            not in config_entry.runtime_data.intensive_running_tasks
+        _hass: HomeAssistant = async_get_hass()
+        config_entry.runtime_data.mesh_is_rebooting = True
+        if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+            CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         ):
-            config_entry.runtime_data.intensive_running_tasks.append(
-                IntensiveTask.REBOOT.value
+            async_dispatcher_send(
+                _hass,
+                f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
             )
         await mesh.async_reboot_node(node_name=primary_node, force=True)
 
