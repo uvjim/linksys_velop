@@ -155,6 +155,8 @@
                 "state_attributes": {
                     "event_type": {
                         "state": {
+                            "mesh_rebooted": "Mesh rebooted",
+                            "mesh_rebooting": "Mesh is rebooting",
                             "new_device_found": "New device found",
                             "new_node_found": "New node found"
                         }
@@ -460,6 +462,8 @@
     "selector": {
         "events_options": {
             "options": {
+                "mesh_rebooted": "Mesh rebooted",
+                "mesh_rebooting": "Mesh is rebooting",
                 "new_device_found": "New device found on the mesh",
                 "new_node_found": "New node added to the mesh"
             }
