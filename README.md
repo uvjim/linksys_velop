@@ -22,6 +22,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
   * [Timers](#timers)
   * [Device Trackers](#device-trackers-1)
   * [UI Devices](#ui-devices)
+  * [Events](#events)
   * [Advanced Options](#advanced-options)
 * [Troubleshooting](#troubleshooting)
   * [Debug Logging](#debug-logging)
@@ -121,6 +122,8 @@ tracker is removed, the MAC is also removed from the Mesh device.
 This entity provides access to data for the events selected in the configuration.
 Available events are: -
 
+* Mesh rebooted
+* Mesh rebooting
 * New device found
 * New node found
 
@@ -288,6 +291,12 @@ create automations based on a device signal strength, parent node or state
 * `Available devices`: a multi-select list of the devices found on the mesh.
   This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
+
+### Events
+
+The events selected here will be raised with the `event` entity.
+
+![Configure Events](images/config_events.png)
 
 ### Advanced Options
 
