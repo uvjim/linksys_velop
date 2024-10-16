@@ -4,18 +4,18 @@ on:
   workflow_dispatch:
   schedule:
     - cron:  "0 0 * * *"
-  push:
-    branches:
-      - 'main'
-    paths-ignore:
-      - 'images/**'
-      - 'README.md'
-  pull_request:
-    branches:
-      - 'main'
-    paths-ignore:
-      - 'images/**'
-      - 'README.md'
+  # push:
+  #   branches:
+  #     - 'main'
+  #   paths-ignore:
+  #     - 'images/**'
+  #     - 'README.md'
+  # pull_request:
+  #   branches:
+  #     - 'main'
+  #   paths-ignore:
+  #     - 'images/**'
+  #     - 'README.md'
 
 jobs:
   hassfest:
