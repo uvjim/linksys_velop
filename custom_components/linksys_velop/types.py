@@ -22,6 +22,8 @@ class CoordinatorTypes(StrEnum):
 class EventSubTypes(StrEnum):
     """"""
 
+    MESH_REBOOTED = auto()
+    MESH_REBOOTING = auto()
     NEW_DEVICE_FOUND = auto()
     NEW_NODE_FOUND = auto()
 
@@ -34,6 +36,7 @@ class LinksysVelopData:
         default_factory=dict
     )
     intensive_running_tasks: list[str] = field(default_factory=list)
+    mesh_is_rebooting: bool = False
     service_handler: Any = None
 
 
