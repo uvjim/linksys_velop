@@ -45,6 +45,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class ButtonDetails(EntityDetails):
     description: ButtonEntityDescription
     press_func: Callable | str = field(kw_only=True)
+    refresh_after: bool = field(default=True)
 
 
 async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> None:
@@ -55,17 +56,16 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
         node for node in mesh.nodes if node.type == NodeType.PRIMARY
     ]
     if len(primary_node) > 0:
-        primary_node = primary_node[0]
         _hass: HomeAssistant = async_get_hass()
         config_entry.runtime_data.mesh_is_rebooting = True
-        if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+        if EventSubTypes.MESH_REBOOTING.value in config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         ):
             async_dispatcher_send(
                 _hass,
                 f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
             )
-        await mesh.async_reboot_node(node_name=primary_node, force=True)
+        await mesh.async_reboot_node(node_name=primary_node[0].name, force=True)
 
 
 async def _async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> None:
@@ -172,6 +172,7 @@ async def async_setup_entry(
                         ),
                         entity_type=EntityType.MESH,
                         press_func=_async_restart_primary_node,
+                        refresh_after=False,
                     ),
                 ],
                 config_entry,
@@ -206,6 +207,7 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
 
         super().__init__(context, config_entry, entity_details, entity_domain)
         self._press_func: Callable = entity_details.press_func
+        self._refresh_after: bool = entity_details.refresh_after
 
     async def _async_delete_device(self) -> None:
         """"""
@@ -235,4 +237,5 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
             if hasattr(self, self._press_func):
                 await getattr(self, self._press_func)()
 
-        await self.coordinator.async_refresh()
+        if self._refresh_after:
+            await self.coordinator.async_refresh()
