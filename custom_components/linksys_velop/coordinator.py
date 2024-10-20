@@ -159,15 +159,15 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning(exc_general)
                 raise UpdateFailed(err) from err
         else:
-            if self.config_entry.runtime_data.mesh_is_rebooting:
-                self.config_entry.runtime_data.mesh_is_rebooting = False
-                if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                ):
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-                    )
+            # if self.config_entry.runtime_data.mesh_is_rebooting:
+            #     self.config_entry.runtime_data.mesh_is_rebooting = False
+            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
+            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            #     ):
+            #         async_dispatcher_send(
+            #             self.hass,
+            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+            #         )
 
             # region #-- issue management --#
             # region #-- missing ui devices --#
@@ -384,15 +384,15 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 _LOGGER.warning(exc_general)
                 raise UpdateFailed(err) from err
         else:
-            if self.config_entry.runtime_data.mesh_is_rebooting:
-                self.config_entry.runtime_data.mesh_is_rebooting = False
-                if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                ):
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-                    )
+            # if self.config_entry.runtime_data.mesh_is_rebooting:
+            #     self.config_entry.runtime_data.mesh_is_rebooting = False
+            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
+            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            #     ):
+            #         async_dispatcher_send(
+            #             self.hass,
+            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+            #         )
             result: dict[str, Any] = responses[0][0]
             slug_friendly_status: str = slugify(responses[1])
             friendly_status: str
@@ -479,15 +479,15 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 _LOGGER.warning(exc_general)
                 raise UpdateFailed(err) from err
         else:
-            if self.config_entry.runtime_data.mesh_is_rebooting:
-                self.config_entry.runtime_data.mesh_is_rebooting = False
-                if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                ):
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-                    )
+            # if self.config_entry.runtime_data.mesh_is_rebooting:
+            #     self.config_entry.runtime_data.mesh_is_rebooting = False
+            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
+            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            #     ):
+            #         async_dispatcher_send(
+            #             self.hass,
+            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+            #         )
 
             result: dict[str, Any] = responses[0]
             ret: ChannelScanInfo = ChannelScanInfo(
