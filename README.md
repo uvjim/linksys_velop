@@ -122,7 +122,6 @@ tracker is removed, the MAC is also removed from the Mesh device.
 This entity provides access to data for the events selected in the configuration.
 Available events are: -
 
-* Mesh rebooted
 * Mesh rebooting
 * New device found
 * New node found
