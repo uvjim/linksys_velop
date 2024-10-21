@@ -22,7 +22,7 @@ class CoordinatorTypes(StrEnum):
 class EventSubTypes(StrEnum):
     """"""
 
-    # MESH_REBOOTED = auto()
+    MESH_REBOOTED = auto()
     MESH_REBOOTING = auto()
     NEW_DEVICE_FOUND = auto()
     NEW_NODE_FOUND = auto()
