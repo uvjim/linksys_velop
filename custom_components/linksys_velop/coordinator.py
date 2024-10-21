@@ -4,6 +4,7 @@
 import asyncio
 import copy
 import logging
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum, auto
@@ -18,7 +19,11 @@ from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
 from pyvelop.device import Device
-from pyvelop.exceptions import MeshNeedsGatherDetails, MeshTimeoutError
+from pyvelop.exceptions import (
+    MeshConnectionError,
+    MeshNeedsGatherDetails,
+    MeshTimeoutError,
+)
 from pyvelop.mesh import Mesh
 from pyvelop.node import Node
 
@@ -29,6 +34,7 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
+    DEF_REBOOT_BACKOFF,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
     DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
@@ -109,6 +115,10 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
 
         self.log_formatter = Logger(self.config_entry.unique_id)
         self._mesh: Mesh = mesh
+        self._rebooting_skip_count: int = 0
+        self._max_rebooting_skip_count: int = math.ceil(
+            DEF_REBOOT_BACKOFF / update_interval_secs
+        )
 
     async def _async_update_data(self):
         """Refresh the mesh data."""
@@ -132,8 +142,17 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             pass
 
         try:
-            await self._mesh.async_gather_details()
-        except MeshTimeoutError as err:
+            if (
+                self.config_entry.runtime_data.mesh_is_rebooting
+                and self._rebooting_skip_count != self._max_rebooting_skip_count
+            ):
+                self._rebooting_skip_count += 1
+                return self._mesh
+            else:
+                if self._rebooting_skip_count != 0:
+                    self._rebooting_skip_count = 0
+                await self._mesh.async_gather_details()
+        except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                     translation_domain=DOMAIN,
@@ -147,27 +166,29 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.warning(exc_mesh_timeout)
                 raise UpdateFailed(err) from err
         except Exception as err:
-            if not self.config_entry.runtime_data.mesh_is_rebooting:
-                exc_general: GeneralException = GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(err),
-                        "exc_msg": err,
-                    },
-                )
-                _LOGGER.warning(exc_general)
-                raise UpdateFailed(err) from err
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
         else:
-            # if self.config_entry.runtime_data.mesh_is_rebooting:
-            #     self.config_entry.runtime_data.mesh_is_rebooting = False
-            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            #     ):
-            #         async_dispatcher_send(
-            #             self.hass,
-            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-            #         )
+            if (
+                self.config_entry.runtime_data.mesh_is_rebooting
+                and self._rebooting_skip_count == 0
+            ):
+                self.config_entry.runtime_data.mesh_is_rebooting = False
+                if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
+                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+                ):
+                    async_dispatcher_send(
+                        self.hass,
+                        f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+                    )
 
             # region #-- issue management --#
             # region #-- missing ui devices --#
@@ -357,8 +378,11 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
             self._mesh.async_get_speedtest_state(),
         ]
         try:
+            if self.config_entry.runtime_data.mesh_is_rebooting:
+                return self.data
+
             responses = await asyncio.gather(*api_calls)
-        except MeshTimeoutError as err:
+        except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                     translation_domain=DOMAIN,
@@ -372,27 +396,17 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 _LOGGER.warning(exc_mesh_timeout)
                 raise UpdateFailed(err) from err
         except Exception as err:
-            if not self.config_entry.runtime_data.mesh_is_rebooting:
-                exc_general: GeneralException = GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(err),
-                        "exc_msg": err,
-                    },
-                )
-                _LOGGER.warning(exc_general)
-                raise UpdateFailed(err) from err
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
         else:
-            # if self.config_entry.runtime_data.mesh_is_rebooting:
-            #     self.config_entry.runtime_data.mesh_is_rebooting = False
-            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            #     ):
-            #         async_dispatcher_send(
-            #             self.hass,
-            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-            #         )
             result: dict[str, Any] = responses[0][0]
             slug_friendly_status: str = slugify(responses[1])
             friendly_status: str
@@ -452,8 +466,11 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
             self._mesh.async_get_channel_scan_info(),
         ]
         try:
+            if self.config_entry.runtime_data.mesh_is_rebooting:
+                return self.data
+
             responses = await asyncio.gather(*api_calls)
-        except MeshTimeoutError as err:
+        except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                     translation_domain=DOMAIN,
@@ -467,28 +484,17 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 _LOGGER.warning(exc_mesh_timeout)
                 raise UpdateFailed(err) from err
         except Exception as err:
-            if not self.config_entry.runtime_data.mesh_is_rebooting:
-                exc_general: GeneralException = GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(err),
-                        "exc_msg": err,
-                    },
-                )
-                _LOGGER.warning(exc_general)
-                raise UpdateFailed(err) from err
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": err,
+                },
+            )
+            _LOGGER.warning(exc_general)
+            raise UpdateFailed(err) from err
         else:
-            # if self.config_entry.runtime_data.mesh_is_rebooting:
-            #     self.config_entry.runtime_data.mesh_is_rebooting = False
-            #     if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-            #         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            #     ):
-            #         async_dispatcher_send(
-            #             self.hass,
-            #             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-            #         )
-
             result: dict[str, Any] = responses[0]
             ret: ChannelScanInfo = ChannelScanInfo(
                 connected_node=self._mesh.connected_node,

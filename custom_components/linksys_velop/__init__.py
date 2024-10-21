@@ -198,6 +198,10 @@ async def async_setup_entry(
     # region #-- setup the timer for device trackers --#
     async def async_device_tracker_update(_: datetime) -> None:
         """Retrieve the tracked devices from the Mesh."""
+
+        if config_entry.runtime_data.mesh_is_rebooting:
+            return
+
         try:
             devices: list[Device] = await mesh.async_get_device_from_id(
                 config_entry.options.get(CONF_DEVICE_TRACKERS, []), True
