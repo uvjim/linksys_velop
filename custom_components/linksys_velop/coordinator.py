@@ -373,14 +373,14 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
         """Refresh the Speedtest data."""
 
         ret: SpeedtestResults | None = None
-        api_calls: list = [
-            self._mesh.async_get_speedtest_results(only_latest=True),
-            self._mesh.async_get_speedtest_state(),
-        ]
         try:
             if self.config_entry.runtime_data.mesh_is_rebooting:
                 return self.data
 
+            api_calls: list = [
+                self._mesh.async_get_speedtest_results(only_latest=True),
+                self._mesh.async_get_speedtest_state(),
+            ]
             responses = await asyncio.gather(*api_calls)
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
@@ -462,13 +462,13 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
     async def _async_update_data(self):
         """Refresh the Speedtest data."""
 
-        api_calls: list = [
-            self._mesh.async_get_channel_scan_info(),
-        ]
         try:
             if self.config_entry.runtime_data.mesh_is_rebooting:
                 return self.data
 
+            api_calls: list = [
+                self._mesh.async_get_channel_scan_info(),
+            ]
             responses = await asyncio.gather(*api_calls)
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
