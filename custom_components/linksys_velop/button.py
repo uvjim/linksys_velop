@@ -125,6 +125,7 @@ ENTITY_DETAILS: list[ButtonDetails] = [
     ButtonDetails(
         coordinator_type=CoordinatorTypes.SPEEDTEST,
         description=ButtonEntityDescription(
+            entity_registry_enabled_default=False,
             key="",
             name="Start Speedtest",
             translation_key="speedtest",
