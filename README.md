@@ -92,7 +92,7 @@ enabled.
 * Mesh: Check for Updates
 * Mesh: Reboot the Whole Mesh (see [Configurable Options -> Advanced Options](#advanced-options))
 * Mesh: Start Channel Scanning _(interval: 40s)_
-* Mesh: Start Speedtest _(interval: 1s)_
+* Mesh: Start Speedtest _(interval: 1s)_ _(disabled by default)_
 * Node: Reboot
 
 > **N.B.** Buttons with an interval in brackets start a long running task.
