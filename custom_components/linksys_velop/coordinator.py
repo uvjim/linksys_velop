@@ -255,7 +255,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                                 or found_device.name,
                             },
                             is_fixable=True,
-                            is_persistent=True,
+                            is_persistent=False,
                             severity=IssueSeverity.WARNING,
                             translation_key=ISSUE_MISSING_NODE,
                             translation_placeholders={
