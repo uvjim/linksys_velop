@@ -119,6 +119,7 @@ async def async_setup_entry(
         ),
         session=async_get_clientsession(hass=hass),
     )
+    await mesh.async_initialise()
 
     # region #-- test auth --#
     valid_auth: bool = await mesh.async_test_credentials()

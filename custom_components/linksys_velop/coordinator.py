@@ -21,7 +21,7 @@ from homeassistant.util import slugify
 from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
-    MeshNeedsGatherDetails,
+    MeshNeedsInitialise,
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh
@@ -138,7 +138,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                 previous_nodes = [node.unique_id for node in self._mesh.nodes]
             if EventSubTypes.NEW_DEVICE_FOUND.value in configured_events:
                 previous_devices = [device.unique_id for device in self._mesh.devices]
-        except MeshNeedsGatherDetails:
+        except MeshNeedsInitialise:
             pass
 
         try:
