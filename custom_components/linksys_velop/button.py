@@ -14,7 +14,7 @@ from homeassistant.components.button import (
 from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.node import Node, NodeType
 
 from .const import (
@@ -103,36 +103,6 @@ ENTITY_DETAILS: list[ButtonDetails] = [
     ),
     # endregion
     # region #-- mesh buttons --#
-    ButtonDetails(
-        description=ButtonEntityDescription(
-            key="",
-            name="Check for Updates",
-            translation_key="check_for_updates",
-        ),
-        entity_type=EntityType.MESH,
-        press_func=_async_start_check_for_updates,
-    ),
-    ButtonDetails(
-        coordinator_type=CoordinatorTypes.CHANNEL_SCAN,
-        description=ButtonEntityDescription(
-            key="",
-            name="Start Channel Scan",
-            translation_key="channel_scan",
-        ),
-        entity_type=EntityType.MESH,
-        press_func=_async_start_channel_scan,
-    ),
-    ButtonDetails(
-        coordinator_type=CoordinatorTypes.SPEEDTEST,
-        description=ButtonEntityDescription(
-            entity_registry_enabled_default=False,
-            key="",
-            name="Start Speedtest",
-            translation_key="speedtest",
-        ),
-        entity_type=EntityType.MESH,
-        press_func=_async_start_speedtest,
-    ),
     # endregion
     # region #-- node buttons --#
     ButtonDetails(
@@ -160,6 +130,85 @@ async def async_setup_entry(
 
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     # region #-- add additional conditional buttons --#
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    if MeshCapability.GET_FIRMWARE_UPDATE_SETTINGS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    ButtonDetails(
+                        description=ButtonEntityDescription(
+                            key="",
+                            name="Check for Updates",
+                            translation_key="check_for_updates",
+                        ),
+                        entity_type=EntityType.MESH,
+                        press_func=_async_start_check_for_updates,
+                    )
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::check_for_updates",
+        )
+
+    if MeshCapability.GET_CHANNEL_SCAN_STATUS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    ButtonDetails(
+                        coordinator_type=CoordinatorTypes.CHANNEL_SCAN,
+                        description=ButtonEntityDescription(
+                            key="",
+                            name="Start Channel Scan",
+                            translation_key="channel_scan",
+                        ),
+                        entity_type=EntityType.MESH,
+                        press_func=_async_start_channel_scan,
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::start_channel_scan",
+        )
+
+    if MeshCapability.GET_SPEEDTEST_RESULTS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    ButtonDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=ButtonEntityDescription(
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Start Speedtest",
+                            translation_key="speedtest",
+                        ),
+                        entity_type=EntityType.MESH,
+                        press_func=_async_start_speedtest,
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::start_speedtest",
+        )
+
     if config_entry.options.get(CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT):
         entities.extend(
             build_entities(
