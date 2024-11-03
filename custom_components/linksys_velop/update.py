@@ -12,10 +12,13 @@ from homeassistant.components.update import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.mesh import Mesh, MeshCapability
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_NODE_IMAGES
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
+from .helpers import remove_velop_entity_from_registry
+from .types import CoordinatorTypes
 
 # endregion
 
@@ -27,22 +30,7 @@ class UpdateDetails(EntityDetails):
     description: UpdateEntityDescription
 
 
-ENTITY_DETAILS: list[UpdateDetails] = [
-    UpdateDetails(
-        description=UpdateEntityDescription(
-            device_class=UpdateDeviceClass.FIRMWARE,
-            key="",
-            name="Update",
-            translation_key="update",
-        ),
-        entity_type=EntityType.NODE,
-        pic_value_func=lambda n, c: (
-            f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
-            if c.options.get(CONF_NODE_IMAGES, "")
-            else None
-        ),
-    )
-]
+ENTITY_DETAILS: list[UpdateDetails] = []
 
 
 async def async_setup_entry(
@@ -53,12 +41,42 @@ async def async_setup_entry(
     """Initialize an update entity."""
 
     entities_to_add: list[LinksysVelopUpdate] = []
+    entities_to_remove: list[str] = []
+    entity_details_to_add: list[UpdateDetails] = ENTITY_DETAILS
+
+    # region #-- add conditional binary sensors --#
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    if MeshCapability.GET_UPDATE_FIRMWARE_STATE in mesh.capabilities:
+        entity_details_to_add.append(
+            UpdateDetails(
+                description=UpdateEntityDescription(
+                    device_class=UpdateDeviceClass.FIRMWARE,
+                    key="",
+                    name="Update",
+                    translation_key="update",
+                ),
+                entity_type=EntityType.NODE,
+                pic_value_func=lambda n, c: (
+                    f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
+                    if c.options.get(CONF_NODE_IMAGES, "")
+                    else None
+                ),
+            )
+        )
+    # endregion
 
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopUpdate(**entity) for entity in entities]
-
     if len(entities_to_add) > 0:
         async_add_entities(entities_to_add)
+
+    if len(entities_to_remove) > 0:
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
 
 class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
