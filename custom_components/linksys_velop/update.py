@@ -63,6 +63,11 @@ async def async_setup_entry(
                 ),
             )
         )
+    else:
+        for node in config_entry.runtime_data.coordinators.get(
+            CoordinatorTypes.MESH
+        ).data.nodes:
+            entities_to_remove.append(f"{node.unique_id}::{ENTITY_DOMAIN}::wan_status")
     # endregion
 
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
