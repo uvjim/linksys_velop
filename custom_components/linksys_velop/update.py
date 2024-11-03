@@ -44,7 +44,7 @@ async def async_setup_entry(
     entities_to_remove: list[str] = []
     entity_details_to_add: list[UpdateDetails] = ENTITY_DETAILS
 
-    # region #-- add conditional binary sensors --#
+    # region #-- add conditional update entities --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     if MeshCapability.GET_UPDATE_FIRMWARE_STATE in mesh.capabilities:
         entity_details_to_add.append(

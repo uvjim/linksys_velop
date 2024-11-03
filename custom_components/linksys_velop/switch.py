@@ -90,7 +90,7 @@ async def async_setup_entry(
     entities_to_remove: list[str] = []
     entity_details_to_add: list[SwitchDetails] = ENTITY_DETAILS
 
-    # region #-- add conditional binary sensors --#
+    # region #-- add conditional switches --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     if MeshCapability.GET_GUEST_NETWORK_INFO in mesh.capabilities:
         entity_details_to_add.append(
