@@ -88,45 +88,57 @@ async def async_setup_entry(
 
     entities_to_add: list[LinksysVelopSwitch] = []
     entities_to_remove: list[str] = []
-    entity_details_to_add: list[SwitchDetails] = ENTITY_DETAILS
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional switches --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     if MeshCapability.GET_GUEST_NETWORK_INFO in mesh.capabilities:
-        entity_details_to_add.append(
-            SwitchDetails(
-                description=SwitchEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="guest_wifi_enabled",
-                    name="Guest Wi-Fi",
-                    translation_key="guest_wifi",
-                ),
-                entity_type=EntityType.MESH,
-                esa_value_func=lambda m: {
-                    f"network {idx}": network
-                    for idx, network in enumerate(m.guest_wifi_details)
-                },
-                off_func="async_set_guest_wifi_state",
-                on_func="async_set_guest_wifi_state",
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="guest_wifi_enabled",
+                            name="Guest Wi-Fi",
+                            translation_key="guest_wifi",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: {
+                            f"network {idx}": network
+                            for idx, network in enumerate(m.guest_wifi_details)
+                        },
+                        off_func="async_set_guest_wifi_state",
+                        on_func="async_set_guest_wifi_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
         entities_to_remove.append(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::guest_wifi"
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::guest_wi_fi"
         )
 
     if MeshCapability.GET_HOMEKIT_SETTINGS in mesh.capabilities:
-        entity_details_to_add.append(
-            SwitchDetails(
-                description=SwitchEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="homekit_enabled",
-                    name="HomeKit Integration",
-                    translation_key="homekit",
-                ),
-                entity_type=EntityType.MESH,
-                off_func="async_set_homekit_state",
-                on_func="async_set_homekit_state",
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="homekit_enabled",
+                            name="HomeKit Integration",
+                            translation_key="homekit",
+                        ),
+                        entity_type=EntityType.MESH,
+                        off_func="async_set_homekit_state",
+                        on_func="async_set_homekit_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -135,41 +147,45 @@ async def async_setup_entry(
         )
 
     if MeshCapability.GET_PARENTAL_CONTROL_INFO in mesh.capabilities:
-        entity_details_to_add.extend(
-            [
-                SwitchDetails(
-                    description=SwitchEntityDescription(
-                        entity_category=EntityCategory.CONFIG,
-                        key="",
-                        name="Internet Access",
-                        translation_key="internet_access",
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="",
+                            name="Internet Access",
+                            translation_key="internet_access",
+                        ),
+                        entity_type=EntityType.DEVICE,
+                        off_func=_async_set_device_internet_access_state_off,
+                        on_func=_async_set_device_internet_access_state_on,
+                        state_value_func=_get_device_internet_access_state,
                     ),
-                    entity_type=EntityType.DEVICE,
-                    off_func=_async_set_device_internet_access_state_off,
-                    on_func=_async_set_device_internet_access_state_on,
-                    state_value_func=_get_device_internet_access_state,
-                ),
-                SwitchDetails(
-                    description=SwitchEntityDescription(
-                        entity_category=EntityCategory.CONFIG,
-                        key="parental_control_enabled",
-                        name="Parental Control",
-                        translation_key="parental_control",
-                    ),
-                    entity_type=EntityType.MESH,
-                    esa_value_func=lambda m: (
-                        {
-                            "rules": {
-                                device.name: device.parental_control_schedule
-                                for device in m.devices
-                                if device.parental_control_schedule
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="parental_control_enabled",
+                            name="Parental Control",
+                            translation_key="parental_control",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: (
+                            {
+                                "rules": {
+                                    device.name: device.parental_control_schedule
+                                    for device in m.devices
+                                    if device.parental_control_schedule
+                                }
                             }
-                        }
+                        ),
+                        off_func="async_set_parental_control_state",
+                        on_func="async_set_parental_control_state",
                     ),
-                    off_func="async_set_parental_control_state",
-                    on_func="async_set_parental_control_state",
-                ),
-            ]
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
         )
     else:
         entities_to_remove.append(
@@ -179,17 +195,23 @@ async def async_setup_entry(
             entities_to_remove.append(f"{ui_device}::{ENTITY_DOMAIN}::internet_access")
 
     if MeshCapability.GET_WPS_SERVER_SETTINGS in mesh.capabilities:
-        entity_details_to_add.append(
-            SwitchDetails(
-                description=SwitchEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="wps_state",
-                    name="WPS",
-                    translation_key="wps",
-                ),
-                entity_type=EntityType.MESH,
-                off_func="async_set_wps_state",
-                on_func="async_set_wps_state",
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="wps_state",
+                            name="WPS",
+                            translation_key="wps",
+                        ),
+                        entity_type=EntityType.MESH,
+                        off_func="async_set_wps_state",
+                        on_func="async_set_wps_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -197,9 +219,7 @@ async def async_setup_entry(
 
     # endregion
 
-    entities = build_entities(entity_details_to_add, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopSwitch(**entity) for entity in entities]
-
     if len(entities_to_add) > 0:
         async_add_entities(entities_to_add)
 

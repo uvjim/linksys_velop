@@ -315,83 +315,87 @@ async def async_setup_entry(
 
     entities_to_add: list[LinksysVelopSensor] = []
     entities_to_remove: list[str] = []
-    entity_details_to_add: list[SensorDetails] = ENTITY_DETAILS
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional sensors --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    if MeshCapability.GET_BACKHAUL in mesh.capabilities:
-        entity_details_to_add.extend(
-            [
-                SensorDetails(
-                    description=SensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        key="",
-                        name="Backhaul Friendly Signal Strength",
-                        translation_key="backhaul_friendly_signal_strength",
+    if f"{MeshCapability.GET_BACKHAUL}1" in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="",
+                            name="Backhaul Friendly Signal Strength",
+                            translation_key="backhaul_friendly_signal_strength",
+                        ),
+                        entity_type=EntityType.WIFI_NODE,
+                        state_value_func=lambda n: (
+                            n.backhaul.get("signal_strength", "").lower()
+                            if n.backhaul.get("signal_strength")
+                            else None
+                        ),
                     ),
-                    entity_type=EntityType.WIFI_NODE,
-                    state_value_func=lambda n: (
-                        n.backhaul.get("signal_strength", "").lower()
-                        if n.backhaul.get("signal_strength")
-                        else None
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.TIMESTAMP,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Backhaul Last Checked",
+                            translation_key="backhaul_last_checked",
+                        ),
+                        entity_type=EntityType.SECONDARY_NODE,
+                        state_value_func=lambda n: (
+                            dt_util.parse_datetime(n.backhaul.get("last_checked"))
+                            if n.backhaul.get("last_checked")
+                            else None
+                        ),
                     ),
-                ),
-                SensorDetails(
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.TIMESTAMP,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="",
-                        name="Backhaul Last Checked",
-                        translation_key="backhaul_last_checked",
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                            key="",
+                            name="Backhaul Signal Strength",
+                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                            translation_key="backhaul_signal_strength",
+                        ),
+                        entity_type=EntityType.WIFI_NODE,
+                        state_value_func=lambda n: n.backhaul.get("rssi_dbm"),
                     ),
-                    entity_type=EntityType.SECONDARY_NODE,
-                    state_value_func=lambda n: (
-                        dt_util.parse_datetime(n.backhaul.get("last_checked"))
-                        if n.backhaul.get("last_checked")
-                        else None
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.DATA_RATE,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="",
+                            name="Backhaul Speed",
+                            native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
+                            suggested_display_precision=2,
+                            translation_key="backhaul_speed",
+                        ),
+                        entity_type=EntityType.SECONDARY_NODE,
+                        state_value_func=lambda n: n.backhaul.get("speed_mbps"),
                     ),
-                ),
-                SensorDetails(
-                    description=SensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                        key="",
-                        name="Backhaul Signal Strength",
-                        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                        translation_key="backhaul_signal_strength",
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.ENUM,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="",
+                            name="Backhaul Type",
+                            options=["unknown", "wired", "wireless"],
+                            translation_key="backhaul_connection_type",
+                        ),
+                        entity_type=EntityType.SECONDARY_NODE,
+                        state_value_func=lambda n: n.backhaul.get(
+                            "connection", "unknown"
+                        ).lower(),
                     ),
-                    entity_type=EntityType.WIFI_NODE,
-                    state_value_func=lambda n: n.backhaul.get("rssi_dbm"),
-                ),
-                SensorDetails(
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.DATA_RATE,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        key="",
-                        name="Backhaul Speed",
-                        native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
-                        suggested_display_precision=2,
-                        translation_key="backhaul_speed",
-                    ),
-                    entity_type=EntityType.SECONDARY_NODE,
-                    state_value_func=lambda n: n.backhaul.get("speed_mbps"),
-                ),
-                SensorDetails(
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.ENUM,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        key="",
-                        name="Backhaul Type",
-                        options=["unknown", "wired", "wireless"],
-                        translation_key="backhaul_connection_type",
-                    ),
-                    entity_type=EntityType.SECONDARY_NODE,
-                    state_value_func=lambda n: n.backhaul.get(
-                        "connection", "unknown"
-                    ).lower(),
-                ),
-            ]
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
         )
     else:
         for node in config_entry.runtime_data.coordinators.get(
@@ -400,8 +404,8 @@ async def async_setup_entry(
             if node.type == NodeType.SECONDARY:
                 entities_to_remove.extend(
                     [
-                        f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_last_checked"
                         f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_friendly_signal_strength",
+                        f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_last_checked",
                         f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_signal_strength",
                         f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_speed",
                         f"{node.unique_id}::{ENTITY_DOMAIN}::backhaul_type",
@@ -409,73 +413,77 @@ async def async_setup_entry(
                 )
 
     if MeshCapability.GET_SPEEDTEST_RESULTS in mesh.capabilities:
-        entity_details_to_add.extend(
-            [
-                SensorDetails(
-                    coordinator_type=CoordinatorTypes.SPEEDTEST,
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.DATA_RATE,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="download_bandwidth",
-                        name="Speedtest Download Bandwidth",
-                        native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
-                        suggested_display_precision=2,
-                        translation_key="download_bandwidth",
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.DATA_RATE,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="download_bandwidth",
+                            name="Speedtest Download Bandwidth",
+                            native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+                            suggested_display_precision=2,
+                            translation_key="download_bandwidth",
+                        ),
+                        entity_type=EntityType.MESH,
                     ),
-                    entity_type=EntityType.MESH,
-                ),
-                SensorDetails(
-                    coordinator_type=CoordinatorTypes.SPEEDTEST,
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.TIMESTAMP,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="",
-                        name="Speedtest Last Run",
-                        translation_key="speedtest_last_run",
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.TIMESTAMP,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Speedtest Last Run",
+                            translation_key="speedtest_last_run",
+                        ),
+                        entity_type=EntityType.MESH,
+                        state_value_func=lambda r: dt_util.parse_datetime(r.timestamp),
                     ),
-                    entity_type=EntityType.MESH,
-                    state_value_func=lambda r: dt_util.parse_datetime(r.timestamp),
-                ),
-                SensorDetails(
-                    coordinator_type=CoordinatorTypes.SPEEDTEST,
-                    description=SensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="latency",
-                        name="Speedtest Latency",
-                        native_unit_of_measurement="ms",
-                        translation_key="speedtest_latency",
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="latency",
+                            name="Speedtest Latency",
+                            native_unit_of_measurement="ms",
+                            translation_key="speedtest_latency",
+                        ),
+                        entity_type=EntityType.MESH,
                     ),
-                    entity_type=EntityType.MESH,
-                ),
-                SensorDetails(
-                    coordinator_type=CoordinatorTypes.SPEEDTEST,
-                    description=SensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="exit_code",
-                        name="Speedtest Result",
-                        translation_key="speedtest_result",
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="exit_code",
+                            name="Speedtest Result",
+                            translation_key="speedtest_result",
+                        ),
+                        entity_type=EntityType.MESH,
                     ),
-                    entity_type=EntityType.MESH,
-                ),
-                SensorDetails(
-                    coordinator_type=CoordinatorTypes.SPEEDTEST,
-                    description=SensorEntityDescription(
-                        device_class=SensorDeviceClass.DATA_RATE,
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        entity_registry_enabled_default=False,
-                        key="upload_bandwidth",
-                        name="Speedtest Upload Bandwidth",
-                        native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
-                        suggested_display_precision=2,
-                        translation_key="upload_bandwidth",
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.DATA_RATE,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="upload_bandwidth",
+                            name="Speedtest Upload Bandwidth",
+                            native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
+                            suggested_display_precision=2,
+                            translation_key="upload_bandwidth",
+                        ),
+                        entity_type=EntityType.MESH,
                     ),
-                    entity_type=EntityType.MESH,
-                ),
-            ]
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
         )
     else:
         entities_to_remove.extend(
@@ -489,17 +497,23 @@ async def async_setup_entry(
         )
 
     if MeshCapability.GET_SPEEDTEST_STATUS in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                coordinator_type=CoordinatorTypes.SPEEDTEST,
-                description=SensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="friendly_status",
-                    name="Speedtest Progress",
-                    translation_key="speedtest_progress",
-                ),
-                entity_type=EntityType.MESH,
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        coordinator_type=CoordinatorTypes.SPEEDTEST,
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="friendly_status",
+                            name="Speedtest Progress",
+                            translation_key="speedtest_progress",
+                        ),
+                        entity_type=EntityType.MESH,
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -508,21 +522,27 @@ async def async_setup_entry(
         )
 
     if MeshCapability.GET_LAN_SETTINGS in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                description=SensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="",
-                    name="DHCP Reservations",
-                    state_class=SensorStateClass.MEASUREMENT,
-                    translation_key="dhcp_reservations",
-                ),
-                entity_type=EntityType.MESH,
-                esa_value_func=lambda m: {
-                    "reservations": m.dhcp_reservations,
-                },
-                state_value_func=lambda m: len(m.dhcp_reservations),
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="DHCP Reservations",
+                            state_class=SensorStateClass.MEASUREMENT,
+                            translation_key="dhcp_reservations",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: {
+                            "reservations": m.dhcp_reservations,
+                        },
+                        state_value_func=lambda m: len(m.dhcp_reservations),
+                    )
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -531,22 +551,30 @@ async def async_setup_entry(
         )
 
     if MeshCapability.GET_PARENTAL_CONTROL_INFO in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                description=SensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    key="",
-                    name="Blocked Sites",
-                    state_class=SensorStateClass.MEASUREMENT,
-                    translation_key="blocked_sites",
-                ),
-                entity_type=EntityType.DEVICE,
-                esa_value_func=lambda d: {
-                    "sites": d.parental_control_schedule.get("blocked_sites", [])
-                },
-                state_value_func=lambda d: len(
-                    d.parental_control_schedule.get("blocked_sites", [])
-                ),
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="",
+                            name="Blocked Sites",
+                            state_class=SensorStateClass.MEASUREMENT,
+                            translation_key="blocked_sites",
+                        ),
+                        entity_type=EntityType.DEVICE,
+                        esa_value_func=lambda d: {
+                            "sites": d.parental_control_schedule.get(
+                                "blocked_sites", []
+                            )
+                        },
+                        state_value_func=lambda d: len(
+                            d.parental_control_schedule.get("blocked_sites", [])
+                        ),
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -554,19 +582,27 @@ async def async_setup_entry(
             entities_to_remove.append(f"{ui_device}::{ENTITY_DOMAIN}::blocked_sites")
 
     if MeshCapability.GET_STORAGE_PARTITIONS in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                description=SensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="",
-                    name="Available Storage",
-                    state_class=SensorStateClass.MEASUREMENT,
-                    translation_key="available_storage",
-                ),
-                entity_type=EntityType.MESH,
-                esa_value_func=lambda m: {"partitions": m.storage_available or None},
-                state_value_func=lambda m: len(m.storage_available),
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Available Storage",
+                            state_class=SensorStateClass.MEASUREMENT,
+                            translation_key="available_storage",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: {
+                            "partitions": m.storage_available or None
+                        },
+                        state_value_func=lambda m: len(m.storage_available),
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -575,22 +611,28 @@ async def async_setup_entry(
         )
 
     if MeshCapability.GET_UPDATE_FIRMWARE_STATE in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                description=SensorEntityDescription(
-                    device_class=SensorDeviceClass.TIMESTAMP,
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="",
-                    name="Last Update Check",
-                    translation_key="last_update_check",
-                ),
-                entity_type=EntityType.NODE,
-                state_value_func=lambda n: (
-                    dt_util.parse_datetime(n.last_update_check)
-                    if n.last_update_check
-                    else None
-                ),
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            device_class=SensorDeviceClass.TIMESTAMP,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            entity_registry_enabled_default=False,
+                            key="",
+                            name="Last Update Check",
+                            translation_key="last_update_check",
+                        ),
+                        entity_type=EntityType.NODE,
+                        state_value_func=lambda n: (
+                            dt_util.parse_datetime(n.last_update_check)
+                            if n.last_update_check
+                            else None
+                        ),
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -602,15 +644,21 @@ async def async_setup_entry(
             )
 
     if MeshCapability.GET_WAN_INFO in mesh.capabilities:
-        entity_details_to_add.append(
-            SensorDetails(
-                description=SensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    key="wan_ip",
-                    name="WAN IP",
-                    translation_key="wan_ip",
-                ),
-                entity_type=EntityType.MESH,
+        entities.extend(
+            build_entities(
+                [
+                    SensorDetails(
+                        description=SensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="wan_ip",
+                            name="WAN IP",
+                            translation_key="wan_ip",
+                        ),
+                        entity_type=EntityType.MESH,
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
@@ -618,9 +666,7 @@ async def async_setup_entry(
 
     # endregion
 
-    entities = build_entities(entity_details_to_add, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopSensor(**entity) for entity in entities]
-
     if len(entities_to_add) > 0:
         async_add_entities(entities_to_add)
 

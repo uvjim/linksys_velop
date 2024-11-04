@@ -42,35 +42,40 @@ async def async_setup_entry(
 
     entities_to_add: list[LinksysVelopUpdate] = []
     entities_to_remove: list[str] = []
-    entity_details_to_add: list[UpdateDetails] = ENTITY_DETAILS
+    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional update entities --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     if MeshCapability.GET_UPDATE_FIRMWARE_STATE in mesh.capabilities:
-        entity_details_to_add.append(
-            UpdateDetails(
-                description=UpdateEntityDescription(
-                    device_class=UpdateDeviceClass.FIRMWARE,
-                    key="",
-                    name="Update",
-                    translation_key="update",
-                ),
-                entity_type=EntityType.NODE,
-                pic_value_func=lambda n, c: (
-                    f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
-                    if c.options.get(CONF_NODE_IMAGES, "")
-                    else None
-                ),
+        entities.extend(
+            build_entities(
+                [
+                    UpdateDetails(
+                        description=UpdateEntityDescription(
+                            device_class=UpdateDeviceClass.FIRMWARE,
+                            key="",
+                            name="Update",
+                            translation_key="update",
+                        ),
+                        entity_type=EntityType.NODE,
+                        pic_value_func=lambda n, c: (
+                            f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
+                            if c.options.get(CONF_NODE_IMAGES, "")
+                            else None
+                        ),
+                    )
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
             )
         )
     else:
         for node in config_entry.runtime_data.coordinators.get(
             CoordinatorTypes.MESH
         ).data.nodes:
-            entities_to_remove.append(f"{node.unique_id}::{ENTITY_DOMAIN}::wan_status")
+            entities_to_remove.append(f"{node.unique_id}::{ENTITY_DOMAIN}::update")
     # endregion
 
-    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopUpdate(**entity) for entity in entities]
     if len(entities_to_add) > 0:
         async_add_entities(entities_to_add)
