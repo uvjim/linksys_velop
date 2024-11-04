@@ -24,7 +24,7 @@ from pyvelop.exceptions import (
     MeshDeviceNotFoundResponse,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshCapability
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -119,6 +119,7 @@ async def async_setup_entry(
         ),
         session=async_get_clientsession(hass=hass),
     )
+    await mesh.async_initialise()
 
     # region #-- test auth --#
     valid_auth: bool = await mesh.async_test_credentials()
@@ -152,46 +153,48 @@ async def async_setup_entry(
     ].async_config_entry_first_refresh()
     # endregion
     # region #-- speedtest coordinator --#
-    _LOGGER.debug(log_formatter.format("setting up the speedtest coordinator"))
-    coordinator_name = f"{DOMAIN} speedtest"
-    if getattr(log_formatter, "_unique_id"):
-        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
+    if MeshCapability.GET_SPEEDTEST_RESULTS in mesh.capabilities:
+        _LOGGER.debug(log_formatter.format("setting up the speedtest coordinator"))
+        coordinator_name = f"{DOMAIN} speedtest"
+        if getattr(log_formatter, "_unique_id"):
+            coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
-        LinksysVelopUpdateCoordinatorSpeedtest(
-            hass,
-            _LOGGER,
-            mesh,
-            coordinator_name,
-            update_interval_secs=config_entry.options.get(
-                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-            ),
+        config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
+            LinksysVelopUpdateCoordinatorSpeedtest(
+                hass,
+                _LOGGER,
+                mesh,
+                coordinator_name,
+                update_interval_secs=config_entry.options.get(
+                    CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+                ),
+            )
         )
-    )
-    await config_entry.runtime_data.coordinators[
-        CoordinatorTypes.SPEEDTEST
-    ].async_config_entry_first_refresh()
+        await config_entry.runtime_data.coordinators[
+            CoordinatorTypes.SPEEDTEST
+        ].async_config_entry_first_refresh()
     # endregion
     # region #-- channel scan coordinator --#
-    _LOGGER.debug(log_formatter.format("setting up the channel scan coordinator"))
-    coordinator_name = f"{DOMAIN} channel scan"
-    if getattr(log_formatter, "_unique_id"):
-        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
+    if MeshCapability.GET_CHANNEL_SCAN_STATUS in mesh.capabilities:
+        _LOGGER.debug(log_formatter.format("setting up the channel scan coordinator"))
+        coordinator_name = f"{DOMAIN} channel scan"
+        if getattr(log_formatter, "_unique_id"):
+            coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
 
-    config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
-        LinksysVelopUpdateCoordinatorChannelScan(
-            hass,
-            _LOGGER,
-            mesh,
-            coordinator_name,
-            update_interval_secs=config_entry.options.get(
-                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-            ),
+        config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
+            LinksysVelopUpdateCoordinatorChannelScan(
+                hass,
+                _LOGGER,
+                mesh,
+                coordinator_name,
+                update_interval_secs=config_entry.options.get(
+                    CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+                ),
+            )
         )
-    )
-    await config_entry.runtime_data.coordinators[
-        CoordinatorTypes.CHANNEL_SCAN
-    ].async_config_entry_first_refresh()
+        await config_entry.runtime_data.coordinators[
+            CoordinatorTypes.CHANNEL_SCAN
+        ].async_config_entry_first_refresh()
     # endregion
     # endregion
 

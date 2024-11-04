@@ -322,7 +322,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Gather the details about the Mesh."""
         _LOGGER.debug(self._log_formatter.format("entered"))
         try:
-            await self._mesh.async_gather_details()
+            await self._mesh.async_initialise()
         except MeshException as exc:
             self._set_error(exc)
         else:

@@ -11,9 +11,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.device import Device, ParentalControl
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshCapability
 
 from . import LinksysVelopConfigEntry
+from .const import CONF_UI_DEVICES
 from .entities import (
     EntityContext,
     EntityDetails,
@@ -21,6 +22,7 @@ from .entities import (
     LinksysVelopEntity,
     build_entities,
 )
+from .helpers import remove_velop_entity_from_registry
 from .types import CoordinatorTypes
 
 # endregion
@@ -74,81 +76,7 @@ async def _async_set_device_internet_access_state_on(
     await mesh.async_set_parental_control_rules(device_details.unique_id, {})
 
 
-ENTITY_DETAILS: list[SwitchDetails] = [
-    # region #-- device switches --#
-    SwitchDetails(
-        description=SwitchEntityDescription(
-            entity_category=EntityCategory.CONFIG,
-            key="",
-            name="Internet Access",
-            translation_key="internet_access",
-        ),
-        entity_type=EntityType.DEVICE,
-        off_func=_async_set_device_internet_access_state_off,
-        on_func=_async_set_device_internet_access_state_on,
-        state_value_func=_get_device_internet_access_state,
-    ),
-    # endregion
-    # region #-- mesh switches --#
-    SwitchDetails(
-        description=SwitchEntityDescription(
-            entity_category=EntityCategory.CONFIG,
-            key="guest_wifi_enabled",
-            name="Guest Wi-Fi",
-            translation_key="guest_wifi",
-        ),
-        entity_type=EntityType.MESH,
-        esa_value_func=lambda m: {
-            f"network {idx}": network
-            for idx, network in enumerate(m.guest_wifi_details)
-        },
-        off_func="async_set_guest_wifi_state",
-        on_func="async_set_guest_wifi_state",
-    ),
-    SwitchDetails(
-        description=SwitchEntityDescription(
-            entity_category=EntityCategory.CONFIG,
-            key="homekit_enabled",
-            name="HomeKit Integration",
-            translation_key="homekit",
-        ),
-        entity_type=EntityType.MESH,
-        off_func="async_set_homekit_state",
-        on_func="async_set_homekit_state",
-    ),
-    SwitchDetails(
-        description=SwitchEntityDescription(
-            entity_category=EntityCategory.CONFIG,
-            key="parental_control_enabled",
-            name="Parental Control",
-            translation_key="parental_control",
-        ),
-        entity_type=EntityType.MESH,
-        esa_value_func=lambda m: (
-            {
-                "rules": {
-                    device.name: device.parental_control_schedule
-                    for device in m.devices
-                    if device.parental_control_schedule
-                }
-            }
-        ),
-        off_func="async_set_parental_control_state",
-        on_func="async_set_parental_control_state",
-    ),
-    SwitchDetails(
-        description=SwitchEntityDescription(
-            entity_category=EntityCategory.CONFIG,
-            key="wps_state",
-            name="WPS",
-            translation_key="wps",
-        ),
-        entity_type=EntityType.MESH,
-        off_func="async_set_wps_state",
-        on_func="async_set_wps_state",
-    ),
-    # endregion
-]
+ENTITY_DETAILS: list[SwitchDetails] = []
 
 
 async def async_setup_entry(
@@ -159,12 +87,149 @@ async def async_setup_entry(
     """Initialize a switch."""
 
     entities_to_add: list[LinksysVelopSwitch] = []
-
+    entities_to_remove: list[str] = []
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
-    entities_to_add = [LinksysVelopSwitch(**entity) for entity in entities]
 
+    # region #-- add conditional switches --#
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    if MeshCapability.GET_GUEST_NETWORK_INFO in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="guest_wifi_enabled",
+                            name="Guest Wi-Fi",
+                            translation_key="guest_wifi",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: {
+                            f"network {idx}": network
+                            for idx, network in enumerate(m.guest_wifi_details)
+                        },
+                        off_func="async_set_guest_wifi_state",
+                        on_func="async_set_guest_wifi_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        entities_to_remove.append(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::guest_wi_fi"
+        )
+
+    if MeshCapability.GET_HOMEKIT_SETTINGS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="homekit_enabled",
+                            name="HomeKit Integration",
+                            translation_key="homekit",
+                        ),
+                        entity_type=EntityType.MESH,
+                        off_func="async_set_homekit_state",
+                        on_func="async_set_homekit_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        entities_to_remove.append(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::homekit_integration"
+        )
+
+    if MeshCapability.GET_PARENTAL_CONTROL_INFO in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="",
+                            name="Internet Access",
+                            translation_key="internet_access",
+                        ),
+                        entity_type=EntityType.DEVICE,
+                        off_func=_async_set_device_internet_access_state_off,
+                        on_func=_async_set_device_internet_access_state_on,
+                        state_value_func=_get_device_internet_access_state,
+                    ),
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="parental_control_enabled",
+                            name="Parental Control",
+                            translation_key="parental_control",
+                        ),
+                        entity_type=EntityType.MESH,
+                        esa_value_func=lambda m: (
+                            {
+                                "rules": {
+                                    device.name: device.parental_control_schedule
+                                    for device in m.devices
+                                    if device.parental_control_schedule
+                                }
+                            }
+                        ),
+                        off_func="async_set_parental_control_state",
+                        on_func="async_set_parental_control_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        entities_to_remove.append(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::parental_control"
+        )
+        for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
+            entities_to_remove.append(f"{ui_device}::{ENTITY_DOMAIN}::internet_access")
+
+    if MeshCapability.GET_WPS_SERVER_SETTINGS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="wps_state",
+                            name="WPS",
+                            translation_key="wps",
+                        ),
+                        entity_type=EntityType.MESH,
+                        off_func="async_set_wps_state",
+                        on_func="async_set_wps_state",
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        entities_to_remove.append(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wps")
+
+    # endregion
+
+    entities_to_add = [LinksysVelopSwitch(**entity) for entity in entities]
     if len(entities_to_add) > 0:
         async_add_entities(entities_to_add)
+
+    if len(entities_to_remove) > 0:
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
 
 class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
