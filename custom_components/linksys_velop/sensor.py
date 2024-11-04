@@ -319,7 +319,7 @@ async def async_setup_entry(
 
     # region #-- add conditional sensors --#
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    if f"{MeshCapability.GET_BACKHAUL}1" in mesh.capabilities:
+    if MeshCapability.GET_BACKHAUL in mesh.capabilities:
         entities.extend(
             build_entities(
                 [
