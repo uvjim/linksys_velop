@@ -99,7 +99,7 @@ then the entities detailing storage partitions etc. will not be available.
 | Node | Reboot | :heavy_check_mark: | |
 
 >
-> **N.B.** There is deliberately no button provided to restart the Primary node
+> __N.B.__ There is deliberately no button provided to restart the Primary node
 by default.
 Restarting the Primary node will cause all nodes in the Mesh to reboot and
 I consider this to be quite a destructive action. There is no confirmation in
@@ -211,12 +211,12 @@ so paramters are described in the Home Assistant Services page.
 All services require that you select the Mesh device that the request should be
 directed to. Other requirements by the services should be self-explanatory.
 
-> **&ast;** these are considered long-running tasks. When the binary sensors
+> __&ast;__ these are considered long-running tasks. When the binary sensors
   spot these tasks are running an additional timer is set up that polls at
   intervals to get updates and updates the relevant attributes for that
   sensor.
 >
-> **^** these are deprecated services. A warning will be displayed in the HASS
+> __^__ these are deprecated services. A warning will be displayed in the HASS
   log when they are used. They are subject to removal at any time.
 
 ## Setup
@@ -292,9 +292,8 @@ The events selected here will be raised with the `event` entity.
 
 ### Advanced Options
 
-**This section is only available if "Advanced Mode" is enabled for the current**
-**user. See**
-**[here](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).**
+__This section is only available if "Advanced Mode" is enabled for the current__
+__user. See [here](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).__
 
 ![Configure Advanced Options](images/config_advanced_options.png)
 
