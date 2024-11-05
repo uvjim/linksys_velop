@@ -61,6 +61,10 @@ available.
 All device entities are only available if the [UI Device](#ui-devices) is
 enabled.
 
+Entities are only available if the required capability for that data is available
+on the Mesh.  For example, if the Mesh does not support the storage then the
+entities detailing storage partitions etc. will not be available.
+
 #### Binary Sensors
 
 * Device: Blocked Times
