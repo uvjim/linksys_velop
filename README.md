@@ -47,63 +47,60 @@ Alternatively you can use the button below.
 
 ### Definitions
 
-* _Mesh_: the mesh is the network itself and refers to anything that is not
-  attributed to a single node or device in the network.
-* _Node_: a node is a device that helps to form the mesh.
-* _Device_: a device is an endpoint that connects to the mesh network. Think
-  of these as the endpoint devices, such as a laptop, phone or tablet.
+__Mesh__: the mesh is the network itself and refers to anything that is not
+attributed to a single node or device in the network.
+
+__Node__: a node is a device that helps to form the mesh.
+
+__Device__: a device is an endpoint that connects to the mesh network. Think of
+these as the endpoint devices, such as a laptop, phone or tablet.
 
 ### Entities Provided
-
-Where applicable the sub-items in the list detail the additional attributes
-available.
 
 All device entities are only available if the [UI Device](#ui-devices) is
 enabled.
 
 Entities are only available if the required capability for that data is available
-on the Mesh.  For example, if the Mesh does not support the storage then the
-entities detailing storage partitions etc. will not be available.
+on the Mesh.  For example, if the Mesh does not support the storage JNAP actions
+then the entities detailing storage partitions etc. will not be available.
 
 #### Binary Sensors
 
-* Device: Blocked Times
-  * Times of the week that are blocked
-* Device: Guest Network
-* Device: Reserved IP
-* Device: Connected
-* Mesh: Channel Scanning _(disabled by default)_
-* Mesh: Client Steering _(disabled by default)_
-* Mesh: DHCP Server _(disabled by default)_
-* Mesh: Express Forwarding _(disabled by default)_
-* Mesh: HomeKit Integration Paired _(disabled by default)_
-* Mesh: MAC Filtering _(disabled by default)_
-  * mode, address list
-* Mesh: Node Steering _(disabled by default)_
-* Mesh: SIP _(disabled by default)_
-* Mesh: Speedtest state _(disabled by default)_
-* Mesh: UPnP _(disabled by default)_
-* Mesh: UPnP Allow Users to Configure _(disabled by default)_
-* Mesh: UPnP Allow Users to Disable Internet _(disabled by default)_
-* Mesh: WAN Status
-  * IP, DNS, MAC
-* Node: Status
-  * Guest network, IP, IPv6, MAC, Reservation
+| Location | Name | Enabled by default | Additional Information | Comments |
+|---|---|:---:|---|---|
+| Device | Blocked Times | :heavy_check_mark: | Times of the week that are blocked | |
+| Device | Guest Network | :heavy_check_mark: | | |
+| Device | Reserved IP | :heavy_check_mark: | | |
+| Device | Status | :heavy_check_mark: | | |
+| Mesh | Channel Scanning | :heavy_multiplication_x: | | |
+| Mesh | Client Steering | :heavy_multiplication_x: | | |
+| Mesh | DHCP Server | :heavy_multiplication_x: | | |
+| Mesh | Express Forwarding | :heavy_multiplication_x: | | |
+| Mesh | HomeKit Integration Paired | :heavy_multiplication_x: | | |
+| Mesh | MAC Filtering | :heavy_multiplication_x: | The mode and list of MAC addresses being filtered | |
+| Mesh | Node Steering | :heavy_multiplication_x: | | |
+| Mesh | SIP | :heavy_multiplication_x: | | |
+| Mesh | Speedtest Status | :heavy_multiplication_x: | | |
+| Mesh | UPnP | :heavy_multiplication_x: | | |
+| Mesh | UPnP Allow Users to Configure | :heavy_multiplication_x: | | |
+| Mesh | UPnP Allow Users to Disable Internet | :heavy_multiplication_x: | | |
+| Mesh | WAN Status | :heavy_check_mark: | IP, DNS and MAC | |
+| Node | Status | :heavy_check_mark: | Reservation, guest network, IP and MAC | |
 
 #### Buttons
 
-* Device: Delete
-* Mesh: Check for Updates
-* Mesh: Reboot the Whole Mesh (see [Configurable Options -> Advanced Options](#advanced-options))
-* Mesh: Start Channel Scanning _(interval: 40s)_
-* Mesh: Start Speedtest _(interval: 1s)_ _(disabled by default)_
-* Node: Reboot
+| Location | Name | Enabled by default | Comments |
+|---|---|:---:|---|
+| Device | Delete | :heavy_check_mark: | |
+| Mesh | Check for Updates | :heavy_check_mark: | |
+| Mesh | Reboot the Whole Mesh | :heavy_check_mark: | See [Configurable Options -> Advanced Options](#advanced-options) |
+| Mesh | Start Channel Scan | :heavy_check_mark: | Adjusts the interval for channel scanning data collection to 40s |
+| Mesh | Start Speedtest | :heavy_multiplication_x: | Adjusts the interval for speedtest data collection to 1s |
+| Node | Reboot | :heavy_check_mark: | |
 
-> **N.B.** Buttons with an interval in brackets start a long running task.
-  When they are pressed or the corresponding `binary_sensor` realises that the
-  task is running updates are switched to the specified interval.
 >
-> **N.B.** There is deliberately no button provided to restart the Primary node.
+> **N.B.** There is deliberately no button provided to restart the Primary node
+by default.
 Restarting the Primary node will cause all nodes in the Mesh to reboot and
 I consider this to be quite a destructive action. There is no confirmation in
 the HASS UI when a button is pressed so there is no time to warn anyone. If
@@ -117,94 +114,86 @@ These are selectable and are presented as part of the configuration at both
 install time and from reconfiguring the integration.
 
 Device trackers should be enabled by default and will be seen as entities of the
-mesh. This is achieved by adding the MAC address to the connections for the mesh
-and you will see these allocated to the Mesh device in the HASS UI. When the
-tracker is removed, the MAC is also removed from the Mesh device.
+mesh. This is achieved by adding the MAC address to the known connections for the
+Mesh device. You will see these in the HASS UI. When the tracker is removed, the
+MAC is also removed from the Mesh device.
 
 #### Event
 
 This entity provides access to data for the events selected in the configuration.
 Available events are: -
 
-* Mesh rebooting
-* New device found
-* New node found
+| Event | Triggered | Comments |
+|---|---|--|
+| Mesh rebooted | When the Mesh data collection receives a response | This is the first response after the back off period |
+| Mesh rebooting | When either the service or button is used to reboot the Mesh | The Mesh is flagged as rebooting and will then back off carrying out updates for 30s |
+| New device found | When the integration carries out its normal polling period and a device with a new unique ID is found | The uniqued ID for comparison is the one provided by Linksys |
+| New node found | When the integration carries out its normal polling period and a node with a new unique ID is found | The uniqued ID for comparison is the one provided by Linksys |
 
 #### Select
 
-* Device: Devices _(only available if [temporary device](#advanced-options) is enabled_
+| Location | Name | Enabled by default | Primary value | Additional Information | Comments |
+|---|---|:---:|---|---|---|
+| Device | Devices | :heavy_check_mark: | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
 
 #### Sensors
 
-* Device: Blocked Sites
-  * list of sites blocked
-* Device: Description
-* Device: Friendly Signal Strength
-* Device: ID
-* Device: IP
-* Device: IPv6
-* Device: MAC
-* Device: Manufacturer
-* Device: Model
-* Device: Name
-* Device: Operating System
-* Device: Parent
-* Device: Serial
-* Device: Signal Strength _(i.e., RSSI)_
-* Device: UI Type _(the `entity_picture` attribute will be set if `node_images`
-  are configured, see [here](#advanced-options))_
-* Mesh: DHCP Reservations _(disabled by default)_
-  * list of DHCP reservations on the mesh
-* Mesh: Number of Offline Devices
-  * list of device objects containing names and unique ID of devices that are
-    offline
-* Mesh: Number of Online Devices
-  * list of device objects containing names, unique IDs, IP addresses, adapter
-    types and guest network state for the online devices
-* Mesh: Number of Guest Devices
-  * list of device names, IP addresses, adapter types etc
-* Mesh: Speedtest Download Bandwidth _(disabled by default)_
-* Mesh: Speedtest Last Run _(disabled by default)_
-* Mesh: Speedtest Latency _(disabled by default)_
-* Mesh: Speedtest Progress  _(disabled by default)_, e.g. Detecting server,
-  Checking latency
-* Mesh: Speedtest Result _(disabled by default)_
-* Mesh: Speedtest Upload Bandwidth _(disabled by default)_
-* Mesh: Number of Available Storage Partitions _(disabled by default)_
-  * list of the available partitions including the following information: IP,
-    label, available Kb, used Kb, used %age and last checked time
-* Mesh: WAN IP
-* Node: Number of Connected Devices
-  * list of names, IP addresses, type of connection and guest network state for
-    the connected devices
-* Node: Backhaul Friendly Signal Strength _(only if a wireless backhaul)_
-* Node: Backhaul Last Checked _(only if not the primary node)_
-  _(disabled by default)_
-* Node: Backhaul Signal Strength _(only if a wireless backhaul)_
-* Node: Backhaul Speed
-* Node: Backhaul Type
-* Node: Last Update Check _(disabled by default)_
-* Node: Model _(The `entity_picture` attribute will be set if `node_images` are
-  configured, see [here](#advanced-options))_
-* Node: Parent Name _(only if the node is not the primary)_
-  * IP address of the parent
-* Node: Serial Number
-* Node: Type, e.g. Primary Secondary
+| Location | Name | Enabled by default | Primary value | Additional Information | Comments |
+|---|---|:---:|---|---|---|
+| Device | Blocked sites | :heavy_check_mark: | Count of blocked sites | List of blocked sites | |
+| Device | Description | :heavy_check_mark: | | | |
+| Device | Friendly Signal Strength | :heavy_check_mark: | | | |
+| Device | ID | :heavy_check_mark: | Unique ID as assigned by Linksys | | |
+| Device | IP | :heavy_check_mark: | | | |
+| Device | IPv6 | :heavy_check_mark: | | | |
+| Device | MAC | :heavy_check_mark: | | | |
+| Device | Manufacturer | :heavy_check_mark: | | | |
+| Device | Model | :heavy_check_mark: | | | |
+| Device | Name | :heavy_check_mark: | | | |
+| Device | Operating system | :heavy_check_mark: | | | |
+| Device | Parent | :heavy_check_mark: | | | |
+| Device | Serial | :heavy_check_mark: | | | |
+| Device | Signal strength | :heavy_check_mark: | RSSI value | | |
+| Device | UI type | :heavy_check_mark: | | | The `entity_picture` attribute will be set if `node_images` are configured, see [here](#advanced-options) |
+| Mesh | Available Storage | :heavy_multiplication_x: | Count of partitions available | List of the available partitions including: IP, label, available Kb, used Kb, used %age and last checked time | |
+| Mesh | DHCP Reservations | :heavy_multiplication_x: | Count of DHCP reservations | List of DHCP reservations | |
+| Mesh | Offline Devices | :heavy_check_mark: | Count of offline devices | List of offline device names and unique ID | |
+| Mesh | Online Devices | :heavy_check_mark: | Count of online devices | List of online device names, unique ID, IP, connection type and if they're on the guest network | |
+| Mesh | Guest Devices | :heavy_check_mark: | Count of guest devices | List of guest devices | List of online device names, unique ID, IP, connection type |
+| Mesh | Speedtest Download Bandwidth | :heavy_multiplication_x: | | | |
+| Mesh | Speedtest Last Run | :heavy_multiplication_x: | Timestamp when a Speedtest was last executed | | |
+| Mesh | Speedtest Latency | :heavy_multiplication_x: | | | |
+| Mesh | Speedtest Progress | :heavy_multiplication_x: | Textual representation of the current stage in the Speetest execution | | |
+| Mesh | Speedtest Result | :heavy_multiplication_x: | | | |
+| Mesh | Speedtest Upload Bandwidth | :heavy_multiplication_x: | | | |
+| Mesh | WAN IP | :heavy_check_mark: | | | |
+| Node | Backhaul Friendly Strength | :heavy_check_mark: | | | only available if using a wirless backhaul and is a secondary node |
+| Node | Backhaul Last Checked | :heavy_multiplication_x: | Timestamp of when the backhaul connection was last checked | | only available if a secondary node |
+| Node | Backhaul Signal Strength | :heavy_check_mark: | RSSI value | | only available if using a wirless backhaul and is a secondary node |
+| Node | Backhaul Speed | :heavy_check_mark: | | | only available if a secondary node |
+| Node | Backhaul Type | :heavy_check_mark: | Wired/Wireless| | only available if a secondary node |
+| Node | Connected Devices | :heavy_check_mark: | Count of connected devices | List of connected device names, unique ID, IP, connection type and if they're on the guest network | |
+| Node | Last Update Check | :heavy_multiplication_x: | Timestamp when the last check for a firmmware update was made | | |
+| Node | Model | :heavy_check_mark: | | | The `entity_picture` attribute will be set if `node_images` are configured, see [here](#advanced-options) |
+| Node | Parent Name | :heavy_check_mark: | | IP address of the parent | only available if a secondary node |
+| Node | Serial | :heavy_check_mark: | | | |
+| Node | Type | :heavy_check_mark: | Primary/Secondary | | |
 
 #### Switches
 
-* Device: Internet Access
-* Mesh: Guest Wi-Fi state
-  * list of guest networks available
-* Mesh: HomeKit Integration
-* Mesh: Parental Control state
-  * list of the rules being applied
-* Mesh: WPS
+| Location | Name | Enabled by default | Additional Information | Comments |
+|---|---|:---:|---|---|
+| Device | Internet Access | :heavy_check_mark: | | |
+| Mesh | Guest Wi-Fi | :heavy_check_mark: | List of guest networks including: SSID and band | |
+| Mesh | HomeKit Integration | :heavy_check_mark: | | |
+| Mesh | Parental Control | :heavy_check_mark: | List of objects defining the devices, blocked times and blocked sites | |
+| Mesh | WPS | :heavy_check_mark: | | |
 
 #### Update
 
-* Node: Firmware update available.
-  * includes current and latest firmware versions
+| Location | Name | Enabled by default | Comments |
+|---|---|:---:|---|
+| Node | Update | :heavy_check_mark: | |
 
 ### Services
 
