@@ -76,6 +76,32 @@ async def _async_set_device_internet_access_state_on(
     await mesh.async_set_parental_control_rules(device_details.unique_id, {})
 
 
+async def _async_set_mesh_upnp_state_off(
+    _: LinksysVelopConfigEntry, mesh: Mesh
+) -> None:
+    """Turn UPnP off for the Mesh."""
+
+    cur_settings: dict[str, bool] = await mesh.async_get_upnp_state()
+    new_settings: dict[str, bool] = {
+        "enabled": False,
+        "allow_change_settings": cur_settings.get("canUsersConfigure", False),
+        "allow_disable_internet": cur_settings.get("canUsersDisableWANAccess", False),
+    }
+    await mesh.async_set_upnp_settings(**new_settings)
+
+
+async def _async_set_mesh_upnp_state_on(_: LinksysVelopConfigEntry, mesh: Mesh) -> None:
+    """Turn UPnP on for the Mesh."""
+
+    cur_settings: dict[str, bool] = await mesh.async_get_upnp_state()
+    new_settings: dict[str, bool] = {
+        "enabled": True,
+        "allow_change_settings": cur_settings.get("canUsersConfigure", False),
+        "allow_disable_internet": cur_settings.get("canUsersDisableWANAccess", False),
+    }
+    await mesh.async_set_upnp_settings(**new_settings)
+
+
 ENTITY_DETAILS: list[SwitchDetails] = []
 
 
@@ -193,6 +219,29 @@ async def async_setup_entry(
         )
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
             entities_to_remove.append(f"{ui_device}::{ENTITY_DOMAIN}::internet_access")
+
+    if MeshCapability.GET_UPNP_SETTINGS in mesh.capabilities:
+        entities.extend(
+            build_entities(
+                [
+                    SwitchDetails(
+                        description=SwitchEntityDescription(
+                            entity_category=EntityCategory.CONFIG,
+                            key="upnp_enabled",
+                            name="UPnP",
+                            translation_key="upnp",
+                        ),
+                        entity_type=EntityType.MESH,
+                        off_func=_async_set_mesh_upnp_state_off,
+                        on_func=_async_set_mesh_upnp_state_on,
+                    ),
+                ],
+                config_entry,
+                ENTITY_DOMAIN,
+            )
+        )
+    else:
+        entities_to_remove.append(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp")
 
     if MeshCapability.GET_WPS_SERVER_SETTINGS in mesh.capabilities:
         entities.extend(
