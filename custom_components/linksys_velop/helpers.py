@@ -6,14 +6,10 @@ import logging
 from homeassistant.config_entries import device_registry as dr
 from homeassistant.config_entries import entity_registry as er
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import (
-    DeviceEntry,
-    DeviceEntryType,
-    DeviceRegistry,
-)
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 
-from .const import DOMAIN, PYVELOP_AUTHOR, PYVELOP_NAME, PYVELOP_VERSION
+from .const import DOMAIN
 from .types import LinksysVelopConfigEntry
 
 # endregion
@@ -25,7 +21,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 def get_mesh_device_for_config_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> DeviceEntry | None:
-    """"""
+    """Retrieve the Mesh device from the registry."""
     device_registry: DeviceRegistry = dr.async_get(hass)
     found_mesh: DeviceEntry | None = device_registry.async_get_device(
         {(DOMAIN, config_entry.entry_id)}
@@ -34,7 +30,7 @@ def get_mesh_device_for_config_entry(
 
 
 def remove_velop_device_from_registry(hass: HomeAssistant, device_id: str) -> None:
-    """"""
+    """Remove a device from the registry."""
 
     device_registry: DeviceRegistry = dr.async_get(hass)
     found_device: DeviceEntry | None
@@ -58,20 +54,3 @@ def remove_velop_entity_from_registry(
     found_entity: list[RegistryEntry]
     if found_entity := [e for e in config_entities if e.unique_id == unique_id]:
         entity_registry.async_remove(found_entity[0].entity_id)
-
-
-#
-#  TODO: Check all the following to see if they are required.
-#
-
-
-def dr_device_is_mesh(device: DeviceEntry) -> bool:
-    """Establish if the given device is the Mesh."""
-    return all(
-        [
-            device.entry_type == DeviceEntryType.SERVICE,
-            device.manufacturer == PYVELOP_AUTHOR,
-            device.model == f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            device.name.lower() == "mesh",
-        ]
-    )

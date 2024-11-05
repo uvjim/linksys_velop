@@ -13,7 +13,7 @@ from pyvelop.mesh import Device, Mesh, Node
 
 from .const import DOMAIN
 from .coordinator import LinksysVelopUpdateCoordinator
-from .helpers import dr_device_is_mesh
+from .helpers import get_mesh_device_for_config_entry
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -93,7 +93,7 @@ async def async_get_device_diagnostics(
 
     N.B. If the device is the Mesh then data for the ConfigEntry diagnostics is returned
     """
-    if dr_device_is_mesh(device=device):
+    if get_mesh_device_for_config_entry(hass, config_entry) == device:
         return await async_get_config_entry_diagnostics(hass, config_entry)
 
     coordinator: LinksysVelopUpdateCoordinator = (
