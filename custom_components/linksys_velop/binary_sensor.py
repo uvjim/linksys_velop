@@ -86,7 +86,9 @@ async def async_setup_entry(
     """Initialize a binary sensor."""
 
     entities_to_add: list[LinksysVelopBinarySensor] = []
-    entities_to_remove: list[str] = []
+    entities_to_remove: list[str] = [
+        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp",  # 2024.11.1b4 remove as we now have a switch
+    ]
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional binary sensors --#
@@ -404,16 +406,6 @@ async def async_setup_entry(
                         ),
                         entity_type=EntityType.MESH,
                     ),
-                    BinarySensorDetails(
-                        description=BinarySensorEntityDescription(
-                            entity_category=EntityCategory.DIAGNOSTIC,
-                            entity_registry_enabled_default=False,
-                            key="upnp_enabled",
-                            name="UPnP",
-                            translation_key="upnp",
-                        ),
-                        entity_type=EntityType.MESH,
-                    ),
                 ],
                 config_entry,
                 ENTITY_DOMAIN,
@@ -424,7 +416,6 @@ async def async_setup_entry(
             [
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp_allow_users_to_configure",
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp_allow_users_to_disable_internet",
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp",
             ]
         )
 
