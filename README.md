@@ -81,7 +81,6 @@ then the entities detailing storage partitions etc. will not be available.
 | Mesh | Node Steering | ✖️ | | |
 | Mesh | SIP | ✖️ | | |
 | Mesh | Speedtest Status | ✖️ | | |
-| Mesh | UPnP | ✖️ | | |
 | Mesh | UPnP Allow Users to Configure | ✖️ | | |
 | Mesh | UPnP Allow Users to Disable Internet | ✖️ | | |
 | Mesh | WAN Status | ✔️ | IP, DNS and MAC | |
@@ -187,6 +186,7 @@ Available events are: -
 | Mesh | Guest Wi-Fi | ✔️ | List of guest networks including: SSID and band | |
 | Mesh | HomeKit Integration | ✔️ | | |
 | Mesh | Parental Control | ✔️ | List of objects defining the devices, blocked times and blocked sites | |
+| Mesh | UPnP | ✔️ | | Only controls the state of the UPnP not the sub-components of UPnP, these are only binary sensors |
 | Mesh | WPS | ✔️ | | |
 
 #### Update
