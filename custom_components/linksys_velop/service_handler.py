@@ -15,6 +15,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.device import Device, ParentalControl
 from pyvelop.exceptions import MeshInvalidInput
 from pyvelop.mesh import Mesh
+from pyvelop.node import Node, NodeType
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
 from .logger import Logger
@@ -47,8 +48,6 @@ def deprectated_service(solution: str):
                     func.__name__,
                     solution,
                 )
-            else:
-                pass
 
             return func(self, *args, **kwargs)
 
@@ -308,9 +307,6 @@ class LinksysVelopServiceHandler:
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
-    @deprectated_service(
-        solution="Use the button available on the node device or mesh."
-    )
     async def reboot_node(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
@@ -322,6 +318,23 @@ class LinksysVelopServiceHandler:
         :return:None
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+
+        node: Node = [
+            n for n in self._mesh.nodes if n.name == kwargs.get("node_name", "")
+        ]
+        if len(node) == 0:
+            raise MeshInvalidInput(f"Unknown node: {kwargs.get('node_name', '')}")
+
+        if node[0].type == NodeType.SECONDARY:
+            _LOGGER.warning(
+                self._log_formatter.format(
+                    "The service %s.%s has been deprecated. %s",
+                    include_caller=False,
+                ),
+                DOMAIN,
+                "reboot_node",
+                "Use the button available on the node device.",
+            )
 
         await self._mesh.async_reboot_node(
             node_name=kwargs.get("node_name", ""),
