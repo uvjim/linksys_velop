@@ -17,6 +17,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
   * [Sensors](#sensors)
   * [Switches](#switches)
 * [Services](#services)
+* [Repairs](#repairs)
 * [Setup](#setup)
 * [Configurable Options](#configurable-options)
   * [Timers](#timers)
