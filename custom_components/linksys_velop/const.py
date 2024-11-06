@@ -7,9 +7,11 @@ from importlib.metadata import PackageNotFoundError, distribution, version
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
-from homeassistant.components.device_tracker import DOMAIN as DEVICE_TRACKER_DOMAIN
-from homeassistant.components.event import DOMAIN as EVENT_DOMAIN
-from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
+from homeassistant.components.device_tracker import (  # noqa: F401
+    DOMAIN as DEVICE_TRACKER_DOMAIN,
+)
+from homeassistant.components.event import DOMAIN as EVENT_DOMAIN  # noqa: F401
+from homeassistant.components.select import DOMAIN as SELECT_DOMAIN  # noqa: F401
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
 from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
@@ -74,7 +76,7 @@ ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
 
 
 class IntensiveTask(StrEnum):
-    """"""
+    """Representation of tasks that could cause a delay in response from the Mesh."""
 
     CHANNEL_SCAN = "Channel Scan"
     REBOOT = "Reboot"
