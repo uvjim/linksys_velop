@@ -323,6 +323,11 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
 
+        await self._mesh.async_reboot_node(
+            node_name=kwargs.get("node_name", ""),
+            force=kwargs.get("is_primary", False),
+        )
+
         # region #-- flag the reboot --#
         if kwargs.get("is_primary", False):
             config_entry.runtime_data.mesh_is_rebooting = True
@@ -334,11 +339,6 @@ class LinksysVelopServiceHandler:
                     f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
                 )
         # endregion
-
-        await self._mesh.async_reboot_node(
-            node_name=kwargs.get("node_name", ""),
-            force=kwargs.get("is_primary", False),
-        )
 
         _LOGGER.debug(self._log_formatter.format("exited"))
 
