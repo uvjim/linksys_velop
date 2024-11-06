@@ -1,4 +1,4 @@
-"""Update Coordinators"""
+"""Update Coordinators."""
 
 # region #-- imports --#
 import asyncio
@@ -53,7 +53,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class SpeedtestStatus(StrEnum):
-    """"""
+    """Possible Speedtest statuses."""
 
     CHECKING_DOWNLOAD_SPEED = auto()
     CHECKING_LATENCY = auto()
@@ -65,7 +65,7 @@ class SpeedtestStatus(StrEnum):
 
 @dataclass
 class DataCoordinatorFormattedData:
-    """"""
+    """Base class for data being returned for an entity."""
 
     connected_node: str
 
@@ -236,33 +236,35 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             removed_nodes: set[str] = set(previous_nodes).difference(set(current_nodes))
             device_registry: DeviceRegistry = dr.async_get(self.hass)
             for node in removed_nodes:
-                node_info: list[Node]
-                if node_info := [
+                node_info: list[Node] = [
                     n for n in previous_nodes_details if n.unique_id == node
-                ]:
-                    found_device: DeviceEntry | None = device_registry.async_get_device(
-                        {(DOMAIN, node_info[0].serial)}
+                ]
+                if len(node_info) == 0:
+                    continue
+
+                found_device: DeviceEntry | None = device_registry.async_get_device(
+                    {(DOMAIN, node_info[0].serial)}
+                )
+                if found_device is not None:
+                    ir.async_create_issue(
+                        self.hass,
+                        DOMAIN,
+                        f"{ISSUE_MISSING_NODE}::{node_info[0].serial}",
+                        data={
+                            "config_entry": self.config_entry,
+                            "device_id": node_info[0].serial,
+                            "device_name": found_device.name_by_user
+                            or found_device.name,
+                        },
+                        is_fixable=True,
+                        is_persistent=False,
+                        severity=IssueSeverity.WARNING,
+                        translation_key=ISSUE_MISSING_NODE,
+                        translation_placeholders={
+                            "device_name": found_device.name_by_user
+                            or found_device.name
+                        },
                     )
-                    if found_device is not None:
-                        ir.async_create_issue(
-                            self.hass,
-                            DOMAIN,
-                            f"{ISSUE_MISSING_NODE}::{node_info[0].serial}",
-                            data={
-                                "config_entry": self.config_entry,
-                                "device_id": node_info[0].serial,
-                                "device_name": found_device.name_by_user
-                                or found_device.name,
-                            },
-                            is_fixable=True,
-                            is_persistent=False,
-                            severity=IssueSeverity.WARNING,
-                            translation_key=ISSUE_MISSING_NODE,
-                            translation_placeholders={
-                                "device_name": found_device.name_by_user
-                                or found_device.name
-                            },
-                        )
             # endregion
             # endregion
             # region #-- event management --#
@@ -319,7 +321,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
 
 
 class UpdateCoordinatorChangeableInterval(DataUpdateCoordinator):
-    """"""
+    """DataUpdateCoordinator that allows for the interval being changed."""
 
     def __init__(
         self,
