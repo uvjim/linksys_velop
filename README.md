@@ -219,6 +219,14 @@ directed to. Other requirements by the services should be self-explanatory.
 > __^__ these are deprecated services. A warning will be displayed in the HASS
   log when they are used. They are subject to removal at any time.
 
+## Repairs
+
+| Reason | Trigger | Resolution | Comments |
+|---|---|---|---|
+| Missing device tracker | Raised when the device, used for device tracking, no longer appears on the Mesh | Deletes the device tracker entity | This is based on the unique ID supplied by Linksys. If the device is still on the Mesh, and only its unique ID has changed, you should reconfigure the integration to use the device as a tracker again |
+| Missing node | Raised when the given node no longer appears on the Mesh | Deletes the node device | This is based on the unique ID supplied by Linksys. If the node is still on the Mesh, and only its unique ID has changed, you should carry out the resolution and reload the integration |
+| Missing UI device | Raised when the device, selected to be shown in the UI, no longer appears on the Mesh | Deletes the UI device | This is based on the unique ID supplied by Linksys. If the device is still on the Mesh, and only its unique ID has changed, you should reconfigure the integration to use the device as a tracker again |
+
 ## Setup
 
 When setting up the integration you will be asked for the following information.
