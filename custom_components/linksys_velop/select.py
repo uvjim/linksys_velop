@@ -24,6 +24,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class SelectDetails(EntityDetails):
+    """Representation of the details that make up the entity."""
+
     description: SelectEntityDescription
 
 
@@ -31,7 +33,7 @@ ENTITY_DETAILS: list[SelectDetails] = []
 
 
 def _build_options(mesh: Mesh) -> list[str]:
-    """"""
+    """Create the available options for the select entity."""
 
     return [
         (
@@ -94,7 +96,7 @@ class LinksysVelopSelectPlaceholderEntity(LinksysVelopSelect):
     """Linksys Velop sensor."""
 
     async def async_select_option(self, option: str) -> None:
-        """"""
+        """Update the values once a device had been selected."""
 
         self._attr_current_option = option
         async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, option)

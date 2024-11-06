@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.device import Device
 from pyvelop.node import Node
 
-from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
+from .const import DOMAIN
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
@@ -25,6 +25,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class EventDetails(EntityDetails):
+    """Representation of the details that make up the entity."""
+
     description: EventEntityDescription
 
 
@@ -62,16 +64,16 @@ async def async_setup_entry(
 def _build_event_properties(
     properties: list[str], obj: Device | Node
 ) -> dict[str, Any]:
-    """"""
+    """Create the required properties for the event."""
 
     return {prop: getattr(obj, prop, None) for prop in properties}
 
 
 class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
-    """"""
+    """Representation of the event entity."""
 
     async def _async_process_event_new_device_found(self, device: Device) -> None:
-        """"""
+        """Respond to a new device beig found."""
 
         event_properties: list[str] = [
             "connected_adapters",
@@ -93,7 +95,7 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         self.async_write_ha_state()
 
     async def _async_process_event_new_node_found(self, node: Node) -> None:
-        """"""
+        """Respond to a new node being found."""
 
         event_properties: list[str] = [
             "backhaul",
@@ -125,6 +127,8 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
+        """Initialise necessary listeners."""
+
         await super().async_added_to_hass()
         for event in self.event_types:
             func_name: str = f"_async_process_event_{event}"

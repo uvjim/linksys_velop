@@ -33,6 +33,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class SensorDetails(EntityDetails):
+    """Representation of the details that make up the entity."""
+
     description: SensorEntityDescription
 
 
@@ -684,7 +686,7 @@ class LinksysVelopSensor(LinksysVelopEntity, SensorEntity):
 
     @callback
     def _update_attr_value(self) -> None:
-        """"""
+        """Update the value for the sensor."""
 
         if self._context_data is None:
             self._attr_native_value = None

@@ -27,6 +27,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class UpdateDetails(EntityDetails):
+    """Representation of the details that make up the entity."""
+
     description: UpdateEntityDescription
 
 
@@ -94,7 +96,7 @@ class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
 
     @callback
     def _update_attr_value(self) -> None:
-        """"""
+        """Update the value of the entity."""
 
         if self._context_data is None:
             self._attr_auto_update = False
