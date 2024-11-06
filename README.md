@@ -6,17 +6,17 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
 ## Table of Contents
 
 * [Description](#description)
-  * [Installation](#installation)
-  * [Definitions](#definitions)
-  * [Entities Provided](#entities-provided)
-    * [Binary Sensors](#binary-sensors)
-    * [Buttons](#buttons)
-    * [Device Trackers](#device-trackers)
-    * [Event](#event)
-    * [Select](#select)
-    * [Sensors](#sensors)
-    * [Switches](#switches)
-  * [Services](#services)
+* [Installation](#installation)
+* [Definitions](#definitions)
+* [Entities Provided](#entities-provided)
+  * [Binary Sensors](#binary-sensors)
+  * [Buttons](#buttons)
+  * [Device Trackers](#device-trackers)
+  * [Event](#event)
+  * [Select](#select)
+  * [Sensors](#sensors)
+  * [Switches](#switches)
+* [Services](#services)
 * [Setup](#setup)
 * [Configurable Options](#configurable-options)
   * [Timers](#timers)
@@ -34,7 +34,7 @@ This custom component has been designed for Home Assistant and enables access
 to the functions that would be useful (and probably some that aren't) in the
 Home Assistant environment.
 
-### Installation
+## Installation
 
 The integration can be installed using [HACS](https://hacs.xyz/).  The
 integrations is not available in the default repositories, so you will need to
@@ -45,7 +45,7 @@ Alternatively you can use the button below.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=uvjim&repository=linksys_velop&category=Integration)
 
-### Definitions
+## Definitions
 
 __Mesh__: the mesh is the network itself and refers to anything that is not
 attributed to a single node or device in the network.
@@ -55,7 +55,7 @@ __Node__: a node is a device that helps to form the mesh.
 __Device__: a device is an endpoint that connects to the mesh network. Think of
 these as the endpoint devices, such as a laptop, phone or tablet.
 
-### Entities Provided
+## Entities Provided
 
 All device entities are only available if the [UI Device](#ui-devices) is
 enabled.
@@ -64,7 +64,7 @@ Entities are only available if the required capability for that data is availabl
 on the Mesh.  For example, if the Mesh does not support the storage JNAP actions
 then the entities detailing storage partitions etc. will not be available.
 
-#### Binary Sensors
+### Binary Sensors
 
 | Location | Name | Enabled by default | Additional Information | Comments |
 |---|---|:---:|---|---|
@@ -86,7 +86,7 @@ then the entities detailing storage partitions etc. will not be available.
 | Mesh | WAN Status | ✔️ | IP, DNS and MAC | |
 | Node | Status | ✔️ | Reservation, guest network, IP and MAC | |
 
-#### Buttons
+### Buttons
 
 | Location | Name | Enabled by default | Comments |
 |---|---|:---:|---|
@@ -107,7 +107,7 @@ you'd like to reboot the Primary you node you must use the
 [service](#services) with the `is_primary` flag provided, or the `Mesh: Reboot
 the Whole Mesh` button.
 
-#### Device Trackers
+### Device Trackers
 
 These are selectable and are presented as part of the configuration at both
 install time and from reconfiguring the integration.
@@ -117,7 +117,7 @@ mesh. This is achieved by adding the MAC address to the known connections for th
 Mesh device. You will see these in the HASS UI. When the tracker is removed, the
 MAC is also removed from the Mesh device.
 
-#### Event
+### Event
 
 This entity provides access to data for the events selected in the configuration.
 Available events are: -
@@ -129,13 +129,13 @@ Available events are: -
 | New device found | When the integration carries out its normal polling period and a device with a new unique ID is found | The uniqued ID for comparison is the one provided by Linksys |
 | New node found | When the integration carries out its normal polling period and a node with a new unique ID is found | The uniqued ID for comparison is the one provided by Linksys |
 
-#### Select
+### Select
 
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
 |---|---|:---:|---|---|---|
 | Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
 
-#### Sensors
+### Sensors
 
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
 |---|---|:---:|---|---|---|
@@ -178,7 +178,7 @@ Available events are: -
 | Node | Serial | ✔️ | | | |
 | Node | Type | ✔️ | Primary/Secondary | | |
 
-#### Switches
+### Switches
 
 | Location | Name | Enabled by default | Additional Information | Comments |
 |---|---|:---:|---|---|
@@ -189,13 +189,13 @@ Available events are: -
 | Mesh | UPnP | ✔️ | | Only controls the state of the UPnP not the sub-components of UPnP, these are only binary sensors |
 | Mesh | WPS | ✔️ | | |
 
-#### Update
+### Update
 
 | Location | Name | Enabled by default | Comments |
 |---|---|:---:|---|
 | Node | Update | ✔️ | |
 
-### Services
+## Services
 
 The following services are available. Each service is described in metadata
 so paramters are described in the Home Assistant Services page.
