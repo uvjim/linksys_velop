@@ -1,3 +1,5 @@
+"""Exceptions."""
+
 from homeassistant.exceptions import HomeAssistantError
 
 

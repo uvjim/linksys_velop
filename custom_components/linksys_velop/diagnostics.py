@@ -3,15 +3,14 @@
 # region #-- imports --#
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
-from pyvelop.mesh import Device, Mesh, Node
+from pyvelop.mesh import Mesh, Node
 
-from .const import DOMAIN
 from .coordinator import LinksysVelopUpdateCoordinator
 from .helpers import get_mesh_device_for_config_entry
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
@@ -37,14 +36,14 @@ async def async_get_config_entry_diagnostics(
         config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)
     )
     mesh: Mesh = coordinator.data
-    mesh_attributes: Dict = getattr(mesh, "_mesh_attributes")
+    mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
 
     # region #-- unwanted attributes --#
-    exclude_props: List[str] = ["devices"]
+    exclude_props: list[str] = ["devices"]
     # endregion
 
     # region #-- create generic details --#
-    ret: Dict[str, Any] = {
+    ret: dict[str, Any] = {
         "config_entry": config_entry.as_dict(),  # get the config entry details
         "mesh_details": {  # get mesh details
             key: mesh_attributes.get(key)
@@ -101,14 +100,14 @@ async def async_get_device_diagnostics(
     )
     mesh: Mesh = coordinator.data
 
-    ret: Dict[str, Any] = {
+    ret: dict[str, Any] = {
         "device_entry": {
             p: getattr(device, p, None)
             for p in [prop for prop in dir(DeviceEntry) if not prop.startswith("_")]
         }
     }
 
-    node: List[Node] = [
+    node: list[Node] = [
         n
         for n in mesh.nodes
         if mesh.nodes and n.serial == next(iter(device.identifiers))[1]

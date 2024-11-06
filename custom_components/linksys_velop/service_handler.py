@@ -122,7 +122,7 @@ class LinksysVelopServiceHandler:
     def _get_config_entry_from_mesh_id(
         self, mesh_id: str
     ) -> LinksysVelopConfigEntry | None:
-        """"""
+        """Retrieve the ConfigEntry based on the ID of the Mesh."""
         config_entry: LinksysVelopConfigEntry | None = None
         config_entry_id: str | None = None
         device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)

@@ -20,12 +20,7 @@ from homeassistant.util import dt as dt_util
 from pyvelop.device import Device
 from pyvelop.mesh import Mesh
 
-from .const import (
-    CONF_DEVICE_TRACKERS,
-    DEF_CONSIDER_HOME,
-    DOMAIN,
-    SIGNAL_DEVICE_TRACKER_UPDATE,
-)
+from .const import CONF_DEVICE_TRACKERS, DEF_CONSIDER_HOME, SIGNAL_DEVICE_TRACKER_UPDATE
 from .helpers import get_mesh_device_for_config_entry
 from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
@@ -40,6 +35,7 @@ async def async_setup_entry(
     config_entry: LinksysVelopConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """Create entities for device trackers."""
 
     adapter: list[dict]
     device: list[Device]
@@ -56,7 +52,7 @@ async def async_setup_entry(
                 )
             )
 
-            if adapter := [a for a in device[0].network]:
+            if adapter := list(device[0].network):
                 connections.add(
                     (
                         dr.CONNECTION_NETWORK_MAC,
@@ -72,7 +68,7 @@ async def async_setup_entry(
 
 
 class LinksysVelopMeshDeviceTracker(ScannerEntity):
-    """"""
+    """Representation of a device tracker."""
 
     def __init__(
         self, config_entry: LinksysVelopConfigEntry, device: Device, mesh: Mesh
@@ -97,13 +93,13 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     def _get_ip_address(self, device: Device) -> str:
         """Retrieve the IP address from the device object."""
         adapter: list[dict]
-        if adapter := [a for a in device.network]:
+        if adapter := list(device.network):
             return adapter[0].get("ip", "")
 
     def _get_mac_address(self, device: Device) -> str:
         """Retrieve the MAC address from the device object."""
         adapter: list[dict]
-        if adapter := [a for a in device.network]:
+        if adapter := list(device.network):
             return dr.format_mac(adapter[0].get("mac", ""))
 
     async def _async_mark_offline(self, _: dt_util.dt.datetime) -> None:

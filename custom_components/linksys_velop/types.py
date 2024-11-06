@@ -1,4 +1,4 @@
-""""""
+"""Types."""
 
 # region #-- imports --#
 from dataclasses import dataclass, field
@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 
 class CoordinatorTypes(StrEnum):
-    """"""
+    """The type of coordinator."""
 
     CHANNEL_SCAN = "coordinator_channel_scan"
     MESH = "coordinator_mesh"
@@ -20,7 +20,7 @@ class CoordinatorTypes(StrEnum):
 
 
 class EventSubTypes(StrEnum):
-    """"""
+    """Available event types."""
 
     MESH_REBOOTED = auto()
     MESH_REBOOTING = auto()
@@ -30,7 +30,7 @@ class EventSubTypes(StrEnum):
 
 @dataclass
 class LinksysVelopData:
-    """"""
+    """Data being held in the runtime of the ConfigEntry."""
 
     coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
         default_factory=dict

@@ -1,4 +1,4 @@
-""""""
+"""Base classes, functions and types for entities."""
 
 # region #-- imports --#
 import logging
@@ -45,7 +45,7 @@ StateValueType = (
 
 
 class EntityType(IntFlag):
-    """"""
+    """Possible entity types."""
 
     DEVICE = auto()
     MESH = auto()
@@ -66,7 +66,7 @@ class EntityContext:
 
 @dataclass
 class EntityDetails:
-    """"""
+    """Base details for an entity."""
 
     description: Any
     entity_type: EntityType
@@ -81,7 +81,7 @@ def build_entities(
     config_entry: LinksysVelopConfigEntry,
     entity_domain: str,
 ) -> list[dict[str, EntityContext | LinksysVelopConfigEntry | str | EntityDetails]]:
-    """"""
+    """Create a list of information required for creating entities."""
 
     ret: list[
         dict[str, EntityContext | LinksysVelopConfigEntry | str | EntityDetails]
@@ -266,7 +266,7 @@ class LinksysVelopEntity(CoordinatorEntity):
         self._set_context_data()
 
     def _set_context_data(self) -> None:
-        """"""
+        """Ensure the context data is that of the necessary Device, Mesh or Node."""
         if self._entity_details.entity_type in (
             EntityType.DEVICE,
             EntityType.PLACEHOLDER_DEVICE,
@@ -296,7 +296,7 @@ class LinksysVelopEntity(CoordinatorEntity):
                 self._context_data: Node = nodes[0]
 
     def _update_attr_value(self) -> None:
-        """"""
+        """Update the attribute value for the entity."""
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
@@ -312,7 +312,7 @@ class LinksysVelopEntity(CoordinatorEntity):
 
     @callback
     def _update_esa_value(self) -> None:
-        """"""
+        """Update the extra state attributes for the entity."""
 
         if self._context_data is None:
             self._attr_extra_state_attributes = None
@@ -327,7 +327,7 @@ class LinksysVelopEntity(CoordinatorEntity):
 
     @callback
     def _update_pic_value(self) -> None:
-        """"""
+        """Update the entity picture attribute for the entity."""
 
         if self._context_data is None:
             self._attr_entity_picture = None

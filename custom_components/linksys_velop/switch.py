@@ -32,6 +32,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class SwitchDetails(EntityDetails):
+    """Representation of the details that make up the entity."""
+
     description: SwitchEntityDescription
     off_func: Callable | str = field(kw_only=True)
     on_func: Callable | str = field(kw_only=True)
@@ -303,7 +305,7 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
         self._on_func = entity_details.on_func
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """"""
+        """Process the function for turning the switch on."""
         if isinstance(self._on_func, Callable):
             await self._on_func(self._config_entry, self._context_data)
             await self.coordinator.async_refresh()
@@ -313,7 +315,7 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
                 await self.coordinator.async_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """"""
+        """Process the function for turning the switch off."""
         if isinstance(self._off_func, Callable):
             await self._off_func(self._config_entry, self._context_data)
             await self.coordinator.async_refresh()
@@ -324,7 +326,7 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
 
     @callback
     def _update_attr_value(self) -> None:
-        """"""
+        """Update the state of the switch."""
 
         if self._context_data is None:
             self._attr_is_on = None

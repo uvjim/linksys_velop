@@ -1,10 +1,10 @@
 """The Linksys Velop integration."""
 
 # region #-- imports --#
+import contextlib
 import copy
 import logging
 from datetime import datetime, timedelta
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.config_entries import entity_registry as er
@@ -47,7 +47,6 @@ from .const import (
     PLATFORMS,
     SELECT_DOMAIN,
     SIGNAL_DEVICE_TRACKER_UPDATE,
-    IntensiveTask,
 )
 from .coordinator import (
     LinksysVelopUpdateCoordinator,
@@ -62,12 +61,7 @@ from .helpers import (
 )
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
-from .types import (
-    CoordinatorTypes,
-    EventSubTypes,
-    LinksysVelopConfigEntry,
-    LinksysVelopData,
-)
+from .types import CoordinatorTypes, LinksysVelopConfigEntry, LinksysVelopData
 
 # endregion
 
@@ -131,12 +125,13 @@ async def async_setup_entry(
     # endregion
 
     # region #-- setup the coordinators --#
+    await mesh.async_initialise()
+    coordinator_name_suffix: str = ""
+    if getattr(log_formatter, "_unique_id"):
+        coordinator_name_suffix += f" ({getattr(log_formatter, '_unique_id')})"
     # region #--- mesh coordinator --#
     _LOGGER.debug(log_formatter.format("setting up the mesh coordinator"))
-    coordinator_name = f"{DOMAIN} mesh"
-    if getattr(log_formatter, "_unique_id"):
-        coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
-
+    coordinator_name = f"{DOMAIN} mesh{coordinator_name_suffix}"
     config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
         LinksysVelopUpdateCoordinator(
             hass,
@@ -155,10 +150,7 @@ async def async_setup_entry(
     # region #-- speedtest coordinator --#
     if MeshCapability.GET_SPEEDTEST_RESULTS in mesh.capabilities:
         _LOGGER.debug(log_formatter.format("setting up the speedtest coordinator"))
-        coordinator_name = f"{DOMAIN} speedtest"
-        if getattr(log_formatter, "_unique_id"):
-            coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
-
+        coordinator_name = f"{DOMAIN} speedtest{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
             LinksysVelopUpdateCoordinatorSpeedtest(
                 hass,
@@ -177,10 +169,7 @@ async def async_setup_entry(
     # region #-- channel scan coordinator --#
     if MeshCapability.GET_CHANNEL_SCAN_STATUS in mesh.capabilities:
         _LOGGER.debug(log_formatter.format("setting up the channel scan coordinator"))
-        coordinator_name = f"{DOMAIN} channel scan"
-        if getattr(log_formatter, "_unique_id"):
-            coordinator_name += f" ({getattr(log_formatter, '_unique_id')})"
-
+        coordinator_name = f"{DOMAIN} channel scan{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
             LinksysVelopUpdateCoordinatorChannelScan(
                 hass,
@@ -244,34 +233,32 @@ async def async_setup_entry(
                         },
                     )
                     # endregion
-        except (MeshConnectionError, MeshTimeoutError) as err:
-            if not config_entry.runtime_data.mesh_is_rebooting:
-                if len(config_entry.runtime_data.intensive_running_tasks) > 0:
-                    exc: IntensiveTaskRunning = IntensiveTaskRunning(
-                        translation_domain=DOMAIN,
-                        translation_key="intensive_task",
-                        translation_placeholders={
-                            "tasks": config_entry.runtime_data.intensive_running_tasks
-                        },
-                    )
-                    _LOGGER.warning(exc)
-                else:
-                    exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
-                        translation_domain=DOMAIN,
-                        translation_key="device_tracker_timeout",
-                    )
-                    _LOGGER.warning(exc_timeout)
-        except Exception as err:
-            if not config_entry.runtime_data.mesh_is_rebooting:
-                exc_general: GeneralException = GeneralException(
+        except (MeshConnectionError, MeshTimeoutError):
+            if len(config_entry.runtime_data.intensive_running_tasks) > 0:
+                exc: IntensiveTaskRunning = IntensiveTaskRunning(
                     translation_domain=DOMAIN,
-                    translation_key="general",
+                    translation_key="intensive_task",
                     translation_placeholders={
-                        "exc_type": type(err),
-                        "exc_msg": str(err),
+                        "tasks": config_entry.runtime_data.intensive_running_tasks
                     },
                 )
-                _LOGGER.warning(exc_general)
+                _LOGGER.warning(exc)
+            else:
+                exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="device_tracker_timeout",
+                )
+                _LOGGER.warning(exc_timeout)
+        except Exception as err:
+            exc_general: GeneralException = GeneralException(
+                translation_domain=DOMAIN,
+                translation_key="general",
+                translation_placeholders={
+                    "exc_type": type(err),
+                    "exc_msg": str(err),
+                },
+            )
+            _LOGGER.warning(exc_general)
         else:
             for device in devices:
                 async_dispatcher_send(
@@ -304,12 +291,12 @@ async def async_setup_entry(
     if config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE):
         _SETUP_PLATFORMS.append(SELECT_DOMAIN)
     else:
-        if SELECT_DOMAIN in _SETUP_PLATFORMS:
+        with contextlib.suppress(ValueError):
             _SETUP_PLATFORMS.remove(SELECT_DOMAIN)
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
         _SETUP_PLATFORMS.append(DEVICE_TRACKER_DOMAIN)
     else:
-        if DEVICE_TRACKER_DOMAIN in _SETUP_PLATFORMS:
+        with contextlib.suppress(ValueError):
             _SETUP_PLATFORMS.remove(DEVICE_TRACKER_DOMAIN)
     _LOGGER.debug(log_formatter.format("setting up platforms: %s"), _SETUP_PLATFORMS)
     await hass.config_entries.async_forward_entry_setups(config_entry, _SETUP_PLATFORMS)
@@ -341,7 +328,7 @@ async def async_setup_entry(
         # region #-- remove connection from the mesh device --#
         device: Device
         if device := [d for d in mesh.devices if d.unique_id == tracker]:
-            if adapter := [a for a in device[0].network]:
+            if adapter := list(device[0].network):
                 connections.discard(
                     (
                         dr.CONNECTION_NETWORK_MAC,

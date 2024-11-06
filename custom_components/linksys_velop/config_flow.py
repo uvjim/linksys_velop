@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from enum import StrEnum, auto
 from typing import Any
@@ -64,6 +65,8 @@ from .types import EventSubTypes
 
 
 class Steps(StrEnum):
+    """Define the steps vailable to the config flow."""
+
     ADVANCED_OPTIONS = auto()
     DEVICE_TRACKERS = auto()
     EVENTS = auto()
@@ -130,7 +133,7 @@ async def _async_build_schema_with_user_input(
         valid_trackers = [
             tracker
             for tracker in user_input.get(CONF_DEVICE_TRACKERS, [])
-            if tracker in kwargs["multi_select_contents"].keys()
+            if tracker in kwargs["multi_select_contents"]
         ]
         schema = vol.Schema(
             {
@@ -221,7 +224,7 @@ async def _async_build_schema_with_user_input(
         valid_devices = [
             device
             for device in user_input.get(CONF_UI_DEVICES, [])
-            if device in kwargs["multi_select_contents"].keys()
+            if device in kwargs["multi_select_contents"]
         ]
         schema = vol.Schema(
             {
@@ -305,17 +308,17 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if isinstance(exc, MeshConnectionError):
             _LOGGER.debug(self._log_formatter.format("connection error"))
             self._errors["base"] = "connection_error"
-        elif (exc, MeshBadResponse):
+        elif isinstance(exc, MeshBadResponse):
             _LOGGER.debug(self._log_formatter.format("bad response"))
             self._errors["base"] = "login_bad_response"
-        elif (exc, MeshInvalidInput):
+        elif isinstance(exc, MeshInvalidInput):
             _LOGGER.debug(self._log_formatter.format("invalid input"))
             _LOGGER.warning("%s", exc)
             self._errors["base"] = "invalid_input"
-        elif (exc, MeshNodeNotPrimary):
+        elif isinstance(exc, MeshNodeNotPrimary):
             _LOGGER.debug(self._log_formatter.format("not primary"))
             self._errors["base"] = "node_not_primary"
-        elif (exc, MeshTimeoutError):
+        elif isinstance(exc, MeshTimeoutError):
             _LOGGER.debug(self._log_formatter.format("timeout"))
             self._errors["base"] = "node_timeout"
 
@@ -442,7 +445,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_reauth(self, user_input=None) -> data_entry_flow.FlowResult:
-        """"""
+        """Manage reauthentication."""
 
         self.reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"]
@@ -452,7 +455,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input=None
     ) -> data_entry_flow.FlowResult:
-        """"""
+        """Store the new auth details."""
 
         if user_input is not None:
             if self.reauth_entry:
@@ -768,12 +771,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 else:
                     self._options[CONF_UI_DEVICES] = [DEF_UI_PLACEHOLDER_DEVICE_ID]
         else:
-            try:
+            with contextlib.suppress(ValueError):
                 self._options.get(CONF_UI_DEVICES, []).remove(
                     DEF_UI_PLACEHOLDER_DEVICE_ID
                 )
-            except ValueError:
-                pass
         # endregion
 
         # region #-- remove up the old options --#
