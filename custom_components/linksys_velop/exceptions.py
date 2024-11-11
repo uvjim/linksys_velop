@@ -15,6 +15,10 @@ class GeneralException(HomeAssistantError):
     """A currently untracked exception was encountered."""
 
 
+class GeneralMeshTimeout(HomeAssistantError):
+    """Timed out waiting for response from the mesh."""
+
+
 class IntensiveTaskRunning(HomeAssistantError):
     """Intensive task running whilst checking for state."""
 
