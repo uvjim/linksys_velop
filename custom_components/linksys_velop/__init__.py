@@ -53,7 +53,12 @@ from .coordinator import (
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
-from .exceptions import DeviceTrackerMeshTimeout, GeneralException, IntensiveTaskRunning
+from .exceptions import (
+    DeviceTrackerMeshTimeout,
+    GeneralException,
+    GeneralMeshTimeout,
+    IntensiveTaskRunning,
+)
 from .helpers import (
     get_mesh_device_for_config_entry,
     remove_velop_device_from_registry,
@@ -113,7 +118,19 @@ async def async_setup_entry(
         ),
         session=async_get_clientsession(hass=hass),
     )
-    await mesh.async_initialise()
+    try:
+        await mesh.async_initialise()
+    except MeshTimeoutError as exc:
+        exc_mesh_timeout: GeneralMeshTimeout = GeneralMeshTimeout(
+            translation_domain=DOMAIN,
+            translation_key="initialise_mesh_timeout",
+            translation_placeholders={
+                "current_timeout": config_entry.options.get(
+                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                )
+            },
+        )
+        raise exc_mesh_timeout from exc
 
     # region #-- test auth --#
     valid_auth: bool = await mesh.async_test_credentials()
