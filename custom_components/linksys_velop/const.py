@@ -37,7 +37,7 @@ CONF_UI_DEVICES_TO_REMOVE: str = "ui_devices_to_remove"
 CONF_UI_DEVICES: str = "ui_devices"
 
 DEF_ALLOW_MESH_REBOOT: bool = False
-DEF_API_REQUEST_TIMEOUT: int = 10
+DEF_API_REQUEST_TIMEOUT: int = 15
 DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS: float = 40
 DEF_CONSIDER_HOME: int = 180
 DEF_EVENTS_OPTIONS: list[str] = [ev.value for ev in EventSubTypes]
