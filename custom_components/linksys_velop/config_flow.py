@@ -58,8 +58,9 @@ from .const import (
     DOMAIN,
     ST_IGD,
 )
+from .coordinator import LinksysVelopUpdateCoordinator
 from .logger import Logger
-from .types import EventSubTypes
+from .types import CoordinatorTypes, EventSubTypes
 
 # endregion
 
@@ -271,7 +272,6 @@ async def _async_get_devices(mesh: Mesh) -> dict:
     """
     ret: dict = {}
 
-    await mesh.async_initialise()
     devices: list[Device] = await mesh.async_get_devices()
     for device in devices:
         for adapter in device.network:
@@ -697,11 +697,21 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_ui_device()
 
         if self._devices is None:
-            mesh = Mesh(
-                node=self._config_entry.options[CONF_NODE],
-                password=self._config_entry.options[CONF_PASSWORD],
-                session=async_get_clientsession(hass=self.hass),
-            )
+            coord: LinksysVelopUpdateCoordinator
+            mesh: Mesh
+            if (
+                coord := self._config_entry.runtime_data.coordinators.get(
+                    CoordinatorTypes.MESH
+                )
+            ) is None:
+                mesh = Mesh(
+                    node=self._config_entry.options[CONF_NODE],
+                    password=self._config_entry.options[CONF_PASSWORD],
+                    session=async_get_clientsession(hass=self.hass),
+                )
+                await mesh.async_initialise()
+            else:
+                mesh = coord._mesh
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
@@ -845,11 +855,21 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_logging()
 
         if self._devices is None:
-            mesh = Mesh(
-                node=self._config_entry.options[CONF_NODE],
-                password=self._config_entry.options[CONF_PASSWORD],
-                session=async_get_clientsession(hass=self.hass),
-            )
+            coord: LinksysVelopUpdateCoordinator
+            mesh: Mesh
+            if (
+                coord := self._config_entry.runtime_data.coordinators.get(
+                    CoordinatorTypes.MESH
+                )
+            ) is None:
+                mesh = Mesh(
+                    node=self._config_entry.options[CONF_NODE],
+                    password=self._config_entry.options[CONF_PASSWORD],
+                    session=async_get_clientsession(hass=self.hass),
+                )
+                await mesh.async_initialise()
+            else:
+                mesh = coord._mesh
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
