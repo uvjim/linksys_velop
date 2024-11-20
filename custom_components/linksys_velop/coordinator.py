@@ -409,9 +409,11 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
         else:
-            result: dict[str, Any] = responses[0][0]
+            result: dict[str, Any]
+            result = responses[0][0] if len(responses[0]) else {}
+
+            friendly_status: str | None = responses[1] if result else None
             slug_friendly_status: str = slugify(responses[1])
-            friendly_status: str
             try:
                 friendly_status = (
                     SpeedtestStatus.FINISHED
@@ -427,13 +429,14 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 **result,
             )
 
-            if friendly_status not in (
+            if friendly_status in (
+                None,
                 SpeedtestStatus.FINISHED,
                 SpeedtestStatus.UNKNOWN,
             ):
-                self.update_interval = self.progress_update_interval
-            else:
                 self.update_interval = self.normal_update_interval
+            else:
+                self.update_interval = self.progress_update_interval
 
             return ret
 
