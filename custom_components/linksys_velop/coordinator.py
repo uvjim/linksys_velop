@@ -82,13 +82,13 @@ class ChannelScanInfo(DataCoordinatorFormattedData):
 class SpeedtestResults(DataCoordinatorFormattedData):
     """Representation of Speedtest results."""
 
-    download_bandwidth: int
-    exit_code: str
-    friendly_status: str
-    latency: float
-    result_id: int
-    timestamp: str
-    upload_bandwidth: int
+    download_bandwidth: int | None = None
+    exit_code: str | None = None
+    friendly_status: str | None = None
+    latency: float | None = None
+    result_id: int | None = None
+    timestamp: str = ""
+    upload_bandwidth: int | None = None
 
 
 class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
