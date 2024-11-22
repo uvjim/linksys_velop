@@ -1,3 +1,8 @@
+![GitHub Release](https://img.shields.io/github/v/release/uvjim/linksys_velop?display_name=release&style=for-the-badge&logoSize=auto)
+![GitHub Release](https://img.shields.io/github/v/release/uvjim/linksys_velop?include_prereleases&display_name=release&style=for-the-badge&logoSize=auto&label=pre-release)
+![GitHub Downloads (latest release)](https://img.shields.io/github/downloads/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40release)
+![GitHub Downloads (pre-release)](https://img.shields.io/github/downloads-pre/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40pre-release)
+
 
 # Linksys Velop
 
