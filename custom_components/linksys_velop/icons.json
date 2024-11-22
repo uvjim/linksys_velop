@@ -1,5 +1,13 @@
 {
     "entity": {
+        "binary_sensor": {
+            "wan_status": {
+                "state": {
+                    "off": "mdi:web-off",
+                    "on": "mdi:web"
+                }
+            }
+        },
         "button": {
             "channel_scan": {
                 "default": "mdi:wifi-sync"
