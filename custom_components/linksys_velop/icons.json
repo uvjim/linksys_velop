@@ -19,7 +19,7 @@
                 "default": "mdi:delete"
             },
             "speedtest": {
-                "default": "mdi:refresh"
+                "default": "mdi:speedometer"
             }
         },
         "sensor": {
