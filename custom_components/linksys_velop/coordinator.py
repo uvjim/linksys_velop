@@ -148,10 +148,10 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             ):
                 self._rebooting_skip_count += 1
                 return self._mesh
-            else:
-                if self._rebooting_skip_count != 0:
-                    self._rebooting_skip_count = 0
-                await self._mesh.async_gather_details()
+
+            if self._rebooting_skip_count != 0:
+                self._rebooting_skip_count = 0
+            await self._mesh.async_gather_details()
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
@@ -292,28 +292,26 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                         )
             # endregion
             # region #-- check for new nodes --#
-            if EventSubTypes.NEW_NODE_FOUND.value in configured_events:
-                if len(previous_nodes) > 0:
-                    current_nodes: list[str] = [
-                        node.unique_id for node in self._mesh.nodes
-                    ]
-                    new_nodes: set[str] = set(current_nodes).difference(
-                        set(previous_nodes)
+            if (
+                EventSubTypes.NEW_NODE_FOUND.value in configured_events
+                and len(previous_nodes) > 0
+            ):
+                current_nodes: list[str] = [node.unique_id for node in self._mesh.nodes]
+                new_nodes: set[str] = set(current_nodes).difference(set(previous_nodes))
+                if len(new_nodes) > 0:
+                    node_info: list[Node]
+                    for node in new_nodes:
+                        if node_info := [
+                            n for n in self._mesh.nodes if n.unique_id == node
+                        ]:
+                            async_dispatcher_send(
+                                self.hass,
+                                f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
+                                node_info[0],
+                            )
+                    self.hass.config_entries.async_schedule_reload(
+                        self.config_entry.entry_id
                     )
-                    if len(new_nodes) > 0:
-                        node_info: list[Node]
-                        for node in new_nodes:
-                            if node_info := [
-                                n for n in self._mesh.nodes if n.unique_id == node
-                            ]:
-                                async_dispatcher_send(
-                                    self.hass,
-                                    f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                                    node_info[0],
-                                )
-                        self.hass.config_entries.async_schedule_reload(
-                            self.config_entry.entry_id
-                        )
             # endregion
             # endregion
 
