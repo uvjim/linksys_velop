@@ -3,7 +3,6 @@
 ![GitHub Downloads (latest release)](https://img.shields.io/github/downloads/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40release)
 ![GitHub Downloads (pre-release)](https://img.shields.io/github/downloads-pre/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40pre-release)
 
-
 # Linksys Velop
 
 Home Assistant integration for the Linksys Velop Wi-Fi system.
