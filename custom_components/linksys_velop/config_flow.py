@@ -733,7 +733,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             self._options.update(user_input)
             if self.show_advanced_options:
                 return await self.async_step_advanced_options()
-            return await self.async_step_logging()
+            return await self.async_step_finalise()
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
@@ -852,7 +852,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             self._options.update(user_input)
             if self.show_advanced_options:
                 return await self.async_step_events()
-            return await self.async_step_logging()
+            return await self.async_step_finalise()
 
         if self._devices is None:
             coord: LinksysVelopUpdateCoordinator
@@ -878,5 +878,5 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 Steps.UI_DEVICE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
-            last_step=False,
+            last_step=True if not self.show_advanced_options else False,
         )
