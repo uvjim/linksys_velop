@@ -1,7 +1,7 @@
-![GitHub Release](https://img.shields.io/github/v/release/uvjim/linksys_velop?display_name=release&style=for-the-badge&logoSize=auto)
-![GitHub Release](https://img.shields.io/github/v/release/uvjim/linksys_velop?include_prereleases&display_name=release&style=for-the-badge&logoSize=auto&label=pre-release)
-![GitHub Downloads (latest release)](https://img.shields.io/github/downloads/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40release)
-![GitHub Downloads (pre-release)](https://img.shields.io/github/downloads-pre/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40pre-release)
+[![GitHub Release][badge_github_release_version]][github_release_link]
+![GitHub Downloads (latest release)][badge_github_release_downloads]
+[![GitHub Pre-release][badge_github_prerelease_version]][github_prerelease_link]
+![GitHub Downloads (pre-release)][badge_github_prerelease_downloads]
 
 # Linksys Velop
 
@@ -353,3 +353,11 @@ Example output: -
 
 * [Device](examples/device_diagnostics.json)
 * [Configuration Entry and Mesh](examples/config_entry_and_mesh_diagnostics.json)
+
+
+[badge_github_release_version]: https://img.shields.io/github/v/release/uvjim/linksys_velop?display_name=release&style=for-the-badge&logoSize=auto
+[badge_github_release_downloads]: https://img.shields.io/github/downloads/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40release
+[badge_github_prerelease_version]: https://img.shields.io/github/v/release/uvjim/linksys_velop?include_prereleases&display_name=release&style=for-the-badge&logoSize=auto&label=pre-release
+[badge_github_prerelease_downloads]: https://img.shields.io/github/downloads-pre/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40pre-release
+[github_release_link]: https://github.com/uvjim/linksys_velop/releases/latest
+[github_prerelease_link]: https://github.com/uvjim/linksys_velop/releases
