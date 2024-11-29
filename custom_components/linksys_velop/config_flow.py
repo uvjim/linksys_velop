@@ -47,6 +47,7 @@ from .const import (
     CONF_UI_DEVICES,
     CONF_UI_DEVICES_TO_REMOVE,
     DEF_ALLOW_MESH_REBOOT,
+    DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_EVENTS_OPTIONS,
@@ -430,7 +431,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             details: dict = {
                 "node": self._options.get(CONF_NODE),
                 "password": self._options.get(CONF_PASSWORD),
-                "request_timeout": DEF_API_REQUEST_TIMEOUT,
+                "request_timeout": DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT,
             }
             self.task_login = self.hass.async_create_task(
                 self._async_task_login(details)
