@@ -321,6 +321,9 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         elif isinstance(exc, MeshTimeoutError):
             _LOGGER.debug(self._log_formatter.format("timeout"))
             self._errors["base"] = "node_timeout"
+        else:
+            _LOGGER.debug(self._log_formatter.format(f"{type(exc)} - {exc}"))
+            self._errors["base"] = "general"
 
     async def _async_task_gather_details(self) -> None:
         """Gather the details about the Mesh."""
@@ -328,6 +331,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             await self._mesh.async_initialise()
         except MeshException as exc:
+            self._set_error(exc)
+        except Exception as exc:
             self._set_error(exc)
         else:
             _LOGGER.debug(self._log_formatter.format("no exceptions"))
@@ -349,6 +354,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug(self._log_formatter.format("credentials are valid"))
                 self._mesh = _mesh
         except MeshException as exc:
+            self._set_error(exc)
+        except Exception as exc:
             self._set_error(exc)
         else:
             _LOGGER.debug(self._log_formatter.format("no exceptions"))
