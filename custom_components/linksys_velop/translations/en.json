@@ -10,9 +10,10 @@
         },
         "error": {
             "connection_error": "Connection error.",
+            "general": "An error occurred.",
             "invalid_input": "Invalid action in request.",
-            "login_error": "Unable to login.  Please check the username and password.",
-            "login_bad_response": "Bad response on login.  Check that the primary node is correct.",
+            "login_error": "Unable to login. Please check the username and password.",
+            "login_bad_response": "Bad response on login. Check that the primary node is correct.",
             "node_not_primary": "The primary node in the Velop mesh should be specified.",
             "node_timeout": "Timeout whilst contacting the node."
         },
