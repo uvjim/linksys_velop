@@ -3,9 +3,9 @@
 # region #-- imports --#
 import logging
 
-from homeassistant.config_entries import device_registry as dr
-from homeassistant.config_entries import entity_registry as er
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 
