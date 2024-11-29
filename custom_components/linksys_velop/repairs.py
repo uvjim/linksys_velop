@@ -7,9 +7,9 @@ import logging
 import voluptuous as vol
 from homeassistant import data_entry_flow
 from homeassistant.components.repairs import RepairsFlow
-from homeassistant.config_entries import device_registry as dr
-from homeassistant.config_entries import entity_registry as er
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_UI_DEVICES,
