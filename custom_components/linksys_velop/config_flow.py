@@ -6,15 +6,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from collections.abc import Mapping
 from enum import StrEnum, auto
 from typing import Any
 
-from homeassistant.components.diagnostics import async_redact_data
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
+from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.components.ssdp import SsdpServiceInfo
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
@@ -98,6 +99,13 @@ def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry 
         return matching_entry[0]
 
     return None
+
+
+def _redact_for_display(data: Mapping) -> dict:
+    """Redact information for display purposes."""
+
+    to_redact: set[str] = {'password'}
+    return async_redact_data(data, to_redact)
 
 
 async def _async_build_schema_with_user_input(
@@ -343,8 +351,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_task_login(self, details) -> None:
         """Test the credentials for the Mesh."""
-        display_details: dict[str, Any] = async_redact_data(details, ["password"])
-        _LOGGER.debug(self._log_formatter.format("entered, details: %s"), display_details)
+        _LOGGER.debug(self._log_formatter.format("entered, details: %s"), _redact_for_display(details))
 
         _mesh = Mesh(**details, session=async_get_clientsession(hass=self.hass))
         try:
@@ -427,8 +434,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_login(self, user_input=None) -> data_entry_flow.FlowResult:
         """Initiate the credential test."""
-        display_details: dict[str, Any] = async_redact_data(user_input, ["password"])
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), display_details)
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), _redact_for_display(user_input))
 
         if self.task_login is None:
             _LOGGER.debug(self._log_formatter.format("creating credential test task"))
@@ -647,8 +653,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> data_entry_flow.FlowResult:
         """Handle a flow initiated by the user."""
-        display_details: dict[str, Any] = async_redact_data(user_input, ["password"])
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), display_details)
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), _redact_for_display(user_input))
 
         if user_input is not None:
             self.task_login = None
