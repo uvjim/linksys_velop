@@ -118,8 +118,19 @@ async def async_setup_entry(
         ),
         session=async_get_clientsession(hass=hass),
     )
+
+    # region #-- test auth --#
+    valid_auth: bool = await mesh.async_test_credentials()
+    if not valid_auth:
+        raise ConfigEntryAuthFailed(
+            translation_domain=DOMAIN,
+            translation_key="failed_login",
+        )
+    # endregion
+
     try:
         await mesh.async_initialise()
+        config_entry.runtime_data.mesh = mesh
     except MeshTimeoutError as exc:
         exc_mesh_timeout: GeneralMeshTimeout = GeneralMeshTimeout(
             translation_domain=DOMAIN,
@@ -132,17 +143,7 @@ async def async_setup_entry(
         )
         raise exc_mesh_timeout from exc
 
-    # region #-- test auth --#
-    valid_auth: bool = await mesh.async_test_credentials()
-    if not valid_auth:
-        raise ConfigEntryAuthFailed(
-            translation_domain=DOMAIN,
-            translation_key="failed_login",
-        )
-    # endregion
-
     # region #-- setup the coordinators --#
-    await mesh.async_initialise()
     coordinator_name_suffix: str = ""
     if getattr(log_formatter, "_unique_id"):
         coordinator_name_suffix += f" ({getattr(log_formatter, '_unique_id')})"
@@ -153,8 +154,8 @@ async def async_setup_entry(
         LinksysVelopUpdateCoordinator(
             hass,
             _LOGGER,
-            mesh,
             coordinator_name,
+            config_entry=config_entry,
             update_interval_secs=config_entry.options.get(
                 CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
             ),
@@ -172,8 +173,8 @@ async def async_setup_entry(
             LinksysVelopUpdateCoordinatorSpeedtest(
                 hass,
                 _LOGGER,
-                mesh,
                 coordinator_name,
+                config_entry=config_entry,
                 update_interval_secs=config_entry.options.get(
                     CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
                 ),
@@ -191,8 +192,8 @@ async def async_setup_entry(
             LinksysVelopUpdateCoordinatorChannelScan(
                 hass,
                 _LOGGER,
-                mesh,
                 coordinator_name,
+                config_entry=config_entry,
                 update_interval_secs=config_entry.options.get(
                     CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
                 ),
