@@ -11,9 +11,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 from pyvelop.mesh import Mesh, Node
 
-from .coordinator import LinksysVelopUpdateCoordinator
 from .helpers import get_mesh_device_for_config_entry
-from .types import CoordinatorTypes, LinksysVelopConfigEntry
+from .types import LinksysVelopConfigEntry
 
 # endregion
 
@@ -32,10 +31,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> dict[str, Any]:
     """Diagnostics for the config entry."""
-    coordinator: LinksysVelopUpdateCoordinator = (
-        config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)
-    )
-    mesh: Mesh = coordinator.data
+    mesh: Mesh = config_entry.runtime_data.mesh
     mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
 
     # region #-- unwanted attributes --#
@@ -95,10 +91,7 @@ async def async_get_device_diagnostics(
     if get_mesh_device_for_config_entry(hass, config_entry) == device:
         return await async_get_config_entry_diagnostics(hass, config_entry)
 
-    coordinator: LinksysVelopUpdateCoordinator = (
-        config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)
-    )
-    mesh: Mesh = coordinator.data
+    mesh: Mesh = config_entry.runtime_data.mesh
 
     ret: dict[str, Any] = {
         "device_entry": {
