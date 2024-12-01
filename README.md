@@ -97,7 +97,7 @@ then the entities detailing storage partitions etc. will not be available.
 |---|---|:---:|---|
 | Device | Delete | ✔️ | |
 | Mesh | Check for Updates | ✔️ | |
-| Mesh | Reboot the Whole Mesh | ✔️ | See [Configurable Options -> Advanced Options](#advanced-options) |
+| Mesh | Reboot the Whole Mesh | ✖️ | See [Configurable Options -> Advanced Options](#advanced-options) |
 | Mesh | Start Channel Scan | ✖️ | Adjusts the interval for channel scanning data collection to 40s |
 | Mesh | Start Speedtest | ✖️ | Adjusts the interval for speedtest data collection to 1s |
 | Node | Reboot | ✔️ | |
