@@ -163,6 +163,7 @@ async def async_setup_entry(
                     ButtonDetails(
                         coordinator_type=CoordinatorTypes.CHANNEL_SCAN,
                         description=ButtonEntityDescription(
+                            entity_registry_enabled_default=False,
                             key="",
                             name="Start Channel Scan",
                             translation_key="channel_scan",
