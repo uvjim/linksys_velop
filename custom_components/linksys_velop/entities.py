@@ -245,9 +245,7 @@ class LinksysVelopEntity(CoordinatorEntity):
     def _set_ui_placeholder_device_id(self, device_name: str | None) -> None:
 
         if device_name is not None:
-            _mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
-                CoordinatorTypes.MESH
-            ).data
+            _mesh: Mesh = self._config_entry.runtime_data.mesh
             match_on: str = (
                 device_name
                 if not device_name.startswith(f"{DEF_EMPTY_NAME} (")

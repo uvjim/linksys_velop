@@ -57,7 +57,7 @@ async def _async_set_device_internet_access_state_off(
     config_entry: LinksysVelopConfigEntry, device_details: Device
 ) -> None:
     """Turn off Internet access for the given device."""
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)._mesh
+    mesh: Mesh = config_entry.runtime_data.mesh
     off_rules: dict[str, str] = {
         k: v[0]
         for k, v in ParentalControl.binary_to_human_readable(
@@ -74,7 +74,7 @@ async def _async_set_device_internet_access_state_on(
     config_entry: LinksysVelopConfigEntry, device_details: Device
 ) -> None:
     """Turn on Internet access for the given device."""
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)._mesh
+    mesh: Mesh = config_entry.runtime_data.mesh
     await mesh.async_set_parental_control_rules(device_details.unique_id, {})
 
 

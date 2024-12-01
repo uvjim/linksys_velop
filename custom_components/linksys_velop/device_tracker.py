@@ -23,7 +23,7 @@ from pyvelop.mesh import Mesh
 from .const import CONF_DEVICE_TRACKERS, DEF_CONSIDER_HOME, SIGNAL_DEVICE_TRACKER_UPDATE
 from .helpers import get_mesh_device_for_config_entry
 from .logger import Logger
-from .types import CoordinatorTypes, LinksysVelopConfigEntry
+from .types import LinksysVelopConfigEntry
 
 # endregion
 
@@ -41,7 +41,7 @@ async def async_setup_entry(
     device: list[Device]
     device_trackers: list[LinksysVelopMeshDeviceTracker] = []
     connections: set[tuple[str, str]] = set()
-    mesh: Mesh = config_entry.runtime_data.coordinators[CoordinatorTypes.MESH]._mesh
+    mesh: Mesh = config_entry.runtime_data.mesh
     for tracked_device in config_entry.options.get(CONF_DEVICE_TRACKERS, []):
         if device := [d for d in mesh.devices if d.unique_id == tracked_device]:
             device_trackers.append(
@@ -88,7 +88,6 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._is_connected: bool = device.status
         self._log_formatter: Logger = Logger(self._config_entry.unique_id)
         self._mac_address: str = self._get_mac_address(device)
-        self._mesh: Mesh = mesh
 
     def _get_ip_address(self, device: Device) -> str:
         """Retrieve the IP address from the device object."""
