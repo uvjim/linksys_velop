@@ -43,13 +43,15 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class ButtonDetails(EntityDetails):
+    """Representation of the button."""
+
     description: ButtonEntityDescription
     press_func: Callable | str = field(kw_only=True)
     refresh_after: bool = field(default=True)
 
 
 async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> None:
-    """"""
+    """Restart the primary node."""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     primary_node: Node | list[Node] = [
@@ -69,7 +71,7 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
 
 
 async def _async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> None:
-    """"""
+    """Start the channel scan."""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     config_entry.runtime_data.intensive_running_tasks.append(IntensiveTask.CHANNEL_SCAN)
@@ -77,14 +79,14 @@ async def _async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> No
 
 
 async def _async_start_check_for_updates(config_entry: LinksysVelopConfigEntry) -> None:
-    """"""
+    """Start checking for updates."""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     await mesh.async_check_for_updates()
 
 
 async def _async_start_speedtest(config_entry: LinksysVelopConfigEntry) -> None:
-    """"""
+    """Start a Speedtest."""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     await mesh.async_start_speedtest()
@@ -254,14 +256,14 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
         entity_details: ButtonDetails,
         entity_domain: str,
     ) -> None:
-        """"""
+        """Initialise."""
 
         super().__init__(context, config_entry, entity_details, entity_domain)
         self._press_func: Callable = entity_details.press_func
         self._refresh_after: bool = entity_details.refresh_after
 
     async def _async_delete_device(self) -> None:
-        """"""
+        """Delete the device."""
 
         if self._context_data is not None:
             mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
@@ -271,7 +273,7 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
             async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
 
     async def _async_restart_node(self) -> None:
-        """"""
+        """Restart the node."""
 
         if self._context_data is not None:
             mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
@@ -280,7 +282,7 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
             await mesh.async_reboot_node(self._context_data.name)
 
     async def async_press(self) -> None:
-        """"""
+        """Carry out the button press action."""
 
         if isinstance(self._press_func, Callable):
             await self._press_func(self._config_entry)

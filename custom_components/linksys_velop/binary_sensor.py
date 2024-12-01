@@ -30,6 +30,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class BinarySensorDetails(EntityDetails):
+    """Representation of the binary sensor."""
+
     description: BinarySensorEntityDescription
 
 
@@ -467,7 +469,7 @@ class LinksysVelopBinarySensor(LinksysVelopEntity, BinarySensorEntity):
 
     @callback
     def _update_attr_value(self) -> None:
-        """"""
+        """Set the value attribute."""
 
         if self._context_data is None:
             self._attr_is_on = None
