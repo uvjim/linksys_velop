@@ -202,7 +202,8 @@
                 "name": "Backhaul Speed"
             },
             "blocked_sites": {
-                "name": "Blocked Sites"
+                "name": "Blocked Sites",
+                "unit_of_measurement": "sites"
             },
             "connected_devices": {
                 "name": "Connected Devices",
