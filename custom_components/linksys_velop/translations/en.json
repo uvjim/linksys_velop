@@ -204,7 +204,8 @@
                 "name": "Blocked Sites"
             },
             "connected_devices": {
-                "name": "Connected Devices"
+                "name": "Connected Devices",
+                "unit_of_measurement": "devices"
             },
             "description": {
                 "name": "Description"
@@ -225,7 +226,8 @@
                 }
             },
             "guest_devices": {
-                "name": "Guest Devices"
+                "name": "Guest Devices",
+                "unit_of_measurement": "devices"
             },
             "id": {
                 "name": "ID"
@@ -262,10 +264,12 @@
                 }
             },
             "offline_devices": {
-                "name": "Offline Devices"
+                "name": "Offline Devices",
+                "unit_of_measurement": "devices"
             },
             "online_devices": {
-                "name": "Online Devices"
+                "name": "Online Devices",
+                "unit_of_measurement": "devices"
             },
             "operating_system": {
                 "name": "Operating System"
