@@ -212,7 +212,8 @@
                 "name": "Description"
             },
             "dhcp_reservations": {
-                "name": "DHCP Reservations"
+                "name": "DHCP Reservations",
+                "unit_of_measurement": "reservations"
             },
             "download_bandwidth": {
                 "name": "Speedtest Download Bandwidth"
