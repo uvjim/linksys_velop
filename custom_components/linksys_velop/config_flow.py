@@ -61,9 +61,8 @@ from .const import (
     DOMAIN,
     ST_IGD,
 )
-from .coordinator import LinksysVelopUpdateCoordinator
 from .logger import Logger
-from .types import CoordinatorTypes, EventSubTypes
+from .types import EventSubTypes
 
 # endregion
 
@@ -104,7 +103,7 @@ def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry 
 def _redact_for_display(data: Mapping) -> dict:
     """Redact information for display purposes."""
 
-    to_redact: set[str] = {'password'}
+    to_redact: set[str] = {"password"}
     return async_redact_data(data, to_redact)
 
 
@@ -351,7 +350,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_task_login(self, details) -> None:
         """Test the credentials for the Mesh."""
-        _LOGGER.debug(self._log_formatter.format("entered, details: %s"), _redact_for_display(details))
+        _LOGGER.debug(
+            self._log_formatter.format("entered, details: %s"),
+            _redact_for_display(details),
+        )
 
         _mesh = Mesh(**details, session=async_get_clientsession(hass=self.hass))
         try:
@@ -434,7 +436,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_login(self, user_input=None) -> data_entry_flow.FlowResult:
         """Initiate the credential test."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), _redact_for_display(user_input))
+        _LOGGER.debug(
+            self._log_formatter.format("entered, user_input: %s"),
+            _redact_for_display(user_input),
+        )
 
         if self.task_login is None:
             _LOGGER.debug(self._log_formatter.format("creating credential test task"))
@@ -653,7 +658,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> data_entry_flow.FlowResult:
         """Handle a flow initiated by the user."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), _redact_for_display(user_input))
+        _LOGGER.debug(
+            self._log_formatter.format("entered, user_input: %s"),
+            _redact_for_display(user_input),
+        )
 
         if user_input is not None:
             self.task_login = None
@@ -715,21 +723,15 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_ui_device()
 
         if self._devices is None:
-            coord: LinksysVelopUpdateCoordinator
             mesh: Mesh
-            if (
-                coord := self._config_entry.runtime_data.coordinators.get(
-                    CoordinatorTypes.MESH
-                )
-            ) is None:
+            if (mesh := self._config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
-                    node=self._config_entry.options[CONF_NODE],
-                    password=self._config_entry.options[CONF_PASSWORD],
+                    node=self._options[CONF_NODE],
+                    password=self._options[CONF_PASSWORD],
+                    request_timeout=self._options[CONF_API_REQUEST_TIMEOUT],
                     session=async_get_clientsession(hass=self.hass),
                 )
                 await mesh.async_initialise()
-            else:
-                mesh = coord._mesh
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
@@ -871,21 +873,15 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_events()
 
         if self._devices is None:
-            coord: LinksysVelopUpdateCoordinator
             mesh: Mesh
-            if (
-                coord := self._config_entry.runtime_data.coordinators.get(
-                    CoordinatorTypes.MESH
-                )
-            ) is None:
+            if (mesh := self._config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
-                    node=self._config_entry.options[CONF_NODE],
-                    password=self._config_entry.options[CONF_PASSWORD],
+                    node=self._options[CONF_NODE],
+                    password=self._options[CONF_PASSWORD],
+                    request_timeout=self._options[CONF_API_REQUEST_TIMEOUT],
                     session=async_get_clientsession(hass=self.hass),
                 )
                 await mesh.async_initialise()
-            else:
-                mesh = coord._mesh
             self._devices = await _async_get_devices(mesh=mesh)
 
         return self.async_show_form(
