@@ -61,6 +61,7 @@ from .const import (
     DOMAIN,
     ST_IGD,
 )
+from .helpers import async_get_integration_version
 from .logger import Logger
 from .types import EventSubTypes
 
@@ -658,6 +659,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> data_entry_flow.FlowResult:
         """Handle a flow initiated by the user."""
+        _LOGGER.debug(
+            self._log_formatter.format("Using integration version: %s"),
+            await async_get_integration_version(self.hass),
+        )
         _LOGGER.debug(
             self._log_formatter.format("entered, user_input: %s"),
             _redact_for_display(user_input),

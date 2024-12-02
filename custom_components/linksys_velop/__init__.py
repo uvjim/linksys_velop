@@ -60,6 +60,7 @@ from .exceptions import (
     IntensiveTaskRunning,
 )
 from .helpers import (
+    async_get_integration_version,
     get_mesh_device_for_config_entry,
     remove_velop_device_from_registry,
     remove_velop_entity_from_registry,
@@ -104,6 +105,10 @@ async def async_setup_entry(
 
     log_formatter = Logger(unique_id=config_entry.unique_id)
     _LOGGER.debug(log_formatter.format("entered"))
+    _LOGGER.debug(
+        log_formatter.format("Using integration version: %s"),
+        await async_get_integration_version(hass),
+    )
 
     # region #-- initialise runtime data --#
     config_entry.runtime_data = LinksysVelopData()
