@@ -172,7 +172,8 @@
         },
         "sensor": {
             "available_storage": {
-                "name": "Available Storage"
+                "name": "Available Storage",
+                "unit_of_measurement": "partitions"
             },
             "backhaul_connection_type": {
                 "name": "Backhaul Type",
