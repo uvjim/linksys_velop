@@ -3,11 +3,13 @@
 # region #-- imports --#
 import logging
 
+from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
+from homeassistant.loader import Integration, async_get_integration
 
 from .const import DOMAIN
 from .types import LinksysVelopConfigEntry
@@ -54,3 +56,10 @@ def remove_velop_entity_from_registry(
     found_entity: list[RegistryEntry]
     if found_entity := [e for e in config_entities if e.unique_id == unique_id]:
         entity_registry.async_remove(found_entity[0].entity_id)
+
+
+async def async_get_integration_version(hass: HomeAssistant) -> AwesomeVersion:
+    """Retrieve the version number for the integration."""
+
+    ret: Integration = await async_get_integration(hass, DOMAIN)
+    return ret.version
