@@ -9,7 +9,11 @@ from datetime import datetime, timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ConfigEntryNotReady,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
@@ -56,7 +60,6 @@ from .coordinator import (
 from .exceptions import (
     DeviceTrackerMeshTimeout,
     GeneralException,
-    GeneralMeshTimeout,
     IntensiveTaskRunning,
 )
 from .helpers import (
@@ -133,28 +136,47 @@ async def async_setup_entry(
     )
 
     # region #-- test auth --#
-    valid_auth: bool = await mesh.async_test_credentials()
-    if not valid_auth:
-        raise ConfigEntryAuthFailed(
+    try:
+        valid_auth: bool = await mesh.async_test_credentials()
+        if not valid_auth:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="failed_login",
+            )
+    except MeshTimeoutError as exc:
+        raise ConfigEntryNotReady(
             translation_domain=DOMAIN,
-            translation_key="failed_login",
-        )
+            translation_key="init_mesh_timeout",
+            translation_placeholders={
+                "current_timeout": config_entry.options.get(
+                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                )
+            },
+        ) from exc
+    except MeshConnectionError as exc:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="init_connection_error",
+            translation_placeholders={
+                "exc_msg": str(exc),
+                "primary_ip": config_entry.options[CONF_NODE],
+            },
+        ) from exc
     # endregion
 
     try:
         await mesh.async_initialise()
         config_entry.runtime_data.mesh = mesh
     except MeshTimeoutError as exc:
-        exc_mesh_timeout: GeneralMeshTimeout = GeneralMeshTimeout(
+        raise ConfigEntryNotReady(
             translation_domain=DOMAIN,
-            translation_key="initialise_mesh_timeout",
+            translation_key="init_mesh_timeout",
             translation_placeholders={
                 "current_timeout": config_entry.options.get(
                     CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
                 )
             },
-        )
-        raise exc_mesh_timeout from exc
+        ) from exc
 
     # region #-- setup the coordinators --#
     coordinator_name_suffix: str = ""

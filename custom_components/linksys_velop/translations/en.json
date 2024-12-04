@@ -340,8 +340,11 @@
         }
     },
     "exceptions": {
-        "initialise_mesh_timeout": {
-            "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the timeout and reloading the integration."
+        "init_connection_error": {
+            "message": "Unable to reach the primary node on {primary_ip}, msg: {exc_msg}."
+        },
+        "init_mesh_timeout": {
+            "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the API timeout in the configuration."
         },
         "coordinator_mesh_timeout": {
             "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
