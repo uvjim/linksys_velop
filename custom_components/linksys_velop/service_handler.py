@@ -18,8 +18,12 @@ from pyvelop.mesh import Mesh
 from pyvelop.node import Node, NodeType
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
-from .logger import Logger
-from .types import CoordinatorTypes, EventSubTypes, LinksysVelopConfigEntry
+from .types import (
+    CoordinatorTypes,
+    EventSubTypes,
+    LinksysVelopConfigEntry,
+    LinksysVelopLogFormatter,
+)
 
 # endregion
 
@@ -115,8 +119,8 @@ class LinksysVelopServiceHandler:
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialise."""
         self._hass: HomeAssistant = hass
-        self._log_formatter: Logger = Logger()
         self._mesh: Mesh | None = None
+        self._log_formatter: LinksysVelopLogFormatter = None
 
     def _get_config_entry_from_mesh_id(
         self, mesh_id: str
@@ -132,7 +136,7 @@ class LinksysVelopServiceHandler:
                     config_entry_id
                 )
                 if config_entry.domain == DOMAIN:
-                    self._log_formatter = Logger(unique_id=config_entry.unique_id)
+                    self._log_formatter = config_entry.runtime_data.log_formatter
                     break
 
         return config_entry
@@ -160,7 +164,7 @@ class LinksysVelopServiceHandler:
         :param call: the service call that should be made
         :return: None
         """
-        _LOGGER.debug(self._log_formatter.format("entered, call: %s"), call)
+        _LOGGER.debug(self._log_formatter("entered, call: %s"), call)
 
         args = call.data.copy()
         if (
@@ -169,7 +173,7 @@ class LinksysVelopServiceHandler:
             self._mesh = config_entry.runtime_data.coordinators.get(
                 CoordinatorTypes.MESH
             )._mesh
-            _LOGGER.debug(self._log_formatter.format("Using %s"), self._mesh)
+            _LOGGER.debug(self._log_formatter("Using %s"), self._mesh)
             method = getattr(self, call.service, None)
             if method:
                 try:
@@ -186,16 +190,14 @@ class LinksysVelopServiceHandler:
                         ) from exc
                 except Exception as err:
                     _LOGGER.warning(
-                        self._log_formatter.format("%s", include_caller=False), err
+                        self._log_formatter("%s", include_caller=False), err
                     )
         else:
             _LOGGER.warning(
-                self._log_formatter.format(
-                    "Unknown Mesh specified", include_caller=False
-                )
+                self._log_formatter("Unknown Mesh specified", include_caller=False)
             )
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))
 
     def register_services(self) -> None:
         """Register the services."""
@@ -216,7 +218,7 @@ class LinksysVelopServiceHandler:
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Remove a device from the device list on the mesh."""
-        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
         try:
             _ = uuid.UUID(kwargs.get("device"))
@@ -224,13 +226,13 @@ class LinksysVelopServiceHandler:
         except ValueError:
             await self._mesh.async_delete_device_by_name(device=kwargs.get("device"))
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))
 
     async def device_internet_access(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Change state of Internet access for a device."""
-        _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
+        _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
 
         try:
             _ = uuid.UUID(kwargs.get("device"))
@@ -264,13 +266,13 @@ class LinksysVelopServiceHandler:
             rules=rules_to_apply,
         )
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))
 
     async def device_internet_rules(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Set Parental Control rules for the device."""
-        _LOGGER.debug(self._log_formatter.format("entered, %s"), kwargs)
+        _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
 
         device: list[Device] | None = None
         try:
@@ -298,14 +300,14 @@ class LinksysVelopServiceHandler:
             return ret
 
         rules_to_apply: dict[str, str] = _process_times()
-        _LOGGER.debug(self._log_formatter.format("rules_to_apply: %s"), rules_to_apply)
+        _LOGGER.debug(self._log_formatter("rules_to_apply: %s"), rules_to_apply)
 
         await self._mesh.async_set_parental_control_rules(
             device_id=device[0].unique_id,
             rules=rules_to_apply,
         )
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))
 
     async def reboot_node(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
@@ -317,7 +319,7 @@ class LinksysVelopServiceHandler:
 
         :return:None
         """
-        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
         node: Node = [
             n for n in self._mesh.nodes if n.name == kwargs.get("node_name", "")
@@ -327,7 +329,7 @@ class LinksysVelopServiceHandler:
 
         if node[0].type == NodeType.SECONDARY:
             _LOGGER.warning(
-                self._log_formatter.format(
+                self._log_formatter(
                     "The service %s.%s has been deprecated. %s",
                     include_caller=False,
                 ),
@@ -353,13 +355,13 @@ class LinksysVelopServiceHandler:
                 )
         # endregion
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))
 
     async def rename_device(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Rename a device on the Mesh."""
-        _LOGGER.debug(self._log_formatter.format("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
         try:
             _ = uuid.UUID(kwargs.get("device"))
@@ -377,11 +379,11 @@ class LinksysVelopServiceHandler:
         # only make the request to rename if they are different
         if device[0].name != kwargs.get("new_name"):
             _LOGGER.debug(
-                self._log_formatter.format("renaming device: %s"),
+                self._log_formatter("renaming device: %s"),
                 device[0].unique_id,
             )
             await self._mesh.async_rename_device(
                 device_id=device[0].unique_id, name=kwargs.get("new_name")
             )
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug(self._log_formatter("exited"))

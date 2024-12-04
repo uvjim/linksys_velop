@@ -42,7 +42,6 @@ from .const import (
     IntensiveTask,
 )
 from .exceptions import CoordinatorMeshTimeout, GeneralException
-from .logger import Logger
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -112,7 +111,6 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval_secs),
         )
 
-        self.log_formatter = Logger(self.config_entry.unique_id)
         self._mesh: Mesh = self.config_entry.runtime_data.mesh
         self._rebooting_skip_count: int = 0
         self._max_rebooting_skip_count: int = math.ceil(
