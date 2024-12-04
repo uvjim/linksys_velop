@@ -22,8 +22,7 @@ from pyvelop.mesh import Mesh
 
 from .const import CONF_DEVICE_TRACKERS, DEF_CONSIDER_HOME, SIGNAL_DEVICE_TRACKER_UPDATE
 from .helpers import get_mesh_device_for_config_entry
-from .logger import Logger
-from .types import LinksysVelopConfigEntry
+from .types import LinksysVelopConfigEntry, LinksysVelopLogFormatter
 
 # endregion
 
@@ -86,7 +85,9 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._consider_home_cancel: CALLBACK_TYPE | None = None
         self._ip_address: str = self._get_ip_address(device)
         self._is_connected: bool = device.status
-        self._log_formatter: Logger = Logger(self._config_entry.unique_id)
+        self._log_formatter: LinksysVelopLogFormatter = (
+            self._config_entry.runtime_data.log_formatter
+        )
         self._mac_address: str = self._get_mac_address(device)
 
     def _get_ip_address(self, device: Device) -> str:
@@ -104,7 +105,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     async def _async_mark_offline(self, _: dt_util.dt.datetime) -> None:
         """Mark the device tracker as offline."""
         _LOGGER.debug(
-            self._log_formatter.format("%s is now being marked offline"),
+            self._log_formatter("%s is now being marked offline"),
             self.name,
         )
         self._is_connected = False
@@ -117,7 +118,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._mac_address = self._get_mac_address(device)
         if device.status != self.is_connected:
             if device.status:
-                _LOGGER.debug(self._log_formatter.format("%s: back online"), self.name)
+                _LOGGER.debug(self._log_formatter("%s: back online"), self.name)
                 self._is_connected = True
                 self.async_schedule_update_ha_state()
             else:
@@ -129,7 +130,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                         )
                     )
                     _LOGGER.debug(
-                        self._log_formatter.format(
+                        self._log_formatter(
                             "%s: setting consider home listener for %s"
                         ),
                         self.name,
@@ -143,13 +144,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         else:
             if self._consider_home_cancel is not None:
                 _LOGGER.debug(
-                    self._log_formatter.format(
-                        "%s: back online in consider_home period"
-                    ),
+                    self._log_formatter("%s: back online in consider_home period"),
                     self.name,
                 )
                 _LOGGER.debug(
-                    self._log_formatter.format("%s: cancelling consider home"),
+                    self._log_formatter("%s: cancelling consider home"),
                     self.name,
                 )
                 self._consider_home_cancel()

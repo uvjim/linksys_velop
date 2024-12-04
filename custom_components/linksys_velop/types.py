@@ -3,13 +3,17 @@
 # region #-- imports --#
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 
 # endregion
+
+
+type LinksysVelopLogFormatter = Callable[[str, bool, bool], str] | None
+type LinksysVelopConfigEntry = ConfigEntry[LinksysVelopData]
 
 
 class CoordinatorTypes(StrEnum):
@@ -37,9 +41,7 @@ class LinksysVelopData:
         default_factory=dict
     )
     intensive_running_tasks: list[str] = field(default_factory=list)
+    log_formatter: LinksysVelopLogFormatter = None
     mesh: Mesh | None = None
     mesh_is_rebooting: bool = False
     service_handler: Any = None
-
-
-type LinksysVelopConfigEntry = ConfigEntry[LinksysVelopData]

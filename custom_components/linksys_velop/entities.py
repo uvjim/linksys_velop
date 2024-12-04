@@ -28,7 +28,6 @@ from .const import (
     PYVELOP_VERSION,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
-from .logger import Logger
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -181,8 +180,6 @@ class LinksysVelopEntity(CoordinatorEntity):
         self._ui_placeholder_device_id: str | None = None
         self._set_context_data()
         self._update_values()
-
-        self._log_formatter: Callable = Logger(unique_id=self.unique_id).format
 
         if self._entity_details.entity_type in (
             EntityType.DEVICE,
