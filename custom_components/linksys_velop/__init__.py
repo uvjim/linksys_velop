@@ -148,9 +148,7 @@ async def async_setup_entry(
             translation_domain=DOMAIN,
             translation_key="init_mesh_timeout",
             translation_placeholders={
-                "current_timeout": config_entry.options.get(
-                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                )
+                "current_timeout": mesh.timeout,
             },
         ) from exc
     except MeshConnectionError as exc:
@@ -159,7 +157,7 @@ async def async_setup_entry(
             translation_key="init_connection_error",
             translation_placeholders={
                 "exc_msg": str(exc),
-                "primary_ip": config_entry.options[CONF_NODE],
+                "primary_ip": mesh.connected_node,
             },
         ) from exc
     # endregion
