@@ -8,9 +8,8 @@ delete_device:
       description: The Mesh that the action should be executed on
       required: true
       selector:
-        device:
+        config_entry:
           integration: linksys_velop
-          manufacturer: uvjim
     device:
       name: Device
       description: The name or identifier of the device to rename
@@ -25,9 +24,8 @@ device_internet_access:
       description: The Mesh that the action should be executed on
       required: true
       selector:
-        device:
+        config_entry:
           integration: linksys_velop
-          manufacturer: uvjim
     device:
       name: Device
       description: The name or identifier of the device to pause/resume
@@ -48,9 +46,8 @@ device_internet_rules:
       description: The Mesh that the action should be executed on
       required: true
       selector:
-        device:
+        config_entry:
           integration: linksys_velop
-          manufacturer: uvjim
     device:
       name: Device
       description: The name or identifier of the device to apply the schedule to
@@ -478,9 +475,8 @@ reboot_node:
       description: The Mesh that the action should be executed on
       required: true
       selector:
-        device:
+        config_entry:
           integration: linksys_velop
-          manufacturer: uvjim
     node_name:
       name: "Name"
       description: The name of the node to reboot
@@ -503,9 +499,8 @@ rename_device:
       description: The Mesh that the action should be executed on
       required: true
       selector:
-        device:
+        config_entry:
           integration: linksys_velop
-          manufacturer: uvjim
     device:
       name: Device
       description: The name or identifier of the device to rename
