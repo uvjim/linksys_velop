@@ -213,7 +213,7 @@ so paramters are described in the Home Assistant Services page.
 * Set Device Parental Controls - set the times a device is blocked from using
   the Internet.
 
-All services require that you select the Mesh device that the request should be
+All services require that you select the Mesh instance that the request should be
 directed to. Other requirements by the services should be self-explanatory.
 
 > __&ast;__ these are considered long-running tasks. When the binary sensors
