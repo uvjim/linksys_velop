@@ -18,13 +18,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
-from pyvelop.device import Device
-from pyvelop.exceptions import (
-    MeshConnectionError,
-    MeshTimeoutError,
-)
+from pyvelop.exceptions import MeshConnectionError, MeshTimeoutError
 from pyvelop.mesh import Mesh
-from pyvelop.node import Node
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -123,7 +119,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         current_devices: list[str] = []
         previous_devices: list[str] = []
         previous_nodes: list[str] = []
-        previous_nodes_details: list[Node] = []
+        previous_nodes_details: list[NodeEntity] = []
 
         configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
@@ -230,7 +226,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
         removed_nodes: set[str] = set(previous_nodes).difference(set(current_nodes))
         device_registry: DeviceRegistry = dr.async_get(self.hass)
         for node in removed_nodes:
-            node_info: list[Node] = [
+            node_info: list[NodeEntity] = [
                 n for n in previous_nodes_details if n.unique_id == node
             ]
             if len(node_info) == 0:
@@ -267,7 +263,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             new_devices: set[str] = set(current_devices).difference(
                 set(previous_devices)
             )
-            device_info: list[Device] | Device
+            device_info: list[DeviceEntity] | DeviceEntity
             for device in new_devices:
                 if (
                     device_info := [
@@ -289,7 +285,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
             current_nodes: list[str] = [node.unique_id for node in self._mesh.nodes]
             new_nodes: set[str] = set(current_nodes).difference(set(previous_nodes))
             if len(new_nodes) > 0:
-                node_info: list[Node]
+                node_info: list[NodeEntity]
                 for node in new_nodes:
                     if node_info := [
                         n for n in self._mesh.nodes if n.unique_id == node

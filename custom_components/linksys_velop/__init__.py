@@ -22,13 +22,13 @@ from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.issue_registry import IssueSeverity
-from pyvelop.device import Device
 from pyvelop.exceptions import (
     MeshConnectionError,
     MeshDeviceNotFoundResponse,
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.mesh_entity import DeviceEntity
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -57,11 +57,7 @@ from .coordinator import (
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
-from .exceptions import (
-    DeviceTrackerMeshTimeout,
-    GeneralException,
-    IntensiveTaskRunning,
-)
+from .exceptions import DeviceTrackerMeshTimeout, GeneralException, IntensiveTaskRunning
 from .helpers import (
     async_get_integration_version,
     get_mesh_device_for_config_entry,
@@ -70,11 +66,7 @@ from .helpers import (
 )
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
-from .types import (
-    CoordinatorTypes,
-    LinksysVelopConfigEntry,
-    LinksysVelopData,
-)
+from .types import CoordinatorTypes, LinksysVelopConfigEntry, LinksysVelopData
 
 # endregion
 
@@ -256,8 +248,8 @@ async def async_setup_entry(
             return
 
         try:
-            devices: list[Device] = await mesh.async_get_device_from_id(
-                config_entry.options.get(CONF_DEVICE_TRACKERS, []), True
+            devices: list[DeviceEntity] = await mesh.async_get_devices(
+                config_entry.options.get(CONF_DEVICE_TRACKERS, []), force_refresh=True
             )
         except MeshDeviceNotFoundResponse as err:
             for tracker_missing in err.devices:
@@ -392,7 +384,7 @@ async def async_setup_entry(
         )
         # endregion
         # region #-- remove connection from the mesh device --#
-        device: Device
+        device: DeviceEntity
         if device := [d for d in mesh.devices if d.unique_id == tracker]:
             if adapter := list(device[0].network):
                 connections.discard(

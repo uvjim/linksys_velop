@@ -15,7 +15,8 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.node import Node, NodeType
+from pyvelop.mesh_entity import NodeEntity
+from pyvelop.types import NodeType
 
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
@@ -54,7 +55,7 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
     """Restart the primary node."""
 
     mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    primary_node: Node | list[Node] = [
+    primary_node: NodeEntity | list[NodeEntity] = [
         node for node in mesh.nodes if node.type == NodeType.PRIMARY
     ]
     if len(primary_node) > 0:

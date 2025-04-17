@@ -10,8 +10,8 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.device import Device, ParentalControl
 from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.mesh_entity import DeviceEntity, ParentalControl
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_UI_DEVICES
@@ -39,7 +39,7 @@ class SwitchDetails(EntityDetails):
     on_func: Callable | str = field(kw_only=True)
 
 
-def _get_device_internet_access_state(device_details: Device) -> bool | None:
+def _get_device_internet_access_state(device_details: DeviceEntity) -> bool | None:
     """Get the state of interent access for the device."""
     blocked_internet_access: dict[str, str] = (
         device_details.parental_control_schedule.get("blocked_internet_access", {})
@@ -54,7 +54,7 @@ def _get_device_internet_access_state(device_details: Device) -> bool | None:
 
 
 async def _async_set_device_internet_access_state_off(
-    config_entry: LinksysVelopConfigEntry, device_details: Device
+    config_entry: LinksysVelopConfigEntry, device_details: DeviceEntity
 ) -> None:
     """Turn off Internet access for the given device."""
     mesh: Mesh = config_entry.runtime_data.mesh
@@ -71,7 +71,7 @@ async def _async_set_device_internet_access_state_off(
 
 
 async def _async_set_device_internet_access_state_on(
-    config_entry: LinksysVelopConfigEntry, device_details: Device
+    config_entry: LinksysVelopConfigEntry, device_details: DeviceEntity
 ) -> None:
     """Turn on Internet access for the given device."""
     mesh: Mesh = config_entry.runtime_data.mesh

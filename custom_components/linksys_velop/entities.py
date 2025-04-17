@@ -15,9 +15,9 @@ from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 from pyvelop.const import DEF_EMPTY_NAME
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh
-from pyvelop.node import Node, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity
+from pyvelop.types import NodeType
 
 from .const import (
     CONF_UI_DEVICES,
@@ -35,10 +35,12 @@ from .types import CoordinatorTypes, LinksysVelopConfigEntry
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-EsaValueType = Callable[[Device | Mesh | Node], dict[str, Any]] | None
-PicValueType = Callable[[Device | Mesh | Node], str] | None
+EsaValueType = Callable[[DeviceEntity | Mesh | NodeEntity], dict[str, Any]] | None
+PicValueType = Callable[[DeviceEntity | Mesh | NodeEntity], str] | None
 StateValueType = (
-    Callable[[Device | Mesh | Node], StateType | bool | date | datetime | Decimal]
+    Callable[
+        [DeviceEntity | Mesh | NodeEntity], StateType | bool | date | datetime | Decimal
+    ]
     | None
 )
 
@@ -176,7 +178,7 @@ class LinksysVelopEntity(CoordinatorEntity):
             f"{slugify(self.entity_description.name)}"
         )
 
-        self._context_data: Device | Mesh | Node | None = None
+        self._context_data: DeviceEntity | Mesh | NodeEntity | None = None
         self._ui_placeholder_device_id: str | None = None
         self._set_context_data()
         self._update_values()
@@ -226,9 +228,9 @@ class LinksysVelopEntity(CoordinatorEntity):
                 serial_number=self._context_data.serial,
                 sw_version=self._context_data.firmware.get("version", ""),
             )
-            if self._context_data.connected_adapters:
+            if self._context_data.adapter_info:
                 self._attr_device_info["configuration_url"] = (
-                    f"http://{self._context_data.connected_adapters[0].get('ip')}"
+                    f"http://{self._context_data.adapter_info[0].get('ip')}"
                     f"{'/ca' if self._context_data.type is NodeType.SECONDARY else ''}"
                 )
 
@@ -272,23 +274,23 @@ class LinksysVelopEntity(CoordinatorEntity):
                 else self._ui_placeholder_device_id
             )
             if device_id is not None:
-                devices: list[Device] = [
+                devices: list[DeviceEntity] = [
                     d for d in self.coordinator.data.devices if d.unique_id == device_id
                 ]
                 if len(devices) > 0:
-                    self._context_data: Device = devices[0]
+                    self._context_data: DeviceEntity = devices[0]
             else:
                 self._context_data = None
         elif self._entity_details.entity_type == EntityType.MESH:
             self._context_data: Mesh = self.coordinator.data
         elif self._entity_details.entity_type in EntityType.NODE:
-            nodes: list[Node] = [
+            nodes: list[NodeEntity] = [
                 n
                 for n in self.coordinator.data.nodes
                 if n.unique_id == self.coordinator_context.unique_id
             ]
             if len(nodes) > 0:
-                self._context_data: Node = nodes[0]
+                self._context_data: NodeEntity = nodes[0]
 
     def _update_attr_value(self) -> None:
         """Update the attribute value for the entity."""

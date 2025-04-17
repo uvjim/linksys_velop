@@ -39,7 +39,7 @@ def _build_options(mesh: Mesh) -> list[str]:
         (
             d.name
             if d.name != DEF_EMPTY_NAME
-            else f"{d.name} ({next(iter(d.connected_adapters), {}).get('ip') if d.status else d.unique_id})"
+            else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
         )
         for d in mesh.devices
     ]
