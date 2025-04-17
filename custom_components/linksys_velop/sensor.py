@@ -17,9 +17,9 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.node import NodeType
+from pyvelop.mesh_entity import DeviceEntity
+from pyvelop.types import NodeType
 
 from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
@@ -41,11 +41,11 @@ class SensorDetails(EntityDetails):
 def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     """Get the matching devices from the Mesh."""
     ret: list[dict[str, Any]] = []
-    device: Device
+    device: DeviceEntity
     for device in mesh.devices:
         if device.status is state:
             ret.append({"name": device.name, "id": device.unique_id})
-            for adapter in device.network:
+            for adapter in device.adapter_info:
                 if adapter.get("ip"):
                     ret[-1] = dict(
                         **ret[-1],
@@ -76,9 +76,9 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="friendly_signal_strength",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.connected_adapters), {})
-        .get("signal_strength", "")
-        .lower()
+        state_value_func=lambda d: next(iter(d.adapter_info), {}).get(
+            "signal_strength", ""
+        )
         or None,
     ),
     SensorDetails(
@@ -89,7 +89,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="ip",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.connected_adapters), {}).get("ip"),
+        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("ip"),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -99,7 +99,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="ipv6",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.connected_adapters), {}).get("ipv6"),
+        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("ipv6"),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -109,7 +109,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="mac",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.connected_adapters), {}).get("mac"),
+        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("mac"),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -175,7 +175,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="signal_strength",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.connected_adapters), {}).get("rssi"),
+        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("rssi"),
     ),
     SensorDetails(
         description=SensorEntityDescription(

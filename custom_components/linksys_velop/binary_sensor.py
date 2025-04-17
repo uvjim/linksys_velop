@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.node import Node
+from pyvelop.mesh_entity import NodeEntity
 
 from .const import CONF_UI_DEVICES
 from .coordinator import SpeedtestStatus
@@ -35,18 +35,18 @@ class BinarySensorDetails(EntityDetails):
     description: BinarySensorEntityDescription
 
 
-def status_extra_attributes(n: Node) -> dict[str, Any]:
+def status_extra_attributes(n: NodeEntity) -> dict[str, Any]:
     """Return the extra attributes for the Status binary sensor."""
 
     ret: dict[str, Any] = {}
 
-    primary_adapter: list[dict[str, Any]] = [
-        adapter for adapter in n.connected_adapters if adapter.get("primary")
-    ]
-
-    if primary_adapter:
-        del primary_adapter[0]["primary"]
-        ret = primary_adapter[0]
+    if (
+        primary_adapter := next(
+            (adapter for adapter in n.adapter_info if adapter.get("primary")), None
+        )
+    ) is not None:
+        del primary_adapter["primary"]
+        ret = primary_adapter
 
     return ret
 
@@ -179,9 +179,9 @@ async def async_setup_entry(
                             translation_key="guest_network",
                         ),
                         entity_type=EntityType.DEVICE,
-                        state_value_func=lambda d: next(
-                            iter(d.connected_adapters), {}
-                        ).get("guest_network"),
+                        state_value_func=lambda d: next(iter(d.adapter_info), {}).get(
+                            "guest_network"
+                        ),
                     ),
                 ],
                 config_entry,
@@ -238,9 +238,9 @@ async def async_setup_entry(
                             translation_key="reserved_ip",
                         ),
                         entity_type=EntityType.DEVICE,
-                        state_value_func=lambda d: next(
-                            iter(d.connected_adapters), {}
-                        ).get("reservation"),
+                        state_value_func=lambda d: next(iter(d.adapter_info), {}).get(
+                            "reservation"
+                        ),
                     ),
                 ],
                 config_entry,

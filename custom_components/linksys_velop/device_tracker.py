@@ -17,8 +17,8 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
-from pyvelop.device import Device
 from pyvelop.mesh import Mesh
+from pyvelop.mesh_entity import DeviceEntity
 
 from .const import CONF_DEVICE_TRACKERS, DEF_CONSIDER_HOME, SIGNAL_DEVICE_TRACKER_UPDATE
 from .helpers import get_mesh_device_for_config_entry
@@ -37,7 +37,7 @@ async def async_setup_entry(
     """Create entities for device trackers."""
 
     adapter: list[dict]
-    device: list[Device]
+    device: list[DeviceEntity]
     device_trackers: list[LinksysVelopMeshDeviceTracker] = []
     connections: set[tuple[str, str]] = set()
     mesh: Mesh = config_entry.runtime_data.mesh
@@ -51,11 +51,11 @@ async def async_setup_entry(
                 )
             )
 
-            if adapter := list(device[0].network):
+            if adapter := list(device[0].adapter_info):
                 connections.add(
                     (
                         dr.CONNECTION_NETWORK_MAC,
-                        dr.format_mac(adapter[0].get("mac", "")),
+                        dr.format_mac(next(iter(adapter), {}).get("mac", "")),
                     )
                 )
 
@@ -70,7 +70,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
     """Representation of a device tracker."""
 
     def __init__(
-        self, config_entry: LinksysVelopConfigEntry, device: Device, mesh: Mesh
+        self, config_entry: LinksysVelopConfigEntry, device: DeviceEntity, mesh: Mesh
     ) -> None:
         """Initialise."""
         self._config_entry: LinksysVelopConfigEntry = config_entry
@@ -90,17 +90,17 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         )
         self._mac_address: str = self._get_mac_address(device)
 
-    def _get_ip_address(self, device: Device) -> str:
+    def _get_ip_address(self, device: DeviceEntity) -> str:
         """Retrieve the IP address from the device object."""
         adapter: list[dict]
-        if adapter := list(device.network):
-            return adapter[0].get("ip", "")
+        if adapter := list(device.adapter_info):
+            return next(iter(adapter), {}).get("ip")
 
-    def _get_mac_address(self, device: Device) -> str:
+    def _get_mac_address(self, device: DeviceEntity) -> str:
         """Retrieve the MAC address from the device object."""
         adapter: list[dict]
-        if adapter := list(device.network):
-            return dr.format_mac(adapter[0].get("mac", ""))
+        if adapter := list(device.adapter_info):
+            return dr.format_mac(next(iter(adapter), {}).get("mac", ""))
 
     async def _async_mark_offline(self, _: dt_util.dt.datetime) -> None:
         """Mark the device tracker as offline."""
@@ -112,7 +112,7 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self._consider_home_cancel = None
         self.async_schedule_update_ha_state()
 
-    async def _async_process_device_update(self, device: Device) -> None:
+    async def _async_process_device_update(self, device: DeviceEntity) -> None:
         """Establish device state or attribute changes."""
         self._ip_address = self._get_ip_address(device)
         self._mac_address = self._get_mac_address(device)

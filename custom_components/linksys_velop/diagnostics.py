@@ -10,7 +10,8 @@ from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
-from pyvelop.mesh import Mesh, Node
+from pyvelop.mesh import Mesh
+from pyvelop.mesh_entity import NodeEntity
 
 from .helpers import get_mesh_device_for_config_entry
 from .types import LinksysVelopConfigEntry
@@ -20,10 +21,13 @@ from .types import LinksysVelopConfigEntry
 
 ATTR_REDACT: Iterable = {
     CONF_PASSWORD,
-    "macAddress",
     "apBSSID",
-    "stationBSSID",
+    "gateway",
+    "guestSSID",
+    "guestWPAPassphrase",
+    "macAddress",
     "serialNumber",
+    "stationBSSID",
     "unique_id",
 }
 
@@ -60,20 +64,6 @@ async def async_get_config_entry_diagnostics(
         .get("ipAddress")
     ):
         ret["mesh_details"]["wan_info"]["wanConnection"]["ipAddress"] = REDACTED
-    if (
-        ret.get("mesh_details", {})
-        .get("wan_info", {})
-        .get("wanConnection", {})
-        .get("gateway")
-    ):
-        ret["mesh_details"]["wan_info"]["wanConnection"]["gateway"] = REDACTED
-    if ret.get("mesh_details", {}).get("guest_network", {}).get("radios", []):
-        keys = ("guestWPAPassphrase", "guestSSID")
-        for idx, _ in enumerate(
-            ret.get("mesh_details", {}).get("guest_network", {}).get("radios", [])
-        ):
-            for k in keys:
-                ret["mesh_details"]["guest_network"]["radios"][idx][k] = REDACTED
     # endregion
 
     return async_redact_data(
@@ -101,13 +91,16 @@ async def async_get_device_diagnostics(
         }
     }
 
-    node: list[Node] = [
-        n
-        for n in mesh.nodes
-        if mesh.nodes and n.serial == next(iter(device.identifiers))[1]
-    ]
-    if node:
-        ret["node"] = node[0].__dict__
+    node: NodeEntity = next(
+        (
+            n
+            for n in mesh.nodes
+            if mesh.nodes and n.serial == next(iter(device.identifiers))[1]
+        ),
+        None,
+    )
+    if node is not None:
+        ret["node"] = node.__dict__
 
     ret = async_redact_data(ret, ATTR_REDACT.union({"identifiers"}))
 

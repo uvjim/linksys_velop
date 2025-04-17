@@ -6,24 +6,19 @@ from __future__ import annotations
 import functools
 import logging
 import uuid
-from collections.abc import Awaitable
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from pyvelop.device import Device, ParentalControl
-from pyvelop.exceptions import MeshInvalidInput
+from pyvelop.const import Weekdays
+from pyvelop.exceptions import MeshInvalidInput, MeshTooManyMatches
 from pyvelop.mesh import Mesh
-from pyvelop.node import Node, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, ParentalControl
+from pyvelop.types import NodeType
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
-from .types import (
-    EventSubTypes,
-    LinksysVelopConfigEntry,
-    LinksysVelopLogFormatter,
-)
+from .types import EventSubTypes, LinksysVelopConfigEntry, LinksysVelopLogFormatter
 
 # endregion
 
@@ -121,32 +116,13 @@ class LinksysVelopServiceHandler:
         self._hass: HomeAssistant = hass
         self._log_formatter: LinksysVelopLogFormatter = None
 
-    def _get_config_entry_from_mesh_id(
-        self, mesh_id: str
-    ) -> LinksysVelopConfigEntry | None:
-        """Retrieve the ConfigEntry based on the ID of the Mesh."""
-        config_entry: LinksysVelopConfigEntry | None = None
-        config_entry_id: str | None = None
-        device_registry: dr.DeviceRegistry = dr.async_get(hass=self._hass)
-        device: dr.DeviceEntry | None = device_registry.async_get(device_id=mesh_id)
-        if device:
-            for config_entry_id in device.config_entries:
-                config_entry = self._hass.config_entries.async_get_entry(
-                    config_entry_id
-                )
-                if config_entry.domain == DOMAIN:
-                    self._log_formatter = config_entry.runtime_data.log_formatter
-                    break
-
-        return config_entry
-
-    def _get_device(self, mesh: Mesh, value: str) -> list[Device] | None:
+    def _get_device(self, mesh: Mesh, value: str) -> list[DeviceEntity] | None:
         """Get a device from the Mesh based on name or unique ID.
 
         N.B. this uses the devices from the last poll to retrieve
         details.
         """
-        ret: list[Device] | None = None
+        ret: list[DeviceEntity] | None = None
 
         try:
             _ = uuid.UUID(value)
@@ -228,15 +204,22 @@ class LinksysVelopServiceHandler:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
-        coro: Awaitable[None]
-        try:
-            _ = uuid.UUID(kwargs.get("device"))
-            coro = config_entry.runtime_data.mesh.async_delete_device_by_id
-        except ValueError:
-            coro = config_entry.runtime_data.mesh.async_delete_device_by_name
+        device: list[DeviceEntity] | None = None
+        if (
+            device := self._get_device(
+                config_entry.runtime_data.mesh, kwargs.get("device", "")
+            )
+        ) is None:
+            raise MeshInvalidInput(
+                f"Unknown device: {kwargs.get('device', '')}"
+            ) from None
+
+        # only make the request to rename if they are different
+        if len(device) > 1:
+            raise MeshTooManyMatches from None
 
         try:
-            await coro(kwargs.get("device"))
+            await device[0].async_delete()
         except Exception as exc:
             raise MeshInvalidInput(str(exc)) from exc
 
@@ -248,7 +231,7 @@ class LinksysVelopServiceHandler:
         """Change state of Internet access for a device."""
         _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
 
-        device: list[Device] | None = None
+        device: list[DeviceEntity] | None = None
         if (
             device := self._get_device(
                 config_entry.runtime_data.mesh, kwargs.get("device", "")
@@ -262,19 +245,15 @@ class LinksysVelopServiceHandler:
         if kwargs.get("pause", False):
             rules_to_apply = dict(
                 map(
-                    lambda weekday, readable_schedule: (
-                        weekday.name,
-                        readable_schedule,
-                    ),
-                    ParentalControl.WEEKDAYS,
-                    ("00:00-00:00",) * len(ParentalControl.WEEKDAYS),
+                    lambda schedule: (schedule[0], ",".join(schedule[1])),
+                    ParentalControl.binary_to_human_readable(
+                        ParentalControl.ALL_PAUSED_SCHEDULE()
+                    ).items(),
                 )
             )
 
-        await config_entry.runtime_data.mesh.async_set_parental_control_rules(
-            device_id=device[0].unique_id,
-            force_enable=True if kwargs.get("pause", False) else False,
-            rules=rules_to_apply,
+        await device[0].async_set_parental_control_rules(
+            rules_to_apply, True if kwargs.get("pause", False) else False
         )
 
         _LOGGER.debug(self._log_formatter("exited"))
@@ -285,7 +264,7 @@ class LinksysVelopServiceHandler:
         """Set Parental Control rules for the device."""
         _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
 
-        device: list[Device] | None = None
+        device: list[DeviceEntity] | None = None
         if (
             device := self._get_device(
                 config_entry.runtime_data.mesh, kwargs.get("device", "")
@@ -298,23 +277,26 @@ class LinksysVelopServiceHandler:
         def _process_times() -> dict[str, str]:
             """Process the times from the service call."""
             ret: dict[str, str] = {}
-            for day in ParentalControl.WEEKDAYS:
-                times: list[str] = kwargs.get(day.name, [])
+
+            for day in Weekdays:
+                times: list[str] = kwargs.get(day.name.lower(), [])
                 if times:
                     times = ["00:00-00:00" if t == "all_day" else t for t in times]
-                    ret[day.name] = ",".join(times)
+                    ret[day.name.lower()] = ",".join(times)
                 else:
-                    ret[day.name] = None
+                    ret[day.name.lower()] = None
 
             return ret
 
         rules_to_apply: dict[str, str] = _process_times()
         _LOGGER.debug(self._log_formatter("rules_to_apply: %s"), rules_to_apply)
 
-        await config_entry.runtime_data.mesh.async_set_parental_control_rules(
-            device_id=device[0].unique_id,
-            rules=rules_to_apply,
-        )
+        await device[0].async_set_parental_control_rules(rules_to_apply)
+
+        # await config_entry.runtime_data.mesh.async_set_parental_control_rules(
+        #     device_id=device[0].unique_id,
+        #     rules=rules_to_apply,
+        # )
 
         _LOGGER.debug(self._log_formatter("exited"))
 
@@ -330,7 +312,7 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
-        node: Node = [
+        node: NodeEntity = [
             n
             for n in config_entry.runtime_data.mesh.nodes
             if n.name == kwargs.get("node_name", "")
@@ -351,10 +333,7 @@ class LinksysVelopServiceHandler:
                 "Use the button available on the node device.",
             )
 
-        await config_entry.runtime_data.mesh.async_reboot_node(
-            kwargs.get("node_name", ""),
-            force=kwargs.get("is_primary", False),
-        )
+        await node[0].async_reboot(kwargs.get("is_primary", False))
 
         # region #-- flag the reboot --#
         if kwargs.get("is_primary", False):
@@ -376,7 +355,7 @@ class LinksysVelopServiceHandler:
         """Rename a device on the Mesh."""
         _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
-        device: list[Device] | None = None
+        device: list[DeviceEntity] | None = None
         if (
             device := self._get_device(
                 config_entry.runtime_data.mesh, kwargs.get("device", "")
@@ -387,13 +366,14 @@ class LinksysVelopServiceHandler:
             ) from None
 
         # only make the request to rename if they are different
+        if len(device) > 1:
+            raise MeshTooManyMatches from None
+
         if device[0].name != kwargs.get("new_name"):
             _LOGGER.debug(
                 self._log_formatter("renaming device: %s"),
                 device[0].unique_id,
             )
-            await config_entry.runtime_data.mesh.async_rename_device(
-                device_id=device[0].unique_id, name=kwargs.get("new_name")
-            )
+            await device[0].async_rename(kwargs.get("new_name"))
 
         _LOGGER.debug(self._log_formatter("exited"))

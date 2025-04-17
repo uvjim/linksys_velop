@@ -11,8 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.device import Device
-from pyvelop.node import Node
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import DOMAIN
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
@@ -62,7 +61,7 @@ async def async_setup_entry(
 
 
 def _build_event_properties(
-    properties: list[str], obj: Device | Node
+    properties: list[str], obj: DeviceEntity | NodeEntity
 ) -> dict[str, Any]:
     """Create the required properties for the event."""
 
@@ -72,7 +71,7 @@ def _build_event_properties(
 class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
     """Representation of the event entity."""
 
-    async def _async_process_event_new_device_found(self, device: Device) -> None:
+    async def _async_process_event_new_device_found(self, device: DeviceEntity) -> None:
         """Respond to a new device beig found."""
 
         event_properties: list[str] = [
@@ -94,7 +93,7 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         self._trigger_event(EventSubTypes.NEW_DEVICE_FOUND.value, event_attributes)
         self.async_write_ha_state()
 
-    async def _async_process_event_new_node_found(self, node: Node) -> None:
+    async def _async_process_event_new_node_found(self, node: NodeEntity) -> None:
         """Respond to a new node being found."""
 
         event_properties: list[str] = [
