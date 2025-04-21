@@ -18,7 +18,12 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import slugify
-from pyvelop.exceptions import MeshConnectionError, MeshTimeoutError
+from pyvelop.exceptions import (
+    MeshConnectionError,
+    MeshException,
+    MeshInvalidOutput,
+    MeshTimeoutError,
+)
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
@@ -37,7 +42,11 @@ from .const import (
     ISSUE_MISSING_UI_DEVICE,
     IntensiveTask,
 )
-from .exceptions import CoordinatorMeshTimeout, GeneralException
+from .exceptions import (
+    CoordinatorMeshException,
+    CoordinatorMeshTimeout,
+    GeneralException,
+)
 from .types import EventSubTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -155,6 +164,8 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                 )
                 _LOGGER.warning(exc_mesh_timeout)
                 raise UpdateFailed(err) from err
+        except MeshException as err:
+            raise UpdateFailed(type(err).__name__) from err
         except Exception as err:
             exc_general: GeneralException = GeneralException(
                 translation_domain=DOMAIN,

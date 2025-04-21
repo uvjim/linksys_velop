@@ -3,6 +3,10 @@
 from homeassistant.exceptions import HomeAssistantError
 
 
+class CoordinatorMeshException(HomeAssistantError):
+    """MeshException raised."""
+
+
 class CoordinatorMeshTimeout(HomeAssistantError):
     """Gathering mesh data timed out."""
 
