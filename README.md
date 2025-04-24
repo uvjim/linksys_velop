@@ -349,11 +349,6 @@ diagnostics can be found.
 
 ![Diagnostics link](images/diagnostics.png)
 
-Example output: -
-
-* [Device](examples/device_diagnostics.json)
-* [Configuration Entry and Mesh](examples/config_entry_and_mesh_diagnostics.json)
-
 [badge_github_release_version]: https://img.shields.io/github/v/release/uvjim/linksys_velop?display_name=release&style=for-the-badge&logoSize=auto
 [badge_github_release_downloads]: https://img.shields.io/github/downloads/uvjim/linksys_velop/latest/total?style=for-the-badge&label=downloads%40release
 [badge_github_prerelease_version]: https://img.shields.io/github/v/release/uvjim/linksys_velop?include_prereleases&display_name=release&style=for-the-badge&logoSize=auto&label=pre-release
