@@ -347,7 +347,7 @@
             "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the API timeout in the configuration."
         },
         "coordinator_mesh_exception": {
-            "message": "An error was encountered whilst communicating with with the mesh, {exc_type} - {exc_msg}"
+            "message": "An error was encountered whilst communicating with with the mesh, type: {exc_type}, msg: {exc_msg}"
         },
         "coordinator_mesh_timeout": {
             "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
