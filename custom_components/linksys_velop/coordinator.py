@@ -171,7 +171,7 @@ class LinksysVelopUpdateCoordinator(DataUpdateCoordinator):
                 translation_domain=DOMAIN,
                 translation_key="general",
                 translation_placeholders={
-                    "exc_type": type(err),
+                    "exc_type": type(err).__name__,
                     "exc_msg": err,
                 },
             )
@@ -401,7 +401,7 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 translation_domain=DOMAIN,
                 translation_key="general",
                 translation_placeholders={
-                    "exc_type": type(err),
+                    "exc_type": type(err).__name__,
                     "exc_msg": err,
                 },
             )
@@ -493,7 +493,7 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 translation_domain=DOMAIN,
                 translation_key="general",
                 translation_placeholders={
-                    "exc_type": type(err),
+                    "exc_type": type(err).__name__,
                     "exc_msg": err,
                 },
             )

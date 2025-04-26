@@ -307,7 +307,7 @@ async def async_setup_entry(
                 translation_domain=DOMAIN,
                 translation_key="general",
                 translation_placeholders={
-                    "exc_type": type(err),
+                    "exc_type": type(err).__name__,
                     "exc_msg": str(err),
                 },
             )
