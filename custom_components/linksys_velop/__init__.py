@@ -384,9 +384,9 @@ async def async_setup_entry(
         )
         # endregion
         # region #-- remove connection from the mesh device --#
-        device: DeviceEntity
+        device: list[DeviceEntity]
         if device := [d for d in mesh.devices if d.unique_id == tracker]:
-            if adapter := list(device[0].network):
+            if adapter := list(device[0].adapter_info):
                 connections.discard(
                     (
                         dr.CONNECTION_NETWORK_MAC,
