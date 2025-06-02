@@ -14,7 +14,6 @@ from homeassistant.helpers import entity_registry as er
 from .const import (
     CONF_UI_DEVICES,
     ISSUE_MISSING_DEVICE_TRACKER,
-    ISSUE_MISSING_NODE,
     ISSUE_MISSING_UI_DEVICE,
 )
 from .helpers import remove_velop_device_from_registry
@@ -33,9 +32,6 @@ async def async_create_fix_flow(
     """Create flow."""
     if issue_id.startswith(ISSUE_MISSING_DEVICE_TRACKER):
         return IssueMissingDeviceTrackerRepairFlow()
-
-    if issue_id.startswith(ISSUE_MISSING_NODE):
-        return IssueMissingNodeRepairFlow()
 
     if issue_id.startswith(ISSUE_MISSING_UI_DEVICE):
         return IssueMissingUIDeviceRepairFlow()
@@ -122,32 +118,6 @@ class IssueMissingUIDeviceRepairFlow(RepairsFlow):
                 self.hass.config_entries.async_update_entry(
                     self.data.get("config_entry"), options=new_options
                 )
-
-            return self.async_create_entry(title="", data={})
-
-        return self.async_show_form(
-            step_id="confirm_removal",
-            data_schema=vol.Schema({}),
-            description_placeholders={"device_name": self.data.get("device_name")},
-        )
-
-
-class IssueMissingNodeRepairFlow(RepairsFlow):
-    """Handler for fixing a missing node."""
-
-    async def async_step_init(
-        self, _: dict[str, str] | None = None
-    ) -> data_entry_flow.FlowResult:
-        """Handle the first step of a fix flow."""
-        return await self.async_step_confirm_removal()
-
-    async def async_step_confirm_removal(
-        self, user_input: dict[str, str] | None = None
-    ) -> data_entry_flow.FlowResult:
-        """Handle the confirm step of a fix flow."""
-        if user_input is not None:
-            # -- remove from the registry --#
-            remove_velop_device_from_registry(self.hass, self.data.get("device_id"))
 
             return self.async_create_entry(title="", data={})
 
