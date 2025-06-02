@@ -380,17 +380,6 @@
                 }
             }
         },
-        "missing_node": {
-            "title": "Node is missing: {device_name}",
-            "fix_flow": {
-                "step": {
-                    "confirm_removal": {
-                        "title": "Remove the node",
-                        "description": "The {device_name} node is no longer on the Mesh or it's unique ID has changed. Click submit to remove it from Home Assistant."
-                    }
-                }
-            }
-        },
         "missing_ui_device": {
             "title": "UI device is missing: {device_name}",
             "fix_flow": {
