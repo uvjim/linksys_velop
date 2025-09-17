@@ -16,7 +16,7 @@
     "pyvelop"
   ],
   "requirements": [
-    "pyvelop==2025.4.2"
+    "pyvelop==2025.9.1"
   ],
   "ssdp": [
     {
