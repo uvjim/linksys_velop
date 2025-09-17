@@ -132,3 +132,5 @@ dmypy.json
 .idea/
 pyvelop/
 
+# Docker
+docker-compose.yml
