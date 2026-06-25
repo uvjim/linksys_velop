@@ -4,12 +4,12 @@
 import logging
 from functools import cached_property
 
-from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
-from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.device_tracker.config_entry import (
+from homeassistant.components.device_tracker import (
+    CONF_CONSIDER_HOME,
     ScannerEntity,
     SourceType,
 )
+from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
