@@ -16,18 +16,12 @@ from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.components.diagnostics import async_redact_data
-
-# TODO: remove when setting minimum version to 2025.2.x or later
-try:
-    from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
-except ImportError:
-    from homeassistant.components.ssdp import SsdpServiceInfo
-
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from pyvelop.exceptions import (
     MeshBadResponse,
     MeshConnectionError,
