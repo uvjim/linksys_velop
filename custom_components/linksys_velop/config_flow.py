@@ -538,22 +538,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 update_unique_id = True
 
-                if EventSubTypes.NEW_PRIMARY_NODE in matching_entry.options.get(
-                    CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-                ):
-                    event_properties: dict[str, Any] = {
-                        "host": _host,
-                        "manufacturer": _manufacturer,
-                        "model": _model,
-                        "description": _model_description,
-                        "serial": _serial,
-                    }
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.NEW_PRIMARY_NODE.value}",
-                        event_properties,
-                    )
-
         if update_unique_id:
             _LOGGER.debug(self._log_formatter.format("updating unique_id"))
             if self.hass.config_entries.async_update_entry(
