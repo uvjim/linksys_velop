@@ -229,10 +229,17 @@ class LinksysVelopEntity(CoordinatorEntity):
                 sw_version=self._context_data.firmware.get("version", ""),
             )
             if self._context_data.adapter_info:
-                self._attr_device_info["configuration_url"] = (
-                    f"http://{self._context_data.adapter_info[0].get('ip')}"
-                    f"{'/ca' if self._context_data.type is NodeType.SECONDARY else ''}"
+                ip_address: list[dict[str, Any]] = list(
+                    filter(
+                        lambda adi: adi.get("parent_id") is not None,
+                        self._context_data.adapter_info,
+                    )
                 )
+                if len(ip_address) > 0:
+                    self._attr_device_info["configuration_url"] = (
+                        f"http://{ip_address[0].get('ip')}"
+                        f"{'/ca' if self._context_data.type is NodeType.SECONDARY else ''}"
+                    )
 
     @callback
     def _handle_coordinator_update(self) -> None:
