@@ -44,7 +44,7 @@ Home Assistant environment.
 The integration can be installed using [HACS](https://hacs.xyz/).  The
 integrations is not available in the default repositories, so you will need to
 add the URL of this repository as a custom repository to HACS (see
-[here](https://hacs.xyz/docs/faq/custom_repositories)).
+[Custom Repositories on HACS](https://hacs.xyz/docs/faq/custom_repositories)).
 
 Alternatively you can use the button below.
 
@@ -72,7 +72,7 @@ then the entities detailing storage partitions etc. will not be available.
 ### Binary Sensors
 
 | Location | Name | Enabled by default | Additional Information | Comments |
-|---|---|:---:|---|---|
+| --- | --- | :---: | --- | --- |
 | Device | Blocked Times | ✔️ | Times of the week that are blocked | |
 | Device | Guest Network | ✔️ | | |
 | Device | Reserved IP | ✔️ | | |
@@ -94,7 +94,7 @@ then the entities detailing storage partitions etc. will not be available.
 ### Buttons
 
 | Location | Name | Enabled by default | Comments |
-|---|---|:---:|---|
+| --- | --- | :---: | --- |
 | Device | Delete | ✔️ | |
 | Mesh | Check for Updates | ✔️ | |
 | Mesh | Reboot the Whole Mesh | ✖️ | See [Configurable Options -> Advanced Options](#advanced-options) |
@@ -128,7 +128,7 @@ This entity provides access to data for the events selected in the configuration
 Available events are: -
 
 | Event | Triggered | Comments |
-|---|---|--|
+| --- | --- | --- |
 | Mesh rebooted | When the Mesh data collection receives a response | This is the first response after the back off period |
 | Mesh rebooting | When either the service or button is used to reboot the Mesh | The Mesh is flagged as rebooting and will then back off carrying out updates for 30s |
 | New device found | When the integration carries out its normal polling period and a device with a new unique ID is found | The uniqued ID for comparison is the one provided by Linksys |
@@ -137,13 +137,13 @@ Available events are: -
 ### Select
 
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
-|---|---|:---:|---|---|---|
+| --- | --- | :---: | --- | --- | --- |
 | Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
 
 ### Sensors
 
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
-|---|---|:---:|---|---|---|
+| --- | --- | :---: | --- | --- | --- |
 | Device | Blocked sites | ✔️ | Count of blocked sites | List of blocked sites | |
 | Device | Description | ✔️ | | | |
 | Device | Friendly Signal Strength | ✔️ | | | |
@@ -158,7 +158,7 @@ Available events are: -
 | Device | Parent | ✔️ | | | |
 | Device | Serial | ✔️ | | | |
 | Device | Signal strength | ✔️ | RSSI value | | |
-| Device | UI type | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [here](#advanced-options) |
+| Device | UI type | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
 | Mesh | Available Storage | ✖️ | Count of partitions available | List of the available partitions including: IP, label, available Kb, used Kb, used %age and last checked time | |
 | Mesh | DHCP Reservations | ✖️ | Count of DHCP reservations | List of DHCP reservations | |
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
@@ -175,10 +175,10 @@ Available events are: -
 | Node | Backhaul Last Checked | ✖️ | Timestamp of when the backhaul connection was last checked | | only available if a secondary node |
 | Node | Backhaul Signal Strength | ✔️ | RSSI value | | only available if using a wirless backhaul and is a secondary node |
 | Node | Backhaul Speed | ✔️ | | | only available if a secondary node |
-| Node | Backhaul Type | ✔️ | Wired/Wireless| | only available if a secondary node |
+| Node | Backhaul Type | ✔️ | Wired/Wireless | | only available if a secondary node |
 | Node | Connected Devices | ✔️ | Count of connected devices | List of connected device names, unique ID, IP, connection type and if they're on the guest network | |
 | Node | Last Update Check | ✖️ | Timestamp when the last check for a firmmware update was made | | |
-| Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [here](#advanced-options) |
+| Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
 | Node | Parent Name | ✔️ | | IP address of the parent | only available if a secondary node |
 | Node | Serial | ✔️ | | | |
 | Node | Type | ✔️ | Primary/Secondary | | |
@@ -186,7 +186,7 @@ Available events are: -
 ### Switches
 
 | Location | Name | Enabled by default | Additional Information | Comments |
-|---|---|:---:|---|---|
+| --- | --- | :---: | --- | --- |
 | Device | Internet Access | ✔️ | | |
 | Mesh | Guest Wi-Fi | ✔️ | List of guest networks including: SSID and band | |
 | Mesh | HomeKit Integration | ✔️ | | |
@@ -197,7 +197,7 @@ Available events are: -
 ### Update
 
 | Location | Name | Enabled by default | Comments |
-|---|---|:---:|---|
+| --- | --- | :---: | --- |
 | Node | Update | ✔️ | |
 
 ## Services
@@ -224,10 +224,24 @@ directed to. Other requirements by the services should be self-explanatory.
 > __^__ these are deprecated services. A warning will be displayed in the HASS
   log when they are used. They are subject to removal at any time.
 
+### Parental Control Specifics
+
+As with setting parental controls using the app backups are made when necessary
+when changing values. Think of the process like so: -
+
+1. Set some parental control rules.
+2. Set some more parental control rules - these rules replace the previously set
+rules.
+3. Set to pause/block Internet access - this backs up the existing rules to the
+cache.
+4. Set to resume/unblock Internet access - this restores the cached rules.
+5. Set to resume/umblock Internet access - this removes all rules and doesn't
+backup to the cache.
+
 ## Repairs
 
 | Reason | Trigger | Resolution | Comments |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Missing device tracker | Raised when the device, used for device tracking, no longer appears on the Mesh | Deletes the device tracker entity | This is based on the unique ID supplied by Linksys. If the device is still on the Mesh, and only its unique ID has changed, you should reconfigure the integration to use the device as a tracker again |
 | Missing node | Raised when the given node no longer appears on the Mesh | Deletes the node device | This is based on the unique ID supplied by Linksys. If the node is still on the Mesh, and only its unique ID has changed, you should carry out the resolution and reload the integration |
 | Missing UI device | Raised when the device, selected to be shown in the UI, no longer appears on the Mesh | Deletes the UI device | This is based on the unique ID supplied by Linksys. If the device is still on the Mesh, and only its unique ID has changed, you should reconfigure the integration to use the device as a tracker again |
@@ -306,17 +320,18 @@ The events selected here will be raised with the `event` entity.
 ### Advanced Options
 
 __This section is only available if "Advanced Mode" is enabled for the current__
-__user. See [here](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).__
+__user. See [Home Assistant Advanced Mode](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).__
 
 ![Configure Advanced Options](images/config_advanced_options.png)
 
 * `Velop image path`: the path to the folder location containing the images to
   use for integration purposes. This is currently used for to set the entity
   picture for various entities. It relies on the `http` integration from HASS,
-  details of which can be found
-  [here](https://www.home-assistant.io/integrations/http), and more specifically
-  [here](https://www.home-assistant.io/integrations/http#hosting-files) for the
-  path to place the files in.
+  details of which can be found at
+  [Home Assistant HTTP Integration](https://www.home-assistant.io/integrations/http)
+  , and more specifically
+  [Home Assistant Hosting Files](https://www.home-assistant.io/integrations/http#hosting-files)
+  for the path to place the files in.
 * `Use a temporary device for select entity details`: creates a placeholder
   device that will be populated with the details of the device selected in
   the [select](#select) entity. The `select` entity will no longer have the
@@ -332,7 +347,7 @@ __user. See [here](https://www.home-assistant.io/blog/2019/07/17/release-96/#adv
 will continue logging until it is disabled again.
 
 Debug logging can be enabled in Home Assistant using the `logger`
-integration see [here](https://www.home-assistant.io/integrations/logger/).
+integration see [Home Assistant `logger` Integration](https://www.home-assistant.io/integrations/logger/).
 
 ```yaml
 logger:
