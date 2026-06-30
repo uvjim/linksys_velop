@@ -242,13 +242,12 @@ class LinksysVelopServiceHandler:
             ) from None
 
         rules_to_apply: dict[str, str] = {}
-        if kwargs.get("pause", False):
-            rules_to_apply = dict(
-                map(
-                    lambda schedule: (schedule[0], ",".join(schedule[1])),
-                    ParentalControl.binary_to_human_readable(
-                        ParentalControl.ALL_PAUSED_SCHEDULE()
-                    ).items(),
+        for weekday in Weekdays:
+            rules_to_apply[weekday.name.lower()] = (
+                None
+                if not kwargs.get("pause", False)
+                else ParentalControl.binary_to_human_readable(
+                    ParentalControl.ALL_PAUSED_SCHEDULE().get(weekday.name.lower(), "")
                 )
             )
 
