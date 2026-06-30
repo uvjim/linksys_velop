@@ -3,6 +3,7 @@
 # region #-- imports --#
 import logging
 from dataclasses import dataclass
+from typing import cast
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
@@ -10,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.const import DEF_EMPTY_NAME
+from pyvelop.const import DEF_EMPTY_NAME, MeshCapability, ScheduledRebootInterval
 from pyvelop.mesh import Mesh
 
 from .const import SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE
@@ -29,9 +30,6 @@ class SelectDetails(EntityDetails):
     description: SelectEntityDescription
 
 
-ENTITY_DETAILS: list[SelectDetails] = []
-
-
 def _build_options(mesh: Mesh) -> list[str]:
     """Create the available options for the select entity."""
 
@@ -45,6 +43,19 @@ def _build_options(mesh: Mesh) -> list[str]:
     ]
 
 
+def _build_scheduled_reboot_options() -> list[str]:
+    """Build the options available for the scheduled reboot interval."""
+    ret: list[str] = ["off"]
+
+    for opt in ScheduledRebootInterval:
+        ret.append(opt.value.lower())
+
+    return ret
+
+
+ENTITY_DETAILS: list[SelectDetails] = []
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: LinksysVelopConfigEntry,
@@ -54,8 +65,33 @@ async def async_setup_entry(
 
     entities_to_add: list[LinksysVelopSelect] = []
 
+    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopSelect(**entity) for entity in entities]
+
+    if MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS in mesh.capabilities:
+        entities_to_add.extend(
+            [
+                LinksysVelopSelectScheduledReboot(**entity)
+                for entity in build_entities(
+                    [
+                        SelectDetails(
+                            description=SelectEntityDescription(
+                                entity_category=EntityCategory.CONFIG,
+                                key="",
+                                name="Scheduled Reboot",
+                                options=_build_scheduled_reboot_options(),
+                                translation_key="mesh_scheduled_reboot",
+                            ),
+                            entity_type=EntityType.MESH,
+                        )
+                    ],
+                    config_entry,
+                    ENTITY_DOMAIN,
+                )
+            ]
+        )
+
     entities_to_add.extend(
         [
             LinksysVelopSelectPlaceholderEntity(**entity)
@@ -120,3 +156,39 @@ class LinksysVelopSelectPlaceholderEntity(LinksysVelopSelect):
             )
 
         super()._handle_coordinator_update()
+
+
+class LinksysVelopSelectScheduledReboot(LinksysVelopSelect):
+    """Linksys Velop select entity for scheduled reboot."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the scheduled reboot select entity."""
+
+        super().__init__(*args, **kwargs)
+        self._update_attr_value()
+
+    def _update_attr_value(self) -> None:
+        """Update the selected option for the entity."""
+
+        mesh: Mesh = cast(Mesh, self._context_data)
+        if mesh.scheduled_reboot_enabled:
+            self._attr_current_option = (
+                mesh.scheduled_reboot_interval.value.lower()
+                if mesh.scheduled_reboot_interval is not None
+                else None
+            )
+        else:
+            self._attr_current_option = "off"
+
+    async def async_select_option(self, option: str) -> None:
+        """React to the option being changed."""
+
+        mesh: Mesh = cast(Mesh, self._context_data)
+        self._attr_current_option = option
+        if option == "off":
+            await mesh.async_set_scheduled_reboot_state(False)
+        else:
+            await mesh.async_set_scheduled_reboot_interval(
+                ScheduledRebootInterval(option.title())
+            )
+        await self.coordinator.async_refresh()

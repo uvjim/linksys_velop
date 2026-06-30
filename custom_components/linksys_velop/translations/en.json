@@ -168,6 +168,14 @@
         "select": {
             "mesh_devices": {
                 "name": "Devices"
+            },
+            "mesh_scheduled_reboot": {
+                "name": "Scheduled Reboot",
+                "state": {
+                    "monthly": "Monthly",
+                    "off": "Off",
+                    "weekly": "Weekly"
+                }
             }
         },
         "sensor": {
