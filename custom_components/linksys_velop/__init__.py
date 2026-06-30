@@ -341,7 +341,10 @@ async def async_setup_entry(
             config_entry.entry_id,
             f"{config_entry.entry_id}::{EVENT_DOMAIN}::events",
         )
-    if config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE):
+    if (
+        config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE)
+        or MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS in mesh.capabilities
+    ):
         _SETUP_PLATFORMS.append(SELECT_DOMAIN)
     else:
         with contextlib.suppress(ValueError):
