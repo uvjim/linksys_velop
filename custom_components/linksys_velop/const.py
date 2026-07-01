@@ -2,7 +2,8 @@
 
 # region #-- imports --#
 import uuid
-from enum import StrEnum
+from dataclasses import dataclass
+from enum import StrEnum, auto
 from importlib.metadata import PackageNotFoundError, distribution, version
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
@@ -63,7 +64,7 @@ PLATFORMS: list[str | None] = [
 
 try:
     PYVELOP_NAME: str = "pyvelop"
-    PYVELOP_AUTHOR: str = distribution(PYVELOP_NAME).metadata.get("Author")
+    PYVELOP_AUTHOR: str = distribution(PYVELOP_NAME).metadata.get("Author", "")
     PYVELOP_VERSION: str = version(PYVELOP_NAME)
 except PackageNotFoundError:
     pass
@@ -75,8 +76,47 @@ SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE: str = f"{DOMAIN}_ui_placeholder_update"
 ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
 
 
+@dataclass
+class DataCoordinatorFormattedData:
+    """Base class for data being returned for an entity."""
+
+    connected_node: str
+
+
+@dataclass
+class ChannelScanInfo(DataCoordinatorFormattedData):
+    """Representation of Channel Scan information."""
+
+    is_running: bool
+    selected_channels: dict[str, list[dict[str, int | str]]] | None = None
+
+
 class IntensiveTask(StrEnum):
     """Representation of tasks that could cause a delay in response from the Mesh."""
 
     CHANNEL_SCAN = "Channel Scan"
     REBOOT = "Reboot"
+
+
+@dataclass
+class SpeedtestResults(DataCoordinatorFormattedData):
+    """Representation of Speedtest results."""
+
+    download_bandwidth: int | None = None
+    exit_code: str | None = None
+    friendly_status: str | None = None
+    latency: float | None = None
+    result_id: int | None = None
+    timestamp: str = ""
+    upload_bandwidth: int | None = None
+
+
+class SpeedtestStatus(StrEnum):
+    """Possible Speedtest statuses."""
+
+    CHECKING_DOWNLOAD_SPEED = auto()
+    CHECKING_LATENCY = auto()
+    CHECKING_UPLOAD_SPEED = auto()
+    DETECTING_SERVER = auto()
+    FINISHED = auto()
+    UNKNOWN = auto()
