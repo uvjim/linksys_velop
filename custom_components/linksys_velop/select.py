@@ -15,8 +15,9 @@ from pyvelop.const import DEF_EMPTY_NAME, MeshCapability, ScheduledRebootInterva
 from pyvelop.mesh import Mesh
 
 from .const import SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE
+from .coordinator import CoordinatorTimers, LinksysVelopUpdateCoordinator
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
-from .types import CoordinatorTypes, LinksysVelopConfigEntry
+from .types import LinksysVelopConfigEntry
 
 # endregion
 
@@ -65,7 +66,7 @@ async def async_setup_entry(
 
     entities_to_add: list[LinksysVelopSelect] = []
 
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     entities_to_add = [LinksysVelopSelect(**entity) for entity in entities]
 
@@ -102,11 +103,7 @@ async def async_setup_entry(
                             entity_category=EntityCategory.CONFIG,
                             key="",
                             name="Devices",
-                            options=_build_options(
-                                config_entry.runtime_data.coordinators.get(
-                                    CoordinatorTypes.MESH
-                                ).data
-                            ),
+                            options=_build_options(config_entry.runtime_data.mesh),
                             translation_key="mesh_devices",
                         ),
                         entity_type=EntityType.PLACEHOLDER_DEVICE,
@@ -136,17 +133,13 @@ class LinksysVelopSelectPlaceholderEntity(LinksysVelopSelect):
 
         self._attr_current_option = option
         async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, option)
-        await self._config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).async_refresh()
+        await self.coordinator.async_refresh()
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
 
-        self._attr_options = _build_options(
-            self._config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-        )
+        self._attr_options = _build_options(self._config_entry.runtime_data.mesh)
         if self.current_option not in self._attr_options:
             self._attr_current_option = None
             async_dispatcher_send(
@@ -191,4 +184,6 @@ class LinksysVelopSelectScheduledReboot(LinksysVelopSelect):
             await mesh.async_set_scheduled_reboot_interval(
                 ScheduledRebootInterval(option.title())
             )
-        await self.coordinator.async_refresh()
+        await cast(LinksysVelopUpdateCoordinator, self.coordinator).force_refresh(
+            CoordinatorTimers.MESH
+        )

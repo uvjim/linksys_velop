@@ -114,7 +114,7 @@ class LinksysVelopServiceHandler:
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialise."""
         self._hass: HomeAssistant = hass
-        self._log_formatter: LinksysVelopLogFormatter = None
+        self._log_formatter: LinksysVelopLogFormatter
 
     def _get_device(self, mesh: Mesh, value: str) -> list[DeviceEntity] | None:
         """Get a device from the Mesh based on name or unique ID.
@@ -148,38 +148,43 @@ class LinksysVelopServiceHandler:
         """
 
         args = call.data.copy()
-        config_entry_id: str | None = args.pop("mesh", None)
-        config_entry: LinksysVelopConfigEntry
-        if (
-            config_entry := self._hass.config_entries.async_get_entry(config_entry_id)
-        ) is None:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="invalid_input",
-                translation_placeholders={
-                    "action": call.service,
-                    "original_msg": "Invalid Mesh specified",
-                },
-            ) from None
-
-        self._log_formatter = config_entry.runtime_data.log_formatter
-        _LOGGER.debug(self._log_formatter("entered, call: %s"), call)
-
-        _LOGGER.debug(self._log_formatter("Using %s"), config_entry.runtime_data.mesh)
-        if (method := getattr(self, call.service, None)) is not None:
-            try:
-                await method(**args, config_entry=config_entry)
-            except MeshInvalidInput as exc:
+        config_entry_id: str | None = args.pop("mesh")
+        if config_entry_id is not None:
+            config_entry: LinksysVelopConfigEntry | None
+            if (
+                config_entry := self._hass.config_entries.async_get_entry(
+                    config_entry_id
+                )
+            ) is None:
                 raise ServiceValidationError(
                     translation_domain=DOMAIN,
                     translation_key="invalid_input",
                     translation_placeholders={
                         "action": call.service,
-                        "original_msg": str(exc),
+                        "original_msg": "Invalid Mesh specified",
                     },
-                ) from exc
-            except Exception as err:
-                _LOGGER.warning(self._log_formatter("%s", include_caller=False), err)
+                ) from None
+
+            self._log_formatter = config_entry.runtime_data.log_formatter
+            _LOGGER.debug(self._log_formatter("entered, call: %s"), call)
+
+            _LOGGER.debug(
+                self._log_formatter("using %s"), config_entry.runtime_data.mesh
+            )
+            if (method := getattr(self, call.service, None)) is not None:
+                try:
+                    await method(**args, config_entry=config_entry)
+                except MeshInvalidInput as exc:
+                    raise ServiceValidationError(
+                        translation_domain=DOMAIN,
+                        translation_key="invalid_input",
+                        translation_placeholders={
+                            "action": call.service,
+                            "original_msg": str(exc),
+                        },
+                    ) from exc
+                except Exception as err:
+                    _LOGGER.warning(self._log_formatter("%s", False), err)
 
         _LOGGER.debug(self._log_formatter("exited"))
 
@@ -241,13 +246,17 @@ class LinksysVelopServiceHandler:
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None
 
-        rules_to_apply: dict[str, str] = {}
+        rules_to_apply: dict[str, str | None] = {}
         for weekday in Weekdays:
             rules_to_apply[weekday.name.lower()] = (
                 None
                 if not kwargs.get("pause", False)
-                else ParentalControl.binary_to_human_readable(
-                    ParentalControl.ALL_PAUSED_SCHEDULE().get(weekday.name.lower(), "")
+                else str(
+                    ParentalControl.binary_to_human_readable(
+                        ParentalControl.ALL_PAUSED_SCHEDULE().get(
+                            weekday.name.lower(), ""
+                        )
+                    )
                 )
             )
 
@@ -273,9 +282,9 @@ class LinksysVelopServiceHandler:
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None
 
-        def _process_times() -> dict[str, str]:
+        def _process_times() -> dict[str, str | None]:
             """Process the times from the service call."""
-            ret: dict[str, str] = {}
+            ret: dict[str, str | None] = {}
 
             for day in Weekdays:
                 times: list[str] = kwargs.get(day.name.lower(), [])
@@ -287,15 +296,10 @@ class LinksysVelopServiceHandler:
 
             return ret
 
-        rules_to_apply: dict[str, str] = _process_times()
+        rules_to_apply: dict[str, str | None] = _process_times()
         _LOGGER.debug(self._log_formatter("rules_to_apply: %s"), rules_to_apply)
 
         await device[0].async_set_parental_control_rules(rules_to_apply)
-
-        # await config_entry.runtime_data.mesh.async_set_parental_control_rules(
-        #     device_id=device[0].unique_id,
-        #     rules=rules_to_apply,
-        # )
 
         _LOGGER.debug(self._log_formatter("exited"))
 
@@ -311,7 +315,7 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
 
-        node: NodeEntity = [
+        node: list[NodeEntity] = [
             n
             for n in config_entry.runtime_data.mesh.nodes
             if n.name == kwargs.get("node_name", "")
@@ -325,7 +329,7 @@ class LinksysVelopServiceHandler:
             _LOGGER.warning(
                 self._log_formatter(
                     "The service %s.%s has been deprecated. %s",
-                    include_caller=False,
+                    False,
                 ),
                 DOMAIN,
                 "reboot_node",
@@ -368,11 +372,14 @@ class LinksysVelopServiceHandler:
         if len(device) > 1:
             raise MeshTooManyMatches from None
 
-        if device[0].name != kwargs.get("new_name"):
+        if (
+            device[0].name != kwargs.get("new_name")
+            and kwargs.get("new_name") is not None
+        ):
             _LOGGER.debug(
                 self._log_formatter("renaming device: %s"),
                 device[0].unique_id,
             )
-            await device[0].async_rename(kwargs.get("new_name"))
+            await device[0].async_rename(str(kwargs.get("new_name")))
 
         _LOGGER.debug(self._log_formatter("exited"))

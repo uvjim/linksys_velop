@@ -3,6 +3,7 @@
 # region #-- imports --#
 import logging
 from dataclasses import dataclass
+from typing import cast
 
 from homeassistant.components.update import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.update import (
@@ -12,13 +13,13 @@ from homeassistant.components.update import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.mesh import Mesh, MeshCapability, NodeEntity
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_NODE_IMAGES
+from .coordinator import DataItems
 from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
 from .helpers import remove_velop_entity_from_registry
-from .types import CoordinatorTypes
 
 # endregion
 
@@ -47,7 +48,7 @@ async def async_setup_entry(
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional update entities --#
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     if MeshCapability.GET_UPDATE_FIRMWARE_STATE in mesh.capabilities:
         entities.extend(
             build_entities(
@@ -63,7 +64,7 @@ async def async_setup_entry(
                         pic_value_func=lambda n, c: (
                             f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
                             if c.options.get(CONF_NODE_IMAGES, "")
-                            else None
+                            else ""
                         ),
                     )
                 ],
@@ -72,9 +73,7 @@ async def async_setup_entry(
             )
         )
     else:
-        for node in config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data.nodes:
+        for node in config_entry.runtime_data.mesh.nodes:
             entities_to_remove.append(f"{node.unique_id}::{ENTITY_DOMAIN}::update")
     # endregion
 
@@ -94,6 +93,8 @@ async def async_setup_entry(
 class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
     """Linksys Velop update entity."""
 
+    _context_data: NodeEntity
+
     @callback
     def _update_attr_value(self) -> None:
         """Update the value of the entity."""
@@ -105,7 +106,10 @@ class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
             return
 
         self._attr_auto_update = (
-            self.coordinator.data.firmware_update_setting != "manual"
+            cast(
+                Mesh, self.coordinator.data.get(DataItems.MESH)
+            ).firmware_update_setting
+            != "manual"
         )
         self._attr_installed_version = self._context_data.firmware.get("version", None)
         self._attr_latest_version = self._context_data.firmware.get(

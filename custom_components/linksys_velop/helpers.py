@@ -58,7 +58,7 @@ def remove_velop_entity_from_registry(
         entity_registry.async_remove(found_entity[0].entity_id)
 
 
-async def async_get_integration_version(hass: HomeAssistant) -> AwesomeVersion:
+async def async_get_integration_version(hass: HomeAssistant) -> AwesomeVersion | None:
     """Retrieve the version number for the integration."""
 
     ret: Integration = await async_get_integration(hass, DOMAIN)

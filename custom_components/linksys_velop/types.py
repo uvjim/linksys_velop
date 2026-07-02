@@ -1,12 +1,12 @@
 """Types."""
 
 # region #-- imports --#
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Any, Protocol
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import CALLBACK_TYPE
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pyvelop.mesh import Mesh
 
@@ -29,6 +29,7 @@ class CoordinatorTypes(StrEnum):
     """The type of coordinator."""
 
     CHANNEL_SCAN = "coordinator_channel_scan"
+    DEVICE_TRACKER = "coordinator_device_tracker"
     MESH = "coordinator_mesh"
     SPEEDTEST = "coordinator_speedtest"
 
@@ -51,5 +52,6 @@ class LinksysVelopRuntimeData:
     coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
         default_factory=dict
     )
+    device_tracker_unsub: CALLBACK_TYPE = lambda: None
     mesh_is_rebooting: bool = False
     intensive_running_tasks: list[str] = field(default_factory=list)
