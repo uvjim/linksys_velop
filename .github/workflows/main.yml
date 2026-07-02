@@ -80,6 +80,6 @@ jobs:
         with:
           draft: true
           files: |
-            ${{ env.PACKAGE_NAME }}/*
+            ./${{ env.PACKAGE_NAME }}*
           generate_release_notes: true
           prerelease: ${{ needs.init.outputs.beta_release }}
