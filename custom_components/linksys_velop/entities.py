@@ -2,17 +2,21 @@
 
 # region #-- imports --#
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from enum import IntFlag, auto
-from typing import Any, Callable
+from typing import Any, ParamSpec, TypeVar, cast
 
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from homeassistant.util import slugify
 from pyvelop.const import DEF_EMPTY_NAME
 from pyvelop.mesh import Mesh
@@ -28,21 +32,18 @@ from .const import (
     PYVELOP_VERSION,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
+from .coordinator import DataItems, LinksysVelopUpdateCoordinator
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+P = ParamSpec("P")
 
-EsaValueType = Callable[[DeviceEntity | Mesh | NodeEntity], dict[str, Any]] | None
-PicValueType = Callable[[DeviceEntity | Mesh | NodeEntity], str] | None
-StateValueType = (
-    Callable[
-        [DeviceEntity | Mesh | NodeEntity], StateType | bool | date | datetime | Decimal
-    ]
-    | None
-)
+EsaValueType = Callable[P, dict[str, Any]] | None
+PicValueType = Callable[P, str] | None
+StateValueType = Callable[P, StateType | bool | date | datetime | Decimal] | None
 
 
 class EntityType(IntFlag):
@@ -77,16 +78,17 @@ class EntityDetails:
     state_value_func: StateValueType = None
 
 
+E = TypeVar("E", bound=EntityDetails)
+
+
 def build_entities(
-    entity_details: list[EntityDetails],
+    entity_details: list[E],
     config_entry: LinksysVelopConfigEntry,
     entity_domain: str,
-) -> list[dict[str, EntityContext | LinksysVelopConfigEntry | str | EntityDetails]]:
+) -> list[dict[str, Any]]:
     """Create a list of information required for creating entities."""
 
-    ret: list[
-        dict[str, EntityContext | LinksysVelopConfigEntry | str | EntityDetails]
-    ] = []
+    ret: list[dict[str, Any]] = []
 
     for entity in entity_details:
         if entity.entity_type in (EntityType.DEVICE, EntityType.PLACEHOLDER_DEVICE):
@@ -116,9 +118,7 @@ def build_entities(
             entity.entity_type == EntityType.NODE
             or entity.entity_type in EntityType.NODE
         ):
-            for node in config_entry.runtime_data.coordinators.get(
-                CoordinatorTypes.MESH
-            ).data.nodes:
+            for node in config_entry.runtime_data.mesh.nodes:
                 wifi_node: bool = (
                     node.backhaul.get("connection", "").lower() == "wireless"
                 )
@@ -135,14 +135,15 @@ def build_entities(
                     or (entity.entity_type == EntityType.WIFI_NODE and wifi_node)
                     or (entity.entity_type == EntityType.WIRED_NODE and not wifi_node)
                 ):
-                    ret.append(
-                        {
-                            "config_entry": config_entry,
-                            "context": EntityContext(unique_id=node.unique_id),
-                            "entity_details": entity,
-                            "entity_domain": entity_domain,
-                        }
-                    )
+                    if node.unique_id is not None:
+                        ret.append(
+                            {
+                                "config_entry": config_entry,
+                                "context": EntityContext(unique_id=node.unique_id),
+                                "entity_details": entity,
+                                "entity_domain": entity_domain,
+                            }
+                        )
 
     return ret
 
@@ -168,24 +169,28 @@ class LinksysVelopEntity(CoordinatorEntity):
             self._entity_details.coordinator_type
         )
 
-        super().__init__(coordinator, context)
+        super().__init__(cast(DataUpdateCoordinator, coordinator), context)
         self.entity_description = self._entity_details.description
 
         self._attr_has_entity_name = True
         self._attr_unique_id = (
             f"{self.coordinator_context.unique_id}::"
             f"{entity_domain.lower()}::"
-            f"{slugify(self.entity_description.name)}"
+            f"{slugify(str(self.entity_description.name))}"
         )
 
-        self._context_data: DeviceEntity | Mesh | NodeEntity | None = None
+        self._context_data: Any = None
         self._ui_placeholder_device_id: str | None = None
         self._set_context_data()
         self._update_values()
 
-        if self._entity_details.entity_type in (
-            EntityType.DEVICE,
-            EntityType.PLACEHOLDER_DEVICE,
+        if (
+            self._entity_details.entity_type
+            in (
+                EntityType.DEVICE,
+                EntityType.PLACEHOLDER_DEVICE,
+            )
+            and self._context_data is not None
         ):
             self._attr_device_info = DeviceInfo(
                 identifiers={(DOMAIN, self.coordinator_context.unique_id)},
@@ -208,9 +213,12 @@ class LinksysVelopEntity(CoordinatorEntity):
                     else "Placeholder Device"
                 ),
             )
-        elif self._entity_details.entity_type == EntityType.MESH:
+        elif (
+            self._entity_details.entity_type == EntityType.MESH
+            and self._context_data is not None
+        ):
             self._attr_device_info = DeviceInfo(
-                configuration_url=f"http://{self.coordinator.data.connected_node}",
+                configuration_url=f"http://{self._context_data.connected_node}",
                 entry_type=DeviceEntryType.SERVICE,
                 identifiers={(DOMAIN, self.coordinator_context.unique_id)},
                 manufacturer=PYVELOP_AUTHOR,
@@ -218,7 +226,10 @@ class LinksysVelopEntity(CoordinatorEntity):
                 name="Mesh",
                 sw_version="",
             )
-        elif self._entity_details.entity_type in EntityType.NODE:
+        elif (
+            self._entity_details.entity_type in EntityType.NODE
+            and self._context_data is not None
+        ):
             self._attr_device_info = DeviceInfo(
                 hw_version=self._context_data.hardware_version,
                 identifiers={(DOMAIN, self._context_data.serial)},
@@ -251,16 +262,15 @@ class LinksysVelopEntity(CoordinatorEntity):
     def _set_ui_placeholder_device_id(self, device_name: str | None) -> None:
 
         if device_name is not None:
-            _mesh: Mesh = self._config_entry.runtime_data.mesh
             match_on: str = (
                 device_name
                 if not device_name.startswith(f"{DEF_EMPTY_NAME} (")
                 else device_name.split("(")[1].strip(")")
             )
-            for dev in _mesh.devices:
-                match_against: list[str] = [dev.name.lower(), dev.unique_id]
+            for dev in self._config_entry.runtime_data.mesh.devices:
+                match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
                 if device_name.startswith(f"{DEF_EMPTY_NAME} (") and dev.status:
-                    match_against.append(dev.connected_adapters[0].get("ip"))
+                    match_against.append(dev.adapter_info[0].get("ip", ""))
                 if device_name and (match_on.lower() in match_against):
                     device_id = dev.unique_id
                     break
@@ -282,22 +292,30 @@ class LinksysVelopEntity(CoordinatorEntity):
             )
             if device_id is not None:
                 devices: list[DeviceEntity] = [
-                    d for d in self.coordinator.data.devices if d.unique_id == device_id
+                    d
+                    for d in cast(
+                        Mesh, self.coordinator.data.get(DataItems.MESH)
+                    ).devices
+                    if d.unique_id == device_id
                 ]
                 if len(devices) > 0:
-                    self._context_data: DeviceEntity = devices[0]
+                    self._context_data = devices[0]
             else:
                 self._context_data = None
         elif self._entity_details.entity_type == EntityType.MESH:
-            self._context_data: Mesh = self.coordinator.data
+            self._context_data = (
+                self.coordinator.data.get(DataItems.MESH)
+                if isinstance(self.coordinator, LinksysVelopUpdateCoordinator)
+                else self.coordinator.data
+            )
         elif self._entity_details.entity_type in EntityType.NODE:
             nodes: list[NodeEntity] = [
                 n
-                for n in self.coordinator.data.nodes
+                for n in cast(Mesh, self.coordinator.data.get(DataItems.MESH)).nodes
                 if n.unique_id == self.coordinator_context.unique_id
             ]
             if len(nodes) > 0:
-                self._context_data: NodeEntity = nodes[0]
+                self._context_data = nodes[0]
 
     def _update_attr_value(self) -> None:
         """Update the attribute value for the entity."""
@@ -319,7 +337,7 @@ class LinksysVelopEntity(CoordinatorEntity):
         """Update the extra state attributes for the entity."""
 
         if self._context_data is None:
-            self._attr_extra_state_attributes = None
+            self._attr_extra_state_attributes = {}
             return
 
         if self._entity_details.esa_value_func is not None:
@@ -327,7 +345,7 @@ class LinksysVelopEntity(CoordinatorEntity):
                 self._context_data
             )
         else:
-            self._attr_extra_state_attributes = None
+            self._attr_extra_state_attributes = {}
 
     @callback
     def _update_pic_value(self) -> None:

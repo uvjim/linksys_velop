@@ -76,10 +76,9 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="friendly_signal_strength",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.adapter_info), {}).get(
-            "signal_strength", ""
-        )
-        or None,
+        state_value_func=lambda d: (
+            next(iter(d.adapter_info), {}).get("signal_strength", "")
+        ),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -89,7 +88,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="ip",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("ip"),
+        state_value_func=lambda d: (next(iter(d.adapter_info), {}).get("ip")),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -99,7 +98,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="ipv6",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("ipv6"),
+        state_value_func=lambda d: (next(iter(d.adapter_info), {}).get("ipv6")),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -109,7 +108,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="mac",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("mac"),
+        state_value_func=lambda d: (next(iter(d.adapter_info), {}).get("mac")),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -175,7 +174,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="signal_strength",
         ),
         entity_type=EntityType.DEVICE,
-        state_value_func=lambda d: next(iter(d.adapter_info), {}).get("rssi"),
+        state_value_func=lambda d: (next(iter(d.adapter_info), {}).get("rssi")),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -189,7 +188,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/"
             f"{d.ui_type.lower()}.png"
             if d.ui_type is not None
-            else None
+            else ""
         ),
     ),
     SensorDetails(
@@ -212,11 +211,13 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="guest_devices",
         ),
         entity_type=EntityType.MESH,
-        esa_value_func=lambda m: {
-            "devices": [d for d in get_devices(m) if d.get("guest_network")]
-        },
-        state_value_func=lambda m: len(
-            [d for d in get_devices(m) if d.get("guest_network")]
+        esa_value_func=lambda m: (
+            {"devices": ([d for d in get_devices(m) if d.get("guest_network")])}
+            if get_devices(m)
+            else {}
+        ),
+        state_value_func=lambda m: (
+            len([d for d in get_devices(m) if d.get("guest_network")])
         ),
     ),
     SensorDetails(
@@ -228,8 +229,10 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="offline_devices",
         ),
         entity_type=EntityType.MESH,
-        esa_value_func=lambda m: {"devices": get_devices(m, False)},
-        state_value_func=lambda m: len(get_devices(m, False)),
+        esa_value_func=lambda m: (
+            {"devices": get_devices(m, False)} if get_devices(m, False) else {}
+        ),
+        state_value_func=lambda m: (len(get_devices(m, False))),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -240,7 +243,9 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="online_devices",
         ),
         entity_type=EntityType.MESH,
-        esa_value_func=lambda m: {"devices": get_devices(m)},
+        esa_value_func=lambda m: (
+            {"devices": get_devices(m)} if get_devices(m) else {}
+        ),
         state_value_func=lambda m: len(get_devices(m)),
     ),
     # endregion
@@ -257,7 +262,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
         esa_value_func=lambda n: (
             {"devices": n.connected_devices} if n.connected_devices else {}
         ),
-        state_value_func=lambda n: len(n.connected_devices),
+        state_value_func=lambda n: (len(n.connected_devices)),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -270,7 +275,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
         pic_value_func=lambda n, c: (
             f"{c.options.get(CONF_NODE_IMAGES, '').rstrip('/ ').strip()}/{n.model}.png"
             if c.options.get(CONF_NODE_IMAGES, "")
-            else None
+            else ""
         ),
     ),
     SensorDetails(
@@ -281,7 +286,7 @@ ENTITY_DETAILS: list[SensorDetails] = [
             translation_key="parent_name",
         ),
         entity_type=EntityType.SECONDARY_NODE,
-        esa_value_func=lambda n: {"parent_ip": n.parent_ip},
+        esa_value_func=lambda n: ({"parent_ip": n.parent_ip}),
     ),
     SensorDetails(
         description=SensorEntityDescription(
@@ -320,7 +325,7 @@ async def async_setup_entry(
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional sensors --#
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     if MeshCapability.GET_BACKHAUL in mesh.capabilities:
         entities.extend(
             build_entities(
@@ -350,7 +355,7 @@ async def async_setup_entry(
                         ),
                         entity_type=EntityType.SECONDARY_NODE,
                         state_value_func=lambda n: (
-                            dt_util.parse_datetime(n.backhaul.get("last_checked"))
+                            dt_util.parse_datetime(n.backhaul.get("last_checked", ""))
                             if n.backhaul.get("last_checked")
                             else None
                         ),
@@ -365,7 +370,7 @@ async def async_setup_entry(
                             translation_key="backhaul_signal_strength",
                         ),
                         entity_type=EntityType.WIFI_NODE,
-                        state_value_func=lambda n: n.backhaul.get("rssi_dbm"),
+                        state_value_func=lambda n: (n.backhaul.get("rssi_dbm")),
                     ),
                     SensorDetails(
                         description=SensorEntityDescription(
@@ -378,7 +383,7 @@ async def async_setup_entry(
                             translation_key="backhaul_speed",
                         ),
                         entity_type=EntityType.SECONDARY_NODE,
-                        state_value_func=lambda n: n.backhaul.get("speed_mbps"),
+                        state_value_func=lambda n: (n.backhaul.get("speed_mbps")),
                     ),
                     SensorDetails(
                         description=SensorEntityDescription(
@@ -390,9 +395,9 @@ async def async_setup_entry(
                             translation_key="backhaul_connection_type",
                         ),
                         entity_type=EntityType.SECONDARY_NODE,
-                        state_value_func=lambda n: n.backhaul.get(
-                            "connection", "unknown"
-                        ).lower(),
+                        state_value_func=lambda n: (
+                            n.backhaul.get("connection", "unknown").lower()
+                        ),
                     ),
                 ],
                 config_entry,
@@ -400,9 +405,7 @@ async def async_setup_entry(
             )
         )
     else:
-        for node in config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data.nodes:
+        for node in config_entry.runtime_data.mesh.nodes:
             if node.type == NodeType.SECONDARY:
                 entities_to_remove.extend(
                     [
@@ -443,7 +446,9 @@ async def async_setup_entry(
                             translation_key="speedtest_last_run",
                         ),
                         entity_type=EntityType.MESH,
-                        state_value_func=lambda r: dt_util.parse_datetime(r.timestamp),
+                        state_value_func=lambda r: (
+                            dt_util.parse_datetime(r.timestamp)
+                        ),
                     ),
                     SensorDetails(
                         coordinator_type=CoordinatorTypes.SPEEDTEST,
@@ -537,10 +542,14 @@ async def async_setup_entry(
                             translation_key="dhcp_reservations",
                         ),
                         entity_type=EntityType.MESH,
-                        esa_value_func=lambda m: {
-                            "reservations": m.dhcp_reservations,
-                        },
-                        state_value_func=lambda m: len(m.dhcp_reservations),
+                        esa_value_func=lambda m: (
+                            {
+                                "reservations": m.dhcp_reservations,
+                            }
+                            if m.dhcp_reservations
+                            else {}
+                        ),
+                        state_value_func=lambda m: (len(m.dhcp_reservations)),
                     )
                 ],
                 config_entry,
@@ -565,13 +574,18 @@ async def async_setup_entry(
                             translation_key="blocked_sites",
                         ),
                         entity_type=EntityType.DEVICE,
-                        esa_value_func=lambda d: {
-                            "sites": d.parental_control_schedule.get(
-                                "blocked_sites", []
-                            )
-                        },
-                        state_value_func=lambda d: len(
-                            d.parental_control_schedule.get("blocked_sites", [])
+                        esa_value_func=lambda d: (
+                            {
+                                "sites": d.parental_control_schedule.get(
+                                    "blocked_sites", []
+                                )
+                            }
+                            if len(d.parental_control_schedule.get("blocked_sites", []))
+                            > 0
+                            else {}
+                        ),
+                        state_value_func=lambda d: (
+                            len(d.parental_control_schedule.get("blocked_sites", []))
                         ),
                     ),
                 ],
@@ -597,10 +611,12 @@ async def async_setup_entry(
                             translation_key="available_storage",
                         ),
                         entity_type=EntityType.MESH,
-                        esa_value_func=lambda m: {
-                            "partitions": m.storage_available or None
-                        },
-                        state_value_func=lambda m: len(m.storage_available),
+                        esa_value_func=lambda m: (
+                            {"partitions": (m.storage_available)}
+                            if len(m.storage_available) > 0
+                            else {}
+                        ),
+                        state_value_func=lambda m: (len(m.storage_available)),
                     ),
                 ],
                 config_entry,
@@ -638,9 +654,7 @@ async def async_setup_entry(
             )
         )
     else:
-        for node in config_entry.runtime_data.coordinators.get(
-            CoordinatorTypes.MESH
-        ).data.nodes:
+        for node in config_entry.runtime_data.mesh.nodes:
             entities_to_remove.append(
                 f"{node.unique_id}::{ENTITY_DOMAIN}::last_update_check"
             )

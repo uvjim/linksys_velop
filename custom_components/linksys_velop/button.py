@@ -2,8 +2,9 @@
 
 # region #-- imports --#
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import cast
 
 from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.button import (
@@ -15,7 +16,7 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.mesh_entity import NodeEntity
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 from pyvelop.types import NodeType
 
 from .const import (
@@ -54,9 +55,10 @@ class ButtonDetails(EntityDetails):
 async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> None:
     """Restart the primary node."""
 
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     primary_node: NodeEntity | list[NodeEntity] = [
-        node for node in mesh.nodes if node.type == NodeType.PRIMARY
+        node
+        for node in config_entry.runtime_data.mesh.nodes
+        if node.type == NodeType.PRIMARY
     ]
     if len(primary_node) > 0:
         _hass: HomeAssistant = async_get_hass()
@@ -68,29 +70,26 @@ async def _async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> 
                 _hass,
                 f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
             )
-        await mesh.async_reboot_node(node_name=primary_node[0].name, force=True)
+        await config_entry.runtime_data.mesh.async_reboot_mesh()
 
 
 async def _async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> None:
     """Start the channel scan."""
 
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
     config_entry.runtime_data.intensive_running_tasks.append(IntensiveTask.CHANNEL_SCAN)
-    await mesh.async_start_channel_scan()
+    await config_entry.runtime_data.mesh.async_start_channel_scan()
 
 
 async def _async_start_check_for_updates(config_entry: LinksysVelopConfigEntry) -> None:
     """Start checking for updates."""
 
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    await mesh.async_check_for_updates()
+    await config_entry.runtime_data.mesh.async_check_for_updates()
 
 
 async def _async_start_speedtest(config_entry: LinksysVelopConfigEntry) -> None:
     """Start a Speedtest."""
 
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
-    await mesh.async_start_speedtest()
+    await config_entry.runtime_data.mesh.async_start_speedtest()
 
 
 ENTITY_DETAILS: list[ButtonDetails] = [
@@ -133,7 +132,7 @@ async def async_setup_entry(
 
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
     # region #-- add additional conditional buttons --#
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     if MeshCapability.GET_FIRMWARE_UPDATE_SETTINGS in mesh.capabilities:
         entities.extend(
             build_entities(
@@ -260,27 +259,21 @@ class LinksysVelopButton(LinksysVelopEntity, ButtonEntity):
         """Initialise."""
 
         super().__init__(context, config_entry, entity_details, entity_domain)
-        self._press_func: Callable = entity_details.press_func
+        self._press_func: Callable | str = entity_details.press_func
         self._refresh_after: bool = entity_details.refresh_after
 
     async def _async_delete_device(self) -> None:
         """Delete the device."""
 
         if self._context_data is not None:
-            mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
-                CoordinatorTypes.MESH
-            ).data
-            await mesh.async_delete_device_by_id(self._context_data.unique_id)
+            await cast(DeviceEntity, self._context_data).async_delete()
             async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
 
     async def _async_restart_node(self) -> None:
         """Restart the node."""
 
         if self._context_data is not None:
-            mesh: Mesh = self._config_entry.runtime_data.coordinators.get(
-                CoordinatorTypes.MESH
-            ).data
-            await mesh.async_reboot_node(self._context_data.name)
+            await cast(NodeEntity, self._context_data).async_reboot()
 
     async def async_press(self) -> None:
         """Carry out the button press action."""

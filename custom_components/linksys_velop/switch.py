@@ -2,14 +2,16 @@
 
 # region #-- imports --#
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.const import Weekdays
 from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.mesh_entity import DeviceEntity, ParentalControl
 
@@ -23,7 +25,6 @@ from .entities import (
     build_entities,
 )
 from .helpers import remove_velop_entity_from_registry
-from .types import CoordinatorTypes
 
 # endregion
 
@@ -54,28 +55,31 @@ def _get_device_internet_access_state(device_details: DeviceEntity) -> bool | No
 
 
 async def _async_set_device_internet_access_state_off(
-    config_entry: LinksysVelopConfigEntry, device_details: DeviceEntity
+    device_details: DeviceEntity,
 ) -> None:
     """Turn off Internet access for the given device."""
-    mesh: Mesh = config_entry.runtime_data.mesh
-    off_rules: dict[str, str] = {
-        k: v[0]
-        for k, v in ParentalControl.binary_to_human_readable(
-            ParentalControl.ALL_PAUSED_SCHEDULE()
-        ).items()
-    }
-    await mesh.async_set_parental_control_rules(
-        device_details.unique_id,
-        off_rules,
-    )
+
+    rules_to_apply: dict[str, str] = {}
+    for weekday in Weekdays:
+        rules_to_apply[weekday.name.lower()] = str(
+            ParentalControl.binary_to_human_readable(
+                ParentalControl.ALL_PAUSED_SCHEDULE().get(weekday.name.lower(), "")
+            )
+        )
+
+    await device_details.async_set_parental_control_rules(rules_to_apply)
 
 
 async def _async_set_device_internet_access_state_on(
-    config_entry: LinksysVelopConfigEntry, device_details: DeviceEntity
+    device_details: DeviceEntity,
 ) -> None:
     """Turn on Internet access for the given device."""
-    mesh: Mesh = config_entry.runtime_data.mesh
-    await mesh.async_set_parental_control_rules(device_details.unique_id, {})
+
+    rules_to_apply: dict[str, None] = {}
+    for weekday in Weekdays:
+        rules_to_apply[weekday.name.lower()] = None
+
+    await device_details.async_set_parental_control_rules(rules_to_apply)
 
 
 async def _async_set_mesh_upnp_state_off(
@@ -119,7 +123,7 @@ async def async_setup_entry(
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional switches --#
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     if MeshCapability.GET_GUEST_NETWORK_INFO in mesh.capabilities:
         entities.extend(
             build_entities(
@@ -307,7 +311,7 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Process the function for turning the switch on."""
         if isinstance(self._on_func, Callable):
-            await self._on_func(self._config_entry, self._context_data)
+            await self._on_func(self._context_data)
             await self.coordinator.async_refresh()
         elif (func := getattr(self.coordinator.data, self._on_func, None)) is not None:
             if isinstance(func, Callable):
@@ -317,7 +321,7 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Process the function for turning the switch off."""
         if isinstance(self._off_func, Callable):
-            await self._off_func(self._config_entry, self._context_data)
+            await self._off_func(self._context_data)
             await self.coordinator.async_refresh()
         elif (func := getattr(self.coordinator.data, self._off_func, None)) is not None:
             if isinstance(func, Callable):
@@ -333,7 +337,9 @@ class LinksysVelopSwitch(LinksysVelopEntity, SwitchEntity):
             return
 
         if self._entity_details.state_value_func is not None:
-            self._attr_is_on = self._entity_details.state_value_func(self._context_data)
+            self._attr_is_on = bool(
+                self._entity_details.state_value_func(self._context_data)
+            )
         elif self.entity_description.key:
             try:
                 self._attr_is_on = getattr(

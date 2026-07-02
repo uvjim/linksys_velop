@@ -3,7 +3,6 @@
 # region #-- imports --#
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
@@ -19,7 +18,7 @@ from .types import LinksysVelopConfigEntry
 # endregion
 
 
-ATTR_REDACT: Iterable = {
+ATTR_REDACT: set[str] = {
     CONF_PASSWORD,
     "apBSSID",
     "gateway",
@@ -91,7 +90,7 @@ async def async_get_device_diagnostics(
         }
     }
 
-    node: NodeEntity = next(
+    node: NodeEntity | None = next(
         (
             n
             for n in mesh.nodes

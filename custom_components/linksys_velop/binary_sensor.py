@@ -94,7 +94,7 @@ async def async_setup_entry(
     entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
 
     # region #-- add conditional binary sensors --#
-    mesh: Mesh = config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH).data
+    mesh: Mesh = config_entry.runtime_data.mesh
     if MeshCapability.GET_ALG_SETTINGS in mesh.capabilities:
         entities.extend(
             build_entities(
@@ -414,7 +414,7 @@ async def async_setup_entry(
             )
         )
     else:
-        entities.extend(
+        entities_to_remove.extend(
             [
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp_allow_users_to_configure",
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp_allow_users_to_disable_internet",
@@ -476,7 +476,9 @@ class LinksysVelopBinarySensor(LinksysVelopEntity, BinarySensorEntity):
             return
 
         if self._entity_details.state_value_func is not None:
-            self._attr_is_on = self._entity_details.state_value_func(self._context_data)
+            self._attr_is_on = bool(
+                self._entity_details.state_value_func(self._context_data)
+            )
         elif self.entity_description.key:
             try:
                 self._attr_is_on = getattr(

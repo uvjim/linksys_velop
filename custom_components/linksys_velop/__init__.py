@@ -4,29 +4,13 @@
 import contextlib
 import copy
 import logging
-from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import (
-    ConfigEntryAuthFailed,
-    ConfigEntryError,
-    ConfigEntryNotReady,
-)
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
-from homeassistant.helpers.dispatcher import async_dispatcher_send
-from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.issue_registry import IssueSeverity
-from pyvelop.exceptions import (
-    MeshConnectionError,
-    MeshDeviceNotFoundResponse,
-    MeshTimeoutError,
-)
 from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.mesh_entity import DeviceEntity
 
@@ -47,17 +31,14 @@ from .const import (
     DEVICE_TRACKER_DOMAIN,
     DOMAIN,
     EVENT_DOMAIN,
-    ISSUE_MISSING_DEVICE_TRACKER,
     PLATFORMS,
     SELECT_DOMAIN,
-    SIGNAL_DEVICE_TRACKER_UPDATE,
 )
 from .coordinator import (
     LinksysVelopUpdateCoordinator,
     LinksysVelopUpdateCoordinatorChannelScan,
     LinksysVelopUpdateCoordinatorSpeedtest,
 )
-from .exceptions import DeviceTrackerMeshTimeout, GeneralException, IntensiveTaskRunning
 from .helpers import (
     async_get_integration_version,
     get_mesh_device_for_config_entry,
@@ -130,22 +111,6 @@ async def async_setup_entry(
         config_entry.runtime_data.log_formatter("using integration version: %s"),
         await async_get_integration_version(hass),
     )
-    _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("setting up Mesh for the coordinator")
-    )
-
-    try:
-        await config_entry.runtime_data.mesh.async_initialise()
-    except MeshTimeoutError as exc:
-        raise ConfigEntryNotReady(
-            translation_domain=DOMAIN,
-            translation_key="init_mesh_timeout",
-            translation_placeholders={
-                "current_timeout": config_entry.options.get(
-                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                )
-            },
-        ) from exc
 
     # region #-- setup the coordinators --#
     coordinator_name_suffix: str = ""
@@ -153,19 +118,30 @@ async def async_setup_entry(
         coordinator_name_suffix += f" ({getattr(log_formatter, '_unique_id')})"
 
     # region #--- mesh coordinator --#
+    update_interval: float = config_entry.options.get(
+        CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+    )
     _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("setting up the mesh coordinator")
+        config_entry.runtime_data.log_formatter(
+            "setting up the mesh coordinator with interval: %s"
+        ),
+        update_interval,
     )
     coordinator_name = f"{DOMAIN} mesh{coordinator_name_suffix}"
+    update_intervals: dict[str, float] = {
+        "update_interval_secs": update_interval,
+    }
+    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
+        update_intervals["tracker_update_interval_secs"] = config_entry.options.get(
+            CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
+        )
     config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
         LinksysVelopUpdateCoordinator(
             hass,
             _LOGGER,
             coordinator_name,
             config_entry=config_entry,
-            update_interval_secs=config_entry.options.get(
-                CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-            ),
+            **update_intervals,
         )
     )
     await config_entry.runtime_data.coordinators[
@@ -178,10 +154,14 @@ async def async_setup_entry(
         MeshCapability.GET_SPEEDTEST_RESULTS
         in config_entry.runtime_data.mesh.capabilities
     ):
+        update_interval: float = config_entry.options.get(
+            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+        )
         _LOGGER.debug(
             config_entry.runtime_data.log_formatter(
-                "setting up the speedtest coordinator"
-            )
+                "setting up the speedtest coordinator with interval: %s"
+            ),
+            update_interval,
         )
         coordinator_name = f"{DOMAIN} speedtest{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
@@ -190,9 +170,7 @@ async def async_setup_entry(
                 _LOGGER,
                 coordinator_name,
                 config_entry=config_entry,
-                update_interval_secs=config_entry.options.get(
-                    CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-                ),
+                update_interval_secs=update_interval,
             )
         )
         await config_entry.runtime_data.coordinators[
@@ -205,10 +183,14 @@ async def async_setup_entry(
         MeshCapability.GET_CHANNEL_SCAN_STATUS
         in config_entry.runtime_data.mesh.capabilities
     ):
+        update_interval: float = config_entry.options.get(
+            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+        )
         _LOGGER.debug(
             config_entry.runtime_data.log_formatter(
-                "setting up the channel scan coordinator"
-            )
+                "setting up the channel scan coordinator with interval: %s"
+            ),
+            update_interval,
         )
         coordinator_name = f"{DOMAIN} channel scan{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
@@ -217,113 +199,14 @@ async def async_setup_entry(
                 _LOGGER,
                 coordinator_name,
                 config_entry=config_entry,
-                update_interval_secs=config_entry.options.get(
-                    CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-                ),
+                update_interval_secs=update_interval,
             )
         )
         await config_entry.runtime_data.coordinators[
             CoordinatorTypes.CHANNEL_SCAN
         ].async_config_entry_first_refresh()
     # endregion
-    # endregion
 
-    # region #-- setup the timer for device trackers --#
-    async def async_device_tracker_update(_: datetime) -> None:
-        """Retrieve the tracked devices from the Mesh."""
-
-        if config_entry.runtime_data.mesh_is_rebooting:
-            return
-
-        try:
-            devices: list[DeviceEntity] = (
-                await config_entry.runtime_data.mesh.async_get_devices(
-                    config_entry.options.get(CONF_DEVICE_TRACKERS, []),
-                    force_refresh=True,
-                )
-                or []
-            )
-        except MeshDeviceNotFoundResponse as err:
-            for tracker_missing in err.devices:
-                entity_registry: er.EntityRegistry = er.async_get(hass)
-                config_entities: list[er.RegistryEntry] = (
-                    er.async_entries_for_config_entry(
-                        entity_registry, config_entry.entry_id
-                    )
-                )
-                tracker_entity: list[er.RegistryEntry]
-                if tracker_entity := [
-                    e
-                    for e in config_entities
-                    if e.unique_id
-                    == f"{config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker_missing}"
-                ]:
-                    # region #-- raise an issue --#
-                    ir.async_create_issue(
-                        hass,
-                        DOMAIN,
-                        ISSUE_MISSING_DEVICE_TRACKER,
-                        data={
-                            "device_id": tracker_entity[0].entity_id,
-                            "device_name": tracker_entity[0].name
-                            or tracker_entity[0].original_name,
-                        },
-                        is_fixable=True,
-                        is_persistent=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key=ISSUE_MISSING_DEVICE_TRACKER,
-                        translation_placeholders={
-                            "device_name": tracker_entity[0].name
-                            or tracker_entity[0].original_name
-                            or ""
-                        },
-                    )
-                    # endregion
-        except (MeshConnectionError, MeshTimeoutError):
-            if len(config_entry.runtime_data.intensive_running_tasks) > 0:
-                exc: IntensiveTaskRunning = IntensiveTaskRunning(
-                    translation_domain=DOMAIN,
-                    translation_key="intensive_task",
-                    translation_placeholders={
-                        "tasks": ",".join(
-                            config_entry.runtime_data.intensive_running_tasks
-                        )
-                    },
-                )
-                _LOGGER.warning(exc)
-            else:
-                exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
-                    translation_domain=DOMAIN,
-                    translation_key="device_tracker_timeout",
-                )
-                _LOGGER.warning(exc_timeout)
-        except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err).__name__,
-                    "exc_msg": str(err),
-                },
-            )
-            _LOGGER.warning(exc_general)
-
-        for device in devices:
-            async_dispatcher_send(
-                hass,
-                f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{device.unique_id}",
-                device,
-            )
-
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
-        scan_interval = config_entry.options.get(
-            CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
-        )
-        config_entry.async_on_unload(
-            async_track_time_interval(
-                hass, async_device_tracker_update, timedelta(seconds=scan_interval)
-            )
-        )
     # endregion
 
     # region #-- setup the platforms --#
