@@ -3,6 +3,7 @@
 # region #-- imports --#
 import logging
 from functools import cached_property
+from typing import cast
 
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
@@ -15,14 +16,24 @@ from homeassistant.components.device_tracker import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity
 
-from .const import CONF_DEVICE_TRACKERS, DEF_CONSIDER_HOME, SIGNAL_DEVICE_TRACKER_UPDATE
+from .const import (
+    CONF_DEVICE_TRACKERS,
+    DEF_CONSIDER_HOME,
+)
+from .coordinator import (
+    CoordinatorTimers,
+    LinksysVelopUpdateCoordinator,
+)
 from .helpers import get_mesh_device_for_config_entry
-from .types import LinksysVelopConfigEntry, LinksysVelopLogFormatter
+from .types import (
+    CoordinatorTypes,
+    LinksysVelopConfigEntry,
+    LinksysVelopLogFormatter,
+)
 
 # endregion
 
@@ -77,26 +88,38 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         self, config_entry: LinksysVelopConfigEntry, device: DeviceEntity
     ) -> None:
         """Initialise."""
+        # region #-- custom attributes --#
         self._config_entry: LinksysVelopConfigEntry = config_entry
+        self._consider_home_period: int = self._config_entry.options.get(
+            CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
+        )
+        self._coordinator: LinksysVelopUpdateCoordinator = cast(
+            LinksysVelopUpdateCoordinator,
+            (config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH)),
+        )
         self._device_id: str = str(device.unique_id)
+        self._log_formatter: LinksysVelopLogFormatter = (
+            self._config_entry.runtime_data.log_formatter
+        )
+        self._offline_first_seen: int | None = None
+        # endregion
 
+        # region #-- built-in attributes --#
         self._attr_has_entity_name = True
         self._attr_name = device.name
         self._attr_should_poll = False
         self._attr_unique_id = (
             f"{self._config_entry.entry_id}::{ENTITY_DOMAIN.lower()}::{self._device_id}"
         )
-        # self._consider_home_cancel: CALLBACK_TYPE | None = None
-        self._consider_home_period: int = self._config_entry.options.get(
-            CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
-        )
         self._ip_address: str = self._get_ip_address(device)
         self._is_connected: bool = device.status
-        self._log_formatter: LinksysVelopLogFormatter = (
-            self._config_entry.runtime_data.log_formatter
-        )
         self._mac_address: str = self._get_mac_address(device)
-        self._offline_first_seen: int | None = None
+        # endregion
+
+        # region #-- register for callbacks --#
+        self._coordinator.async_add_listener(self._set_availability)
+        self._coordinator.async_add_listener(self._process_device_update)
+        # endregion
 
     def _get_ip_address(self, device: DeviceEntity) -> str:
         """Retrieve the IP address from the device object."""
@@ -114,8 +137,21 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
 
         return ""
 
-    async def _async_process_device_update(self, device: DeviceEntity) -> None:
+    def _process_device_update(self) -> None:
         """Establish device state or attribute changes."""
+
+        # region #-- make sure the device is in the list --#
+        devices: list[DeviceEntity] = cast(
+            list[DeviceEntity],
+            self._coordinator.data.get(CoordinatorTimers.DEVICE_TRACKER),
+        )
+        for device in devices:
+            if device.unique_id == self._device_id:
+                break
+        else:
+            return None
+        # endregion
+
         self._ip_address = self._get_ip_address(device)
         self._mac_address = self._get_mac_address(device)
         if device.status != self.is_connected:
@@ -155,16 +191,11 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
                 )
                 self._offline_first_seen = None
 
-    async def async_added_to_hass(self) -> None:
-        """When entity is added to hass."""
-        await super().async_added_to_hass()
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{self._device_id}",
-                self._async_process_device_update,
-            )
-        )
+    def _set_availability(self):
+        """Set the availability state of the device tracker."""
+
+        self._attr_available = self._coordinator.last_update_success
+        self.async_schedule_update_ha_state()
 
     @property
     def ip_address(self) -> str | None:

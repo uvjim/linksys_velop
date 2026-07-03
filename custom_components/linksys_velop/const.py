@@ -70,7 +70,6 @@ except PackageNotFoundError:
     pass
 
 
-SIGNAL_DEVICE_TRACKER_UPDATE: str = f"{DOMAIN}_device_tracker_update"
 SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE: str = f"{DOMAIN}_ui_placeholder_update"
 
 ST_IGD: str = "urn:schemas-upnp-org:device:InternetGatewayDevice:2"
