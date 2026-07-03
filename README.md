@@ -97,7 +97,7 @@ then the entities detailing storage partitions etc. will not be available.
 | --- | --- | :---: | --- |
 | Device | Delete | ✔️ | |
 | Mesh | Check for Updates | ✔️ | |
-| Mesh | Reboot the Whole Mesh | ✖️ | See [Configurable Options -> Advanced Options](#advanced-options) |
+| Mesh | Reboot the Whole Mesh | ✖️ | See [Advanced Options](#advanced-options) |
 | Mesh | Start Channel Scan | ✖️ | Adjusts the interval for channel scanning data collection to 40s |
 | Mesh | Start Speedtest | ✖️ | Adjusts the interval for speedtest data collection to 1s |
 | Node | Reboot | ✔️ | |
@@ -107,7 +107,7 @@ then the entities detailing storage partitions etc. will not be available.
 by default.
 Restarting the Primary node will cause all nodes in the Mesh to reboot and
 I consider this to be quite a destructive action. There is no confirmation in
-the HASS UI when a button is pressed so there is no time to warn anyone. If
+the HASS UI when a button is pressed, so there is no time to warn anyone. If
 you'd like to reboot the Primary you node you must use the
 [service](#services) with the `is_primary` flag provided, or the `Mesh: Reboot
 the Whole Mesh` button.
@@ -139,6 +139,7 @@ Available events are: -
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
 | --- | --- | :---: | --- | --- | --- |
 | Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
+| Mesh | Scheduled Reboot | ✔️ | The schedule used for the automatic reboot of the mesh | | See details [Scheduled Reboot on Linksys](https://support.linksys.com/kb/article/4960-en/) |
 
 ### Sensors
 
@@ -318,9 +319,6 @@ The events selected here will be raised with the `event` entity.
 ![Configure Events](images/config_events.png)
 
 ### Advanced Options
-
-__This section is only available if "Advanced Mode" is enabled for the current__
-__user. See [Home Assistant Advanced Mode](https://www.home-assistant.io/blog/2019/07/17/release-96/#advanced-mode).__
 
 ![Configure Advanced Options](images/config_advanced_options.png)
 
