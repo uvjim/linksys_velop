@@ -141,13 +141,16 @@ class LinksysVelopMeshDeviceTracker(ScannerEntity):
         """Establish device state or attribute changes."""
 
         # region #-- make sure the device is in the list --#
-        devices: list[DeviceEntity] = cast(
-            list[DeviceEntity],
+        devices: list[DeviceEntity] | None = cast(
+            list[DeviceEntity] | None,
             self._coordinator.data.get(CoordinatorTimers.DEVICE_TRACKER),
         )
-        for device in devices:
-            if device.unique_id == self._device_id:
-                break
+        if devices is not None:
+            for device in devices:
+                if device.unique_id == self._device_id:
+                    break
+            else:
+                return None
         else:
             return None
         # endregion

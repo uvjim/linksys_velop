@@ -14,6 +14,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 from .const import (
+    CONF_DEVICE_TRACKERS,
     CONF_UI_DEVICES,
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
@@ -62,6 +63,26 @@ class IssueMissingDeviceTrackerRepairFlow(RepairsFlow):
                     str(cast(dict, self.data).get("device_id"))
                 )
             ) is not None:
+                # region # -- cleanup the config entry --#
+                config_entry: ConfigEntry | None = (
+                    self.hass.config_entries.async_get_entry(
+                        str(cast(dict, self.data).get("config_entry", ""))
+                    )
+                )
+                if config_entry is not None:
+                    new_options = copy.deepcopy(dict(config_entry.options))
+                    if cast(dict, self.data).get("device_id") in new_options.get(
+                        CONF_DEVICE_TRACKERS, []
+                    ):
+                        new_options.get(CONF_DEVICE_TRACKERS, {}).remove(
+                            cast(dict, self.data).get("velop_id")
+                        )
+                        self.hass.config_entries.async_update_entry(
+                            config_entry,
+                            options=new_options,
+                        )
+                # endregion
+
                 # region #-- disassociate mac with mesh --#
                 if (
                     tracker_state := self.hass.states.get(tracker_entity.entity_id)
@@ -87,6 +108,7 @@ class IssueMissingDeviceTrackerRepairFlow(RepairsFlow):
                                 new_connections=connections,
                             )
                 # endregion
+
                 # region #-- remove entity from registry --#
                 entity_registry.async_remove(tracker_entity.entity_id)
                 # endregion
@@ -118,25 +140,26 @@ class IssueMissingUIDeviceRepairFlow(RepairsFlow):
         if user_input is not None:
             # -- remove from the registry --#
             remove_velop_device_from_registry(
-                self.hass, str(cast(dict, self.data).get("device_id"))
+                self.hass, str(cast(dict, self.data).get("velop_id"))
             )
 
-            # -- cleanup the config entry --#
+            # region # -- cleanup the config entry --#
             config_entry: ConfigEntry | None = self.hass.config_entries.async_get_entry(
                 str(cast(dict, self.data).get("config_entry", ""))
             )
             if config_entry is not None:
-                new_options = copy.deepcopy(config_entry.options)
-                if cast(dict, self.data).get("device_id") in new_options.get(
+                new_options = copy.deepcopy(dict(config_entry.options))
+                if cast(dict, self.data).get("velop_id") in new_options.get(
                     CONF_UI_DEVICES, []
                 ):
                     new_options.get(CONF_UI_DEVICES, {}).remove(
-                        cast(dict, self.data).get("device_id")
+                        cast(dict, self.data).get("velop_id")
                     )
                     self.hass.config_entries.async_update_entry(
-                        cast(dict, self.data).get("config_entry", {}),
+                        config_entry,
                         options=new_options,
                     )
+            # endregion
 
             return self.async_create_entry(title="", data={})
 
