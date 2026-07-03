@@ -753,9 +753,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self._options.update(user_input)
-            if self.show_advanced_options:
-                return await self.async_step_advanced_options()
-            return await self.async_step_finalise()
+            return await self.async_step_advanced_options()
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
@@ -763,7 +761,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 Steps.EVENTS, self._options
             ),
             errors=self._errors,
-            last_step=False if self.show_advanced_options else True,
+            last_step=False,
         )
 
     async def async_step_finalise(
@@ -827,19 +825,14 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> config_entries.ConfigFlowResult:
         """First Step."""
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-        _LOGGER.debug(
-            self._log_formatter.format("show advanced options: %s"),
-            self.show_advanced_options,
-        )
 
         menu_options: list[str] = [
             Steps.TIMERS,
             Steps.DEVICE_TRACKERS,
             Steps.UI_DEVICE,
             Steps.EVENTS,
+            Steps.ADVANCED_OPTIONS,
         ]
-        if self.show_advanced_options:
-            menu_options.append(Steps.ADVANCED_OPTIONS)
 
         return self.async_show_menu(
             step_id=Steps.INIT,
