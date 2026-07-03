@@ -168,9 +168,13 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         if self.config_entry.runtime_data.mesh_is_rebooting:
             return None
 
+        devices: list[DeviceEntity] | None = None
         try:
-            devices: list[DeviceEntity] = await self._mesh.async_get_devices(
-                self.config_entry.options.get(CONF_DEVICE_TRACKERS, []),
+            tracked_devices: tuple[str] = self.config_entry.options.get(
+                CONF_DEVICE_TRACKERS, []
+            )
+            devices = await self._mesh.async_get_devices(
+                tracked_devices,
                 force_refresh=True,
             )
         except MeshDeviceNotFoundResponse as err:
@@ -194,9 +198,11 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                         DOMAIN,
                         ISSUE_MISSING_DEVICE_TRACKER,
                         data={
+                            "config_entry": self.config_entry.entry_id,
                             "device_id": tracker_entity[0].entity_id,
                             "device_name": tracker_entity[0].name
                             or tracker_entity[0].original_name,
+                            "velop_id": tracker_missing,
                         },
                         is_fixable=True,
                         is_persistent=False,
@@ -208,6 +214,18 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                             or ""
                         },
                     )
+                    # endregion
+                else:
+                    # region #-- cleanup the config entry --#
+                    new_options = copy.deepcopy(dict(self.config_entry.options))
+                    if tracker_missing in new_options.get(CONF_DEVICE_TRACKERS, []):
+                        new_options.get(CONF_DEVICE_TRACKERS, []).remove(
+                            tracker_missing
+                        )
+                        self.hass.config_entries.async_update_entry(
+                            self.config_entry,
+                            options=new_options,
+                        )
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
             if len(self.config_entry.runtime_data.intensive_running_tasks) > 0:
@@ -362,9 +380,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                             f"{ISSUE_MISSING_UI_DEVICE}::{ui_device}",
                             data={
                                 "config_entry": self.config_entry.entry_id,
-                                "device_id": ui_device,
                                 "device_name": found_device.name_by_user
                                 or found_device.name,
+                                "velop_id": ui_device,
                             },
                             is_fixable=True,
                             is_persistent=False,
