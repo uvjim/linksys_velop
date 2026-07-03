@@ -50,7 +50,6 @@ from .const import (
     DOMAIN,
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
-    SIGNAL_DEVICE_TRACKER_UPDATE,
     ChannelScanInfo,
     IntensiveTask,
     SpeedtestResults,
@@ -163,19 +162,16 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         self._rebooting_skip_count: int = 0
         self.data = {}
 
-    async def _async_get_device_tracker_data(self) -> None:
+    async def _async_get_device_tracker_data(self) -> list[DeviceEntity] | None:
         """Get the device tracker information from the mesh."""
 
         if self.config_entry.runtime_data.mesh_is_rebooting:
             return None
 
         try:
-            devices: list[DeviceEntity] = (
-                await self._mesh.async_get_devices(
-                    self.config_entry.options.get(CONF_DEVICE_TRACKERS, []),
-                    force_refresh=True,
-                )
-                or []
+            devices: list[DeviceEntity] = await self._mesh.async_get_devices(
+                self.config_entry.options.get(CONF_DEVICE_TRACKERS, []),
+                force_refresh=True,
             )
         except MeshDeviceNotFoundResponse as err:
             for tracker_missing in err.devices:
@@ -248,15 +244,8 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
             )
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
-        else:
-            for device in devices:
-                async_dispatcher_send(
-                    self.hass,
-                    f"{SIGNAL_DEVICE_TRACKER_UPDATE}_{device.unique_id}",
-                    device,
-                )
 
-        return None
+        return devices
 
     async def _async_get_mesh_data(self) -> Mesh:
         """Get all data from the mesh."""
