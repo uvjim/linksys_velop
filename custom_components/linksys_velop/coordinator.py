@@ -5,8 +5,8 @@ import asyncio
 import copy
 import logging
 import math
-import sys
 import time
+from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
 from typing import Any
@@ -113,8 +113,6 @@ class LinksyVelopBaseUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval_secs),
         )
 
-        self._mesh: Mesh = self.config_entry.runtime_data.mesh
-
 
 class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
     """Retrieve the data from the Velop mesh."""
@@ -124,16 +122,23 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         hass: HomeAssistant,
         logger: logging.Logger,
         name: str,
-        *,
         config_entry: LinksysVelopConfigEntry,
         update_interval_secs: float,
-        tracker_update_interval_secs: float = sys.float_info.max,
+        **kwargs: float,
     ) -> None:
-        """Initialise."""
+        """Initialise.
 
-        base_update_interval_secs: float = min(
-            [update_interval_secs, tracker_update_interval_secs]
-        )
+        Possible values kwargs are: -
+
+        tracker_update_interval_secs
+        """
+
+        update_intervals: set[float] = set()
+        update_intervals.add(update_interval_secs)
+        for _, value in kwargs.items():
+            update_intervals.add(value)
+
+        base_update_interval_secs: float = min(update_intervals)
 
         super().__init__(
             hass,
@@ -143,37 +148,73 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
             update_interval_secs=base_update_interval_secs,
         )
 
+        # region #-- custom instance variables --#
         self._configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         )
         self._timers: dict[CoordinatorTimers, Any] = {
-            CoordinatorTimers.DEVICE_TRACKER: {
-                "interval": tracker_update_interval_secs,
-                "last_success": None,
-            },
             CoordinatorTimers.MESH: {
                 "interval": update_interval_secs,
+                "is_running": False,
                 "last_success": None,
+                "listener_count": 0,
             },
         }
+        if kwargs.get("tracker_update_interval_secs") is not None:
+            self._timers.update(
+                {
+                    CoordinatorTimers.DEVICE_TRACKER: {
+                        "interval": kwargs.get("tracker_update_interval_secs"),
+                        "is_running": False,
+                        "last_success": None,
+                        "listener_count": 0,
+                    }
+                }
+            )
+
         self._max_rebooting_skip_count: int = math.ceil(
             DEF_REBOOT_BACKOFF / update_interval_secs
         )
         self._rebooting_skip_count: int = 0
-        self.data = {}
+        # endregion
 
-    async def _async_get_device_tracker_data(self) -> list[DeviceEntity] | None:
+    def add_listener_for_timer_type(
+        self, timer_type: CoordinatorTimers, listener: Callable[[], None]
+    ) -> None:
+        """Add a listener for a particular timer type.
+
+        This helps to avoid executing a listener every time _async_update_data is called.
+        """
+
+        def coordinator_listener(
+            timer_type: CoordinatorTimers, listener: Callable[[], None]
+        ):
+            def guarded_listener():
+                try:
+                    if self._timers.get(timer_type, {}).get("is_running", False):
+                        listener()
+                        self._timers.get(timer_type, {}).update({"is_running": False})
+                except Exception:
+                    _LOGGER.error("unknown exception whist calling listener")
+
+            return guarded_listener
+
+        listener_count: int = self._timers.get(timer_type, {}).get("listener_count", 0)
+        self._timers.get(timer_type, {}).update({"listener_count": listener_count + 1})
+        self.async_add_listener(coordinator_listener(timer_type, listener))
+
+    async def _async_get_device_tracker_data(self) -> list[DeviceEntity]:
         """Get the device tracker information from the mesh."""
 
         if self.config_entry.runtime_data.mesh_is_rebooting:
-            return None
+            return self.data.get(CoordinatorTimers.DEVICE_TRACKER, [])
 
-        devices: list[DeviceEntity] | None = None
+        devices: list[DeviceEntity]
         try:
             tracked_devices: tuple[str] = self.config_entry.options.get(
                 CONF_DEVICE_TRACKERS, []
             )
-            devices = await self._mesh.async_get_devices(
+            devices = await self.config_entry.runtime_data.mesh.async_get_devices(
                 tracked_devices,
                 force_refresh=True,
             )
@@ -280,7 +321,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                 and self._rebooting_skip_count != self._max_rebooting_skip_count
             ):
                 self._rebooting_skip_count += 1
-                return self._mesh
+                return self.config_entry.runtime_data.mesh
             # endregion
 
             # region #-- reset the skip flag --#
@@ -290,18 +331,20 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
 
             # region #-- set the previous details before getting mesh details --#
             previous_nodes = {
-                node.serial for node in self._mesh.nodes if node.serial is not None
+                node.serial
+                for node in self.config_entry.runtime_data.mesh.nodes
+                if node.serial is not None
             }
             if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
                 previous_devices = {
                     device.unique_id
-                    for device in self._mesh.devices
+                    for device in self.config_entry.runtime_data.mesh.devices
                     if device.unique_id is not None
                 }
             # endregion
 
             # get details from the mesh
-            await self._mesh.async_gather_details()
+            await self.config_entry.runtime_data.mesh.async_gather_details()
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
@@ -351,12 +394,14 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
 
         # region #-- get the current details for comparison --#
         current_nodes = {
-            node.serial for node in self._mesh.nodes if node.serial is not None
+            node.serial
+            for node in self.config_entry.runtime_data.mesh.nodes
+            if node.serial is not None
         }
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             current_devices = {
                 device.unique_id
-                for device in self._mesh.devices
+                for device in self.config_entry.runtime_data.mesh.devices
                 if device.unique_id is not None
             }
         # endregion
@@ -424,7 +469,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
             for device in new_devices:
                 if (
                     device_info := [
-                        d for d in self._mesh.devices if d.unique_id == device
+                        d
+                        for d in self.config_entry.runtime_data.mesh.devices
+                        if d.unique_id == device
                     ]
                 ) != []:
                     device_info = device_info[0]
@@ -445,7 +492,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                 node_info: list[NodeEntity]
                 for node in new_nodes:
                     if node_info := [
-                        n for n in self._mesh.nodes if n.unique_id == node
+                        n
+                        for n in self.config_entry.runtime_data.mesh.nodes
+                        if n.unique_id == node
                     ]:
                         async_dispatcher_send(
                             self.hass,
@@ -457,7 +506,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                 )
         # endregion
 
-        return self._mesh
+        return self.config_entry.runtime_data.mesh
 
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
@@ -467,20 +516,22 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         # raise the appropriate error depending on what happens.
         # if all is well there's no need to do anything.
         try:
-            valid_auth: bool = await self._mesh.async_test_credentials()
+            valid_auth: bool = (
+                await self.config_entry.runtime_data.mesh.async_test_credentials()
+            )
             if not valid_auth:
                 raise ConfigEntryAuthFailed(
                     translation_domain=DOMAIN,
                     translation_key="failed_login",
                 )
 
-            await self._mesh.async_initialise()
+            await self.config_entry.runtime_data.mesh.async_initialise()
         except MeshTimeoutError as exc:
             raise ConfigEntryNotReady(
                 translation_domain=DOMAIN,
                 translation_key="init_mesh_timeout",
                 translation_placeholders={
-                    "current_timeout": str(self._mesh.timeout),
+                    "current_timeout": str(self.config_entry.runtime_data.mesh.timeout),
                 },
             ) from exc
         except MeshConnectionError as exc:
@@ -489,7 +540,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                 translation_key="init_connection_error",
                 translation_placeholders={
                     "exc_msg": str(exc),
-                    "primary_ip": self._mesh.connected_node,
+                    "primary_ip": self.config_entry.runtime_data.mesh.connected_node,
                 },
             ) from exc
         # endregion
@@ -497,8 +548,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
     async def _async_update_data(self) -> dict[str, Any]:
         """Refresh the mesh data."""
 
-        # set when we're running for late comparison
+        # set when we're running for later comparison
         now: float = time.monotonic()
+        _data: dict[str, Any] = {}
 
         # establish the functions that need to run
         timers_running: list[CoordinatorTimers] = []
@@ -510,6 +562,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                 last_success is None or math.ceil(now - last_success) >= interval
             )
             if run_update:
+                timer_data["is_running"] = True
                 timers_running.append(timer)
 
                 if timer == CoordinatorTimers.DEVICE_TRACKER:
@@ -518,15 +571,17 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                     coro_running.append(self._async_get_mesh_data())
                 else:
                     raise UpdateFailed(
-                        f"Unknown timer type: {timer} - cannot update data"
+                        f"unknown timer type: {timer} - cannot update data"
                     )
 
         res: list = await asyncio.gather(*coro_running)
         for idx, timer in enumerate(timers_running):
-            self.data.update({timer.value: res[idx]})
+            _data.update({timer.value: res[idx]})
             self._timers.get(timer, {}).update({"last_success": now})
+            if self._timers.get(timer, {}).get("listener_count", 0) == 0:
+                self._timers.get(timer, {}).update({"is_running": False})
 
-        return self.data
+        return _data
 
     async def force_refresh(
         self, timer: CoordinatorTimers | list[CoordinatorTimers]
@@ -623,8 +678,10 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
                 return self.data
 
             api_calls: list = [
-                self._mesh.async_get_speedtest_results(only_latest=True),
-                self._mesh.async_get_speedtest_state(),
+                self.config_entry.runtime_data.mesh.async_get_speedtest_results(
+                    only_latest=True
+                ),
+                self.config_entry.runtime_data.mesh.async_get_speedtest_state(),
             ]
             responses = await asyncio.gather(*api_calls)
         except (MeshConnectionError, MeshTimeoutError) as err:
@@ -674,7 +731,7 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
             friendly_status = SpeedtestStatus.UNKNOWN
 
         ret = SpeedtestResults(
-            connected_node=self._mesh.connected_node,
+            connected_node=self.config_entry.runtime_data.mesh.connected_node,
             friendly_status=friendly_status,
             **result,
         )
@@ -725,7 +782,7 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
                 return self.data
 
             api_calls: list = [
-                self._mesh.async_get_channel_scan_info(),
+                self.config_entry.runtime_data.mesh.async_get_channel_scan_info(),
             ]
             responses = await asyncio.gather(*api_calls)
         except (MeshConnectionError, MeshTimeoutError) as err:
@@ -762,7 +819,7 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
 
         result: dict[str, Any] = responses[0]
         ret: ChannelScanInfo = ChannelScanInfo(
-            connected_node=self._mesh.connected_node,
+            connected_node=self.config_entry.runtime_data.mesh.connected_node,
             is_running=result.get("isRunning", False),
         )
         if not ret.is_running:

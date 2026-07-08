@@ -19,7 +19,6 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 from pyvelop.const import DEF_EMPTY_NAME
-from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 from pyvelop.types import NodeType
 
@@ -32,7 +31,7 @@ from .const import (
     PYVELOP_VERSION,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
-from .coordinator import DataItems, LinksysVelopUpdateCoordinator
+from .coordinator import LinksysVelopUpdateCoordinator
 from .types import CoordinatorTypes, LinksysVelopConfigEntry
 
 # endregion
@@ -293,9 +292,7 @@ class LinksysVelopEntity(CoordinatorEntity):
             if device_id is not None:
                 devices: list[DeviceEntity] = [
                     d
-                    for d in cast(
-                        Mesh, self.coordinator.data.get(DataItems.MESH)
-                    ).devices
+                    for d in self._config_entry.runtime_data.mesh.devices
                     if d.unique_id == device_id
                 ]
                 if len(devices) > 0:
@@ -304,14 +301,14 @@ class LinksysVelopEntity(CoordinatorEntity):
                 self._context_data = None
         elif self._entity_details.entity_type == EntityType.MESH:
             self._context_data = (
-                self.coordinator.data.get(DataItems.MESH)
+                self._config_entry.runtime_data.mesh
                 if isinstance(self.coordinator, LinksysVelopUpdateCoordinator)
                 else self.coordinator.data
             )
         elif self._entity_details.entity_type in EntityType.NODE:
             nodes: list[NodeEntity] = [
                 n
-                for n in cast(Mesh, self.coordinator.data.get(DataItems.MESH)).nodes
+                for n in self._config_entry.runtime_data.mesh.nodes
                 if n.unique_id == self.coordinator_context.unique_id
             ]
             if len(nodes) > 0:
