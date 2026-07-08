@@ -65,7 +65,7 @@ def _build_event_properties(
 ) -> dict[str, Any]:
     """Create the required properties for the event."""
 
-    return {prop: getattr(obj, prop, None) for prop in properties}
+    return {"data": {prop: getattr(obj, prop, None) for prop in properties}}
 
 
 class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
@@ -132,7 +132,7 @@ class LinksysVelopEventEntity(LinksysVelopEntity, EventEntity):
         for event in self.event_types:
             func_name: str = f"_async_process_event_{event}"
             if not hasattr(self, func_name):
-                _LOGGER.warning("No event processor for event %s", func_name)
+                _LOGGER.warning("no event processor for event %s", func_name)
                 continue
 
             self.async_on_remove(
