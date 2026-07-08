@@ -106,10 +106,7 @@ class LinksysVelopUpdate(LinksysVelopEntity, UpdateEntity):
             return
 
         self._attr_auto_update = (
-            cast(
-                Mesh, self.coordinator.data.get(DataItems.MESH)
-            ).firmware_update_setting
-            != "manual"
+            self._config_entry.runtime_data.mesh.firmware_update_setting != "manual"
         )
         self._attr_installed_version = self._context_data.firmware.get("version", None)
         self._attr_latest_version = self._context_data.firmware.get(
