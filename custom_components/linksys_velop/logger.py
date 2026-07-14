@@ -2,8 +2,18 @@
 
 # region #-- imports --#
 import inspect
+from typing import Protocol
 
 # endregion
+
+
+class LinksysVelopLogFormatter(Protocol):
+    """Protocol for the log formatter."""
+
+    def __call__(
+        self, message: str, include_caller: bool = True, include_lineno: bool = False, /
+    ) -> str:  # pragma: no cover - protocol
+        ...
 
 
 class Logger:

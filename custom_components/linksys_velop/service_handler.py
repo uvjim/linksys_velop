@@ -17,8 +17,9 @@ from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, ParentalControl
 from pyvelop.types import NodeType
 
-from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN
-from .types import EventSubTypes, LinksysVelopConfigEntry, LinksysVelopLogFormatter
+from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN, EventSubTypes
+from .coordinator import LinksysVelopConfigEntry
+from .logger import LinksysVelopLogFormatter
 
 # endregion
 

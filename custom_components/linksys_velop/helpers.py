@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.loader import Integration, async_get_integration
 
 from .const import DOMAIN
-from .types import LinksysVelopConfigEntry
+from .coordinator import LinksysVelopConfigEntry
 
 # endregion
 
@@ -53,9 +53,14 @@ def remove_velop_entity_from_registry(
     config_entities: list[RegistryEntry] = er.async_entries_for_config_entry(
         entity_registry, config_entry_id
     )
-    found_entity: list[RegistryEntry]
-    if found_entity := [e for e in config_entities if e.unique_id == unique_id]:
-        entity_registry.async_remove(found_entity[0].entity_id)
+    found_entity: RegistryEntry | None = None
+    if (
+        found_entity := next(
+            (e for e in config_entities if e.unique_id == unique_id), None
+        )
+    ) is not None:
+        _LOGGER.debug("removing %s", found_entity.entity_id)
+        entity_registry.async_remove(found_entity.entity_id)
 
 
 async def async_get_integration_version(hass: HomeAssistant) -> AwesomeVersion | None:

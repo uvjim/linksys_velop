@@ -2,59 +2,126 @@
 
 # region #-- imports --#
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import cast
+from typing import cast, override
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.const import DEF_EMPTY_NAME, MeshCapability, ScheduledRebootInterval
 from pyvelop.mesh import Mesh
 
-from .const import SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE
-from .coordinator import CoordinatorTimers, LinksysVelopUpdateCoordinator
-from .entities import EntityDetails, EntityType, LinksysVelopEntity, build_entities
-from .types import LinksysVelopConfigEntry
+from .const import (
+    CONF_UI_DEVICES,
+    DEF_UI_PLACEHOLDER_DEVICE_ID,
+    SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
+)
+from .coordinator import (
+    CoordinatorTimers,
+    CoordinatorTypes,
+    LinksysVelopConfigEntry,
+    LinksysVelopDataUpdateCoordinatorMultiUse,
+)
+from .entities import (
+    EntityType,
+    LinksysVelopEntityContext,
+    LinksysVelopEntityDescription,
+    LinksysVelopMultiUseEntity,
+    LinksysVelopSpeedtestEntity,
+)
+from .helpers import remove_velop_entity_from_registry
 
 # endregion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@dataclass
-class SelectDetails(EntityDetails):
-    """Representation of the details that make up the entity."""
+@dataclass(frozen=True, kw_only=True)
+class LinksysVelopSelectEntityDescription(
+    LinksysVelopEntityDescription, SelectEntityDescription
+):
+    """Describes Velop select entity."""
 
-    description: SelectEntityDescription
+    options_fn: Callable[[Mesh], list[str]] | None = None
+    set_fn: Callable[[Mesh, str], Awaitable[None]] | None = None
+    value_fn: Callable[[Mesh], str | None] | None = None
 
 
-def _build_options(mesh: Mesh) -> list[str]:
-    """Create the available options for the select entity."""
+def get_current_reboot_schedule(mesh: Mesh) -> str | None:
+    """Retrieve the current reboot schedule for display in the select entity."""
 
-    return [
-        (
-            d.name
-            if d.name != DEF_EMPTY_NAME
-            else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
+    if mesh.scheduled_reboot_enabled:
+        ret = (
+            mesh.scheduled_reboot_interval.value.lower()
+            if mesh.scheduled_reboot_interval is not None
+            else None
         )
-        for d in mesh.devices
-    ]
-
-
-def _build_scheduled_reboot_options() -> list[str]:
-    """Build the options available for the scheduled reboot interval."""
-    ret: list[str] = ["off"]
-
-    for opt in ScheduledRebootInterval:
-        ret.append(opt.value.lower())
+    else:
+        ret = "off"
 
     return ret
 
 
-ENTITY_DETAILS: list[SelectDetails] = []
+def get_placeholder_device_options(mesh: Mesh) -> list[str]:
+    """Retrieve the list of device options available for the placeholder device."""
+
+    ret: list[str] = []
+
+    for d in mesh.devices:
+        name: str = (
+            d.name
+            if d.name != DEF_EMPTY_NAME
+            else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
+        )
+        ret.append(name)
+
+    return ret
+
+
+async def async_update_reboot_schedule(mesh: Mesh, option: str) -> None:
+    """Set the reboot schedule on the mesh."""
+
+    if option == "off":
+        await mesh.async_set_scheduled_reboot_state(False)
+    else:
+        await mesh.async_set_scheduled_reboot_interval(
+            ScheduledRebootInterval(option.title())
+        )
+
+
+async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
+    """Calculate the new placeholder device ID and send the signal."""
+
+    velop_id: str | None = None
+    hass: HomeAssistant = async_get_hass()
+
+    # region #-- match the display name back to an ID --#
+    match_on: str = (
+        option
+        if not option.startswith(f"{DEF_EMPTY_NAME} (")
+        else option.split("(")[1].strip(")")
+    )
+    for dev in mesh.devices:
+        match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
+        if option.startswith(f"{DEF_EMPTY_NAME} (") and dev.status:
+            match_against.append(dev.adapter_info[0].get("ip", ""))
+        if match_on.lower() in match_against:
+            velop_id = dev.unique_id
+            break
+    # endregion
+
+    # region #-- send a signal informing that the placeholder device has updated --#
+    if velop_id is not None:
+        async_dispatcher_send(
+            hass,
+            SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
+            velop_id,
+        )
+    # endregion
 
 
 async def async_setup_entry(
@@ -62,128 +129,218 @@ async def async_setup_entry(
     config_entry: LinksysVelopConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Initialize a sensor."""
+    """Initialise select entities."""
 
-    entities_to_add: list[LinksysVelopSelect] = []
+    def _create_entities() -> None:
+        """Create the mesh and device entities."""
 
-    mesh: Mesh = config_entry.runtime_data.mesh
-    entities = build_entities(ENTITY_DETAILS, config_entry, ENTITY_DOMAIN)
-    entities_to_add = [LinksysVelopSelect(**entity) for entity in entities]
+        entities_to_add: list[LinksysVelopSelectEntity] = (
+            _init_device_entities() + _init_mesh_entities()
+        )
 
-    if MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS in mesh.capabilities:
-        entities_to_add.extend(
-            [
-                LinksysVelopSelectScheduledReboot(**entity)
-                for entity in build_entities(
-                    [
-                        SelectDetails(
-                            description=SelectEntityDescription(
-                                entity_category=EntityCategory.CONFIG,
-                                key="",
-                                name="Scheduled Reboot",
-                                options=_build_scheduled_reboot_options(),
-                                translation_key="mesh_scheduled_reboot",
-                            ),
-                            entity_type=EntityType.MESH,
-                        )
-                    ],
-                    config_entry,
-                    ENTITY_DOMAIN,
+        if len(entities_to_add) > 0:
+            async_add_entities(entities_to_add)
+
+    def _init_device_entities() -> list[LinksysVelopSelectEntity]:
+        """Describe the entities that target devices."""
+        ret: list[LinksysVelopSelectEntity] = []
+        mesh_entities: list[LinksysVelopSelectEntityDescription] = []
+
+        for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
+            context: LinksysVelopEntityContext = LinksysVelopEntityContext(
+                unique_id=ui_device
+            )
+
+            if context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID:
+                mesh_entities.append(
+                    LinksysVelopSelectEntityDescription(
+                        entity_category=EntityCategory.CONFIG,
+                        key="",
+                        name="Devices",
+                        options_fn=get_placeholder_device_options,
+                        set_fn=async_update_placeholder_device,
+                        target_type=EntityType.DEVICE,
+                        translation_key="mesh_devices",
+                    ),
                 )
-            ]
-        )
 
-    entities_to_add.extend(
-        [
-            LinksysVelopSelectPlaceholderEntity(**entity)
-            for entity in build_entities(
-                [
-                    SelectDetails(
-                        description=SelectEntityDescription(
-                            entity_category=EntityCategory.CONFIG,
-                            key="",
-                            name="Devices",
-                            options=_build_options(config_entry.runtime_data.mesh),
-                            translation_key="mesh_devices",
+            for desc in mesh_entities:
+                ret.append(
+                    LinksysVelopSelectEntity(
+                        entity_context=context,
+                        coordinator=cast(
+                            LinksysVelopDataUpdateCoordinatorMultiUse,
+                            config_entry.runtime_data.coordinators.get(
+                                CoordinatorTypes.MESH
+                            ),
                         ),
-                        entity_type=EntityType.PLACEHOLDER_DEVICE,
+                        description=desc,
                     )
-                ],
-                config_entry,
-                ENTITY_DOMAIN,
-            )
-        ]
-    )
+                )
 
-    if len(entities_to_add) > 0:
-        async_add_entities(entities_to_add)
+        return ret
 
+    def _init_mesh_entities() -> list[LinksysVelopSelectEntity]:
+        """Describe the entities that target the mesh."""
+        ret = []
 
-class LinksysVelopSelect(LinksysVelopEntity, SelectEntity):
-    """Linksys Velop sensor."""
-
-    _attr_current_option: str | None = None
-
-
-class LinksysVelopSelectPlaceholderEntity(LinksysVelopSelect):
-    """Linksys Velop sensor."""
-
-    async def async_select_option(self, option: str) -> None:
-        """Update the values once a device had been selected."""
-
-        self._attr_current_option = option
-        async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, option)
-        await self.coordinator.async_refresh()
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-
-        self._attr_options = _build_options(self._config_entry.runtime_data.mesh)
-        if self.current_option not in self._attr_options:
-            self._attr_current_option = None
-            async_dispatcher_send(
-                self.hass,
-                SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
-                self._attr_current_option,
-            )
-
-        super()._handle_coordinator_update()
-
-
-class LinksysVelopSelectScheduledReboot(LinksysVelopSelect):
-    """Linksys Velop select entity for scheduled reboot."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize the scheduled reboot select entity."""
-
-        super().__init__(*args, **kwargs)
-        self._update_attr_value()
-
-    def _update_attr_value(self) -> None:
-        """Update the selected option for the entity."""
-
-        mesh: Mesh = cast(Mesh, self._context_data)
-        if mesh.scheduled_reboot_enabled:
-            self._attr_current_option = (
-                mesh.scheduled_reboot_interval.value.lower()
-                if mesh.scheduled_reboot_interval is not None
-                else None
-            )
-        else:
-            self._attr_current_option = "off"
-
-    async def async_select_option(self, option: str) -> None:
-        """React to the option being changed."""
-
-        mesh: Mesh = cast(Mesh, self._context_data)
-        self._attr_current_option = option
-        if option == "off":
-            await mesh.async_set_scheduled_reboot_state(False)
-        else:
-            await mesh.async_set_scheduled_reboot_interval(
-                ScheduledRebootInterval(option.title())
-            )
-        await cast(LinksysVelopUpdateCoordinator, self.coordinator).force_refresh(
-            CoordinatorTimers.MESH
+        context: LinksysVelopEntityContext = LinksysVelopEntityContext(
+            unique_id=config_entry.entry_id
         )
+
+        mesh_entities: list[LinksysVelopSelectEntityDescription] = []
+        speedtest_entities: list[LinksysVelopSelectEntityDescription] = []
+
+        if (
+            MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
+            in config_entry.runtime_data.mesh.capabilities
+        ):
+            mesh_entities.append(
+                LinksysVelopSelectEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="",
+                    name="Scheduled Reboot",
+                    options_fn=lambda _: list(
+                        map(
+                            str.lower,
+                            ["off"] + list(map(str, ScheduledRebootInterval)),
+                        )
+                    ),
+                    set_fn=async_update_reboot_schedule,
+                    target_type=EntityType.MESH,
+                    translation_key="mesh_scheduled_reboot",
+                    value_fn=get_current_reboot_schedule,
+                ),
+            )
+
+        for desc in mesh_entities:
+            ret.append(
+                LinksysVelopSelectEntity(
+                    entity_context=context,
+                    coordinator=cast(
+                        LinksysVelopDataUpdateCoordinatorMultiUse,
+                        config_entry.runtime_data.coordinators.get(
+                            CoordinatorTypes.MESH
+                        ),
+                    ),
+                    description=desc,
+                )
+            )
+
+        for desc in speedtest_entities:
+            ret.append(
+                LinksysVelopSelectEntity(
+                    entity_context=context,
+                    coordinator=cast(
+                        LinksysVelopDataUpdateCoordinatorMultiUse,
+                        config_entry.runtime_data.coordinators.get(
+                            CoordinatorTypes.SPEEDTEST
+                        ),
+                    ),
+                    description=desc,
+                )
+            )
+
+        return ret
+
+    def _init_node_entities() -> list[LinksysVelopSelectEntity]:
+        """Describe the entities that target nodes."""
+        ret = []
+
+        return ret
+
+    def _remove_stale_entities() -> None:
+        """Remove entities is they are no longer required."""
+
+        entities_to_remove: set[str] = set()
+
+        if (
+            MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
+            not in config_entry.runtime_data.mesh.capabilities
+        ):
+            entities_to_remove.add(
+                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::scheduled_reboot"
+            )
+
+        if len(entities_to_remove) > 0:
+            for entity_unique_id in entities_to_remove:
+                remove_velop_entity_from_registry(
+                    hass,
+                    config_entry.entry_id,
+                    entity_unique_id,
+                )
+
+    def create_node_entities() -> None:
+        """Create the node entities.
+
+        This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
+        """
+
+        entities_to_add: list[LinksysVelopSelectEntity] = _init_node_entities()
+
+        if len(entities_to_add) > 0:
+            async_add_entities(entities_to_add)
+
+    _remove_stale_entities()
+    _create_entities()
+    create_node_entities()
+
+
+class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
+    """Linksys Velop select entity."""
+
+    entity_description: LinksysVelopSelectEntityDescription
+    _entity_domain: str = ENTITY_DOMAIN
+    _option_mapping: dict[str, str] = {}
+
+    @property
+    @override
+    def current_option(self) -> str | None:
+
+        ret: str | None = None
+        if (
+            self.entity_description.value_fn is not None
+            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
+        ):
+            ret = self.entity_description.value_fn(mesh)
+        else:
+            return self._attr_current_option
+
+        return ret
+
+    @property
+    @override
+    def options(self) -> list[str]:
+
+        ret: list[str] = []
+        if (
+            self.entity_description.options_fn is not None
+            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
+        ):
+            ret = self.entity_description.options_fn(mesh)
+        elif self.entity_description.options is not None:
+            ret = self.entity_description.options
+
+        return ret
+
+    @override
+    async def async_select_option(self, option: str) -> None:
+
+        # region #-- set the currnet option - redundant in most cases --#
+        self._attr_current_option = option
+        # endregion
+
+        # region #-- call the appropriate function or the default if none provided --#
+        if (
+            self.entity_description.set_fn is not None
+            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
+        ):
+            await self.entity_description.set_fn(
+                mesh,
+                option,
+            )
+            # refresh the data
+            await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
+        else:
+            await super().async_select_option(option)
+        # endregion

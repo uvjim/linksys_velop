@@ -12,8 +12,8 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import NodeEntity
 
+from .coordinator import LinksysVelopConfigEntry
 from .helpers import get_mesh_device_for_config_entry
-from .types import LinksysVelopConfigEntry
 
 # endregion
 
