@@ -7,10 +7,12 @@ import logging
 import math
 import time
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum, auto
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
@@ -51,6 +53,7 @@ from .const import (
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
     ChannelScanInfo,
+    EventSubTypes,
     IntensiveTask,
     SpeedtestResults,
     SpeedtestStatus,
@@ -61,12 +64,29 @@ from .exceptions import (
     GeneralException,
     IntensiveTaskRunning,
 )
-from .types import EventSubTypes, LinksysVelopConfigEntry
+from .logger import LinksysVelopLogFormatter
 
 # endregion
 
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LinksysVelopRuntimeData:
+    """Runtime data for the ConfigEntry."""
+
+    log_formatter: LinksysVelopLogFormatter
+    mesh: Mesh
+    platforms: list[str]
+    coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
+        default_factory=dict
+    )
+    intensive_running_tasks: list[str] = field(default_factory=list)
+    mesh_is_rebooting: bool = False
+
+
+type LinksysVelopConfigEntry = ConfigEntry[LinksysVelopRuntimeData]
 
 
 class CoordinatorTimers(StrEnum):
@@ -80,6 +100,15 @@ class CoordinatorTimers(StrEnum):
     SPEEDTEST_IN_PROGRESS = auto()
 
 
+class CoordinatorTypes(StrEnum):
+    """The type of coordinator."""
+
+    CHANNEL_SCAN = "coordinator_channel_scan"
+    DEVICE_TRACKER = "coordinator_device_tracker"
+    MESH = "coordinator_mesh"
+    SPEEDTEST = "coordinator_speedtest"
+
+
 class DataItems(StrEnum):
     """The data items available to a DataCoordinator."""
 
@@ -89,7 +118,7 @@ class DataItems(StrEnum):
     SPEEDTEST = auto()
 
 
-class LinksyVelopBaseUpdateCoordinator(DataUpdateCoordinator):
+class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
     """Base class for the update coordinators."""
 
     config_entry: LinksysVelopConfigEntry
@@ -114,7 +143,7 @@ class LinksyVelopBaseUpdateCoordinator(DataUpdateCoordinator):
         )
 
 
-class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
+class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator):
     """Retrieve the data from the Velop mesh."""
 
     def __init__(
@@ -147,6 +176,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
             config_entry=config_entry,
             update_interval_secs=base_update_interval_secs,
         )
+
+        self.data: dict[str, Any] = {}
+        self.data.update({CoordinatorTimers.MESH: config_entry.runtime_data.mesh})
 
         # region #-- custom instance variables --#
         self._configured_events: list[str] = self.config_entry.options.get(
@@ -209,7 +241,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         if self.config_entry.runtime_data.mesh_is_rebooting:
             return self.data.get(CoordinatorTimers.DEVICE_TRACKER, [])
 
-        devices: list[DeviceEntity]
+        devices: list[DeviceEntity] = []
         try:
             tracked_devices: tuple[str] = self.config_entry.options.get(
                 CONF_DEVICE_TRACKERS, []
@@ -226,13 +258,18 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                         entity_registry, self.config_entry.entry_id
                     )
                 )
-                tracker_entity: list[er.RegistryEntry]
-                if tracker_entity := [
-                    e
-                    for e in config_entities
-                    if e.unique_id
-                    == f"{self.config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker_missing}"
-                ]:
+                tracker_entity: er.RegistryEntry | None
+                if (
+                    tracker_entity := next(
+                        (
+                            e
+                            for e in config_entities
+                            if e.unique_id
+                            == f"{self.config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker_missing}"
+                        ),
+                        None,
+                    )
+                ) is not None:
                     # region #-- raise an issue --#
                     ir.async_create_issue(
                         self.hass,
@@ -240,9 +277,9 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                         ISSUE_MISSING_DEVICE_TRACKER,
                         data={
                             "config_entry": self.config_entry.entry_id,
-                            "device_id": tracker_entity[0].entity_id,
-                            "device_name": tracker_entity[0].name
-                            or tracker_entity[0].original_name,
+                            "device_id": tracker_entity.entity_id,
+                            "device_name": tracker_entity.name
+                            or tracker_entity.original_name,
                             "velop_id": tracker_missing,
                         },
                         is_fixable=True,
@@ -250,8 +287,8 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                         severity=IssueSeverity.ERROR,
                         translation_key=ISSUE_MISSING_DEVICE_TRACKER,
                         translation_placeholders={
-                            "device_name": tracker_entity[0].name
-                            or tracker_entity[0].original_name
+                            "device_name": tracker_entity.name
+                            or tracker_entity.original_name
                             or ""
                         },
                     )
@@ -550,7 +587,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
 
         # set when we're running for later comparison
         now: float = time.monotonic()
-        _data: dict[str, Any] = {}
+        _data: dict[str, Any] = copy.copy(self.data)
 
         # establish the functions that need to run
         timers_running: list[CoordinatorTimers] = []
@@ -574,6 +611,10 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
                         f"unknown timer type: {timer} - cannot update data"
                     )
 
+        _LOGGER.debug(
+            "retrieving data for the multi use coordinator: %s", timers_running
+        )
+
         res: list = await asyncio.gather(*coro_running)
         for idx, timer in enumerate(timers_running):
             _data.update({timer.value: res[idx]})
@@ -583,7 +624,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
 
         return _data
 
-    async def force_refresh(
+    async def async_force_refresh(
         self, timer: CoordinatorTimers | list[CoordinatorTimers]
     ) -> None:
         """Force a refresh of the coordinator data."""
@@ -609,7 +650,7 @@ class LinksysVelopUpdateCoordinator(LinksyVelopBaseUpdateCoordinator):
         # endregion
 
 
-class UpdateCoordinatorChangeableInterval(LinksyVelopBaseUpdateCoordinator):
+class UpdateCoordinatorChangeableInterval(LinksyVelopDataUpdateCoordinator):
     """DataUpdateCoordinator that allows for the interval being changed."""
 
     def __init__(
@@ -644,7 +685,7 @@ class UpdateCoordinatorChangeableInterval(LinksyVelopBaseUpdateCoordinator):
         """
 
 
-class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval):
+class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval):
     """Retrieve the Speedtest data from the Velop mesh."""
 
     data: SpeedtestResults
@@ -672,6 +713,8 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
 
     async def _async_update_data(self) -> SpeedtestResults:
         """Refresh the Speedtest data."""
+
+        _LOGGER.debug("retrieving data for the Speedtest coordinator")
 
         try:
             if self.config_entry.runtime_data.mesh_is_rebooting:
@@ -748,7 +791,7 @@ class LinksysVelopUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval
         return ret
 
 
-class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterval):
+class LinksysVelopDataUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterval):
     """Retrieve the Channel Scan data from the Velop mesh."""
 
     data: ChannelScanInfo
@@ -776,6 +819,8 @@ class LinksysVelopUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterv
 
     async def _async_update_data(self) -> ChannelScanInfo:
         """Refresh the Speedtest data."""
+
+        _LOGGER.debug("retrieving data for the channel scan coordinator")
 
         try:
             if self.config_entry.runtime_data.mesh_is_rebooting:

@@ -35,9 +35,12 @@ from .const import (
     SELECT_DOMAIN,
 )
 from .coordinator import (
-    LinksysVelopUpdateCoordinator,
-    LinksysVelopUpdateCoordinatorChannelScan,
-    LinksysVelopUpdateCoordinatorSpeedtest,
+    CoordinatorTypes,
+    LinksysVelopConfigEntry,
+    LinksysVelopDataUpdateCoordinatorChannelScan,
+    LinksysVelopDataUpdateCoordinatorMultiUse,
+    LinksysVelopDataUpdateCoordinatorSpeedtest,
+    LinksysVelopRuntimeData,
 )
 from .helpers import (
     async_get_integration_version,
@@ -47,16 +50,10 @@ from .helpers import (
 )
 from .logger import Logger
 from .service_handler import LinksysVelopServiceHandler
-from .types import (
-    CoordinatorTypes,
-    LinksysVelopConfigEntry,
-    LinksysVelopRuntimeData,
-)
 
 # endregion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_SETUP_PLATFORMS: list[str] = []
 
 
 async def async_remove_config_entry_device(
@@ -86,8 +83,6 @@ async def async_setup_entry(
 ) -> bool:
     """Create a config entry."""
 
-    global _SETUP_PLATFORMS
-
     log_formatter: Logger = Logger(
         unique_id=config_entry.unique_id if config_entry.unique_id is not None else ""
     )
@@ -104,6 +99,7 @@ async def async_setup_entry(
             ),
             session=async_get_clientsession(hass=hass),
         ),
+        platforms=list(filter(None, PLATFORMS)),
     )
     # endregion
 
@@ -136,7 +132,7 @@ async def async_setup_entry(
             CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
         )
     config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
-        LinksysVelopUpdateCoordinator(
+        LinksysVelopDataUpdateCoordinatorMultiUse(
             hass,
             _LOGGER,
             coordinator_name,
@@ -165,7 +161,7 @@ async def async_setup_entry(
         )
         coordinator_name = f"{DOMAIN} speedtest{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
-            LinksysVelopUpdateCoordinatorSpeedtest(
+            LinksysVelopDataUpdateCoordinatorSpeedtest(
                 hass,
                 _LOGGER,
                 coordinator_name,
@@ -194,7 +190,7 @@ async def async_setup_entry(
         )
         coordinator_name = f"{DOMAIN} channel scan{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
-            LinksysVelopUpdateCoordinatorChannelScan(
+            LinksysVelopDataUpdateCoordinatorChannelScan(
                 hass,
                 _LOGGER,
                 coordinator_name,
@@ -210,9 +206,8 @@ async def async_setup_entry(
     # endregion
 
     # region #-- setup the platforms --#
-    _SETUP_PLATFORMS = list(filter(None, PLATFORMS))
     if len(config_entry.options.get(CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS)) > 0:
-        _SETUP_PLATFORMS.append(EVENT_DOMAIN)
+        config_entry.runtime_data.platforms.append(EVENT_DOMAIN)
     else:
         remove_velop_entity_from_registry(
             hass,
@@ -224,20 +219,24 @@ async def async_setup_entry(
         or MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
         in config_entry.runtime_data.mesh.capabilities
     ):
-        _SETUP_PLATFORMS.append(SELECT_DOMAIN)
+        config_entry.runtime_data.platforms.append(SELECT_DOMAIN)
     else:
         with contextlib.suppress(ValueError):
-            _SETUP_PLATFORMS.remove(SELECT_DOMAIN)
+            config_entry.runtime_data.platforms.remove(SELECT_DOMAIN)
     if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
-        _SETUP_PLATFORMS.append(DEVICE_TRACKER_DOMAIN)
+        config_entry.runtime_data.platforms.append(DEVICE_TRACKER_DOMAIN)
     else:
         with contextlib.suppress(ValueError):
-            _SETUP_PLATFORMS.remove(DEVICE_TRACKER_DOMAIN)
+            config_entry.runtime_data.platforms.remove(DEVICE_TRACKER_DOMAIN)
+
+    config_entry.runtime_data.platforms = sorted(config_entry.runtime_data.platforms)
     _LOGGER.debug(
         config_entry.runtime_data.log_formatter("setting up platforms: %s"),
-        _SETUP_PLATFORMS,
+        config_entry.runtime_data.platforms,
     )
-    await hass.config_entries.async_forward_entry_setups(config_entry, _SETUP_PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(
+        config_entry, config_entry.runtime_data.platforms
+    )
     # endregion
 
     # region #-- remove unnecessary ui devices --#
@@ -331,10 +330,10 @@ async def async_unload_entry(
     # region #-- clean up the platforms --#
     _LOGGER.debug(
         config_entry.runtime_data.log_formatter("cleaning up platforms: %s"),
-        _SETUP_PLATFORMS,
+        config_entry.runtime_data.platforms,
     )
     ret = await hass.config_entries.async_unload_platforms(
-        config_entry, _SETUP_PLATFORMS
+        config_entry, config_entry.runtime_data.platforms
     )
     # endregion
 
@@ -343,7 +342,8 @@ async def async_unload_entry(
 
 
 async def _async_update_listener(
-    hass: HomeAssistant, config_entry: ConfigEntry
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> None:
     """Reload the config entry."""
-    await hass.config_entries.async_reload(config_entry.entry_id)
+
+    hass.config_entries.async_schedule_reload(config_entry.entry_id)
