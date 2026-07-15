@@ -43,7 +43,7 @@ class LinksysVelopUpdateEntityDescription(
 ):
     """Describes Velop update entity."""
 
-    pic_fn: Callable[..., str | None]
+    pic_fn: Callable[..., str | None] | None = None
 
 
 async def async_setup_entry(
@@ -106,7 +106,7 @@ async def async_setup_entry(
                             key="",
                             name="Update",
                             pic_fn=lambda n: (
-                                f"{prefix.rstrip('/').strip()}/{n.model}.png"
+                                f"{prefix.rstrip('/').strip()}/{cast(NodeEntity, n).model}.png"
                                 if (
                                     prefix := config_entry.options.get(CONF_NODE_IMAGES)
                                 )

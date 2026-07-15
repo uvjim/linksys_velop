@@ -54,7 +54,7 @@ class LinksysVelopSensorEntityDescription(
     """Describes Velop sensor entity."""
 
     esa_fn: Callable[[Mesh], dict[str, Any]] | None = None
-    has_entity_pic: bool = False
+    pic_fn: Callable[..., str | None] | None = None
     value_fn: Callable[..., StateType | date | datetime | Decimal] | None = None
 
 
@@ -230,9 +230,15 @@ async def async_setup_entry(
                     ),
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
-                        has_entity_pic=True,
                         key="ui_type",
                         name="UI Type",
+                        pic_fn=lambda d: (
+                            f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, d).ui_type}.png"
+                            if d is not None
+                            and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
+                            not in (None, "")
+                            else None
+                        ),
                         target_type=EntityType.DEVICE,
                         translation_key="ui_type",
                     ),
@@ -695,9 +701,19 @@ async def async_setup_entry(
                                 ),
                                 LinksysVelopSensorEntityDescription(
                                     entity_category=EntityCategory.DIAGNOSTIC,
-                                    has_entity_pic=True,
                                     key="model",
                                     name="Model",
+                                    pic_fn=lambda d: (
+                                        f"{prefix.rstrip('/').strip()}/{cast(NodeEntity, d).model}.png"
+                                        if d is not None
+                                        and (
+                                            prefix := config_entry.options.get(
+                                                CONF_NODE_IMAGES
+                                            )
+                                        )
+                                        not in (None, "")
+                                        else None
+                                    ),
                                     target_type=EntityType.NODE,
                                     translation_key="model",
                                 ),
@@ -926,17 +942,8 @@ class LinksysVelopSensorMultiUseEntity(
     def entity_picture(self) -> str | None:
 
         ret: str | None = None
-
-        # region #-- construct the entity picture path --#
-        if (
-            self.entity_description.has_entity_pic
-            and self.entity_description.key != ""
-            and (prefix := self.coordinator.config_entry.options.get(CONF_NODE_IMAGES))
-            not in (None, "")
-        ):
-
-            ret = f"{prefix.rstrip('/').strip()}/{self.entity_description.key}.png"
-        # endregion
+        if self.entity_description.pic_fn is not None:
+            ret = self.entity_description.pic_fn(self._get_target())
 
         return ret
 
