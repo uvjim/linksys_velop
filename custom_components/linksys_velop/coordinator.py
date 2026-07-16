@@ -35,7 +35,7 @@ from pyvelop.exceptions import (
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -189,7 +189,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                 "interval": update_interval_secs,
                 "is_running": False,
                 "last_success": None,
-                "listener_count": 0,
+                "listeners": [],
             },
         }
         if kwargs.get("tracker_update_interval_secs") is not None:
@@ -199,7 +199,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         "interval": kwargs.get("tracker_update_interval_secs"),
                         "is_running": False,
                         "last_success": None,
-                        "listener_count": 0,
+                        "listeners": [],
                     }
                 }
             )
@@ -210,30 +210,36 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         self._rebooting_skip_count: int = 0
         # endregion
 
+        # region #-- add a listener --#
+        config_entry.async_on_unload(self.async_add_listener(self._process_listeners))
+        # endregion
+
+    def _process_listeners(self) -> None:
+        """Process the listeners for any timers that were executing."""
+
+        for timer_type, timer_data in self._timers.items():
+            if timer_data.get("is_running", False):
+                for listener in timer_data.get("listeners", []):
+                    try:
+                        timer_data["is_running"] = False
+                        listener()
+                    except:
+                        _LOGGER.error(
+                            "unexpected error executing listener for %s", timer_type
+                        )
+
     def add_listener_for_timer_type(
         self, timer_type: CoordinatorTimers, listener: Callable[[], None]
-    ) -> None:
-        """Add a listener for a particular timer type.
+    ) -> Callable[[], None]:
+        """Add a listener for a particular timer type."""
 
-        This helps to avoid executing a listener every time _async_update_data is called.
-        """
+        self._timers.get(timer_type, {}).get("listeners", []).append(listener)
 
-        def coordinator_listener(
-            timer_type: CoordinatorTimers, listener: Callable[[], None]
-        ):
-            def guarded_listener():
-                try:
-                    if self._timers.get(timer_type, {}).get("is_running", False):
-                        listener()
-                        self._timers.get(timer_type, {}).update({"is_running": False})
-                except Exception:
-                    _LOGGER.error("unknown exception whist calling listener")
+        def _unsub() -> None:
+            if listener in self._timers.get(timer_type, {}).get("listeners", []):
+                self._timers.get(timer_type, {}).get("listeners", []).remove(listener)
 
-            return guarded_listener
-
-        listener_count: int = self._timers.get(timer_type, {}).get("listener_count", 0)
-        self._timers.get(timer_type, {}).update({"listener_count": listener_count + 1})
-        self.async_add_listener(coordinator_listener(timer_type, listener))
+        return _unsub
 
     async def _async_get_device_tracker_data(self) -> list[DeviceEntity]:
         """Get the device tracker information from the mesh."""
@@ -347,9 +353,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         """Get all data from the mesh."""
 
         current_devices: set[str] = set()
-        current_nodes: set[str] = set()
+        current_nodes_serials: set[str] = set()
         previous_devices: set[str] = set()
-        previous_nodes: set[str] = set()
+        previous_nodes: list[NodeEntity] = []
+        previous_nodes_serials: set[str] = set()
+        device_registry: DeviceRegistry
 
         try:
             # region #-- rebooting so just return the previous details --#
@@ -367,10 +375,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             # endregion
 
             # region #-- set the previous details before getting mesh details --#
-            previous_nodes = {
-                node.serial
-                for node in self.config_entry.runtime_data.mesh.nodes
-                if node.serial is not None
+            previous_nodes = self.config_entry.runtime_data.mesh.nodes
+            previous_nodes_serials = {
+                node.serial for node in previous_nodes if node.serial is not None
             }
             if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
                 previous_devices = {
@@ -430,7 +437,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         # endregion
 
         # region #-- get the current details for comparison --#
-        current_nodes = {
+        current_nodes_serials = {
             node.serial
             for node in self.config_entry.runtime_data.mesh.nodes
             if node.serial is not None
@@ -443,6 +450,68 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             }
         # endregion
 
+        # region #-- update node `device` attributes if we need to --#
+        attr_to_check: set[str] = {"ip", "name"}
+        device_registry = dr.async_get(self.hass)
+        prev_node: NodeEntity
+        for prev_node in previous_nodes:
+            if prev_node.serial is not None:
+                if (
+                    dr_node := device_registry.async_get_device(
+                        identifiers={(DOMAIN, prev_node.serial)}
+                    )
+                ) is not None and (
+                    cur_node := next(
+                        (
+                            n
+                            for n in self.config_entry.runtime_data.mesh.nodes
+                            if n.serial == prev_node.serial
+                        ),
+                        None,
+                    )
+                ) is not None:
+                    attr_to_update: dict[str, Any] = {}
+                    for attr in attr_to_check:
+                        if attr == "ip":
+                            if cur_node.type == NodeType.SECONDARY:
+                                cur_ip = next(
+                                    filter(
+                                        lambda adi: adi.get("parent_id") is not None,
+                                        cur_node.adapter_info,
+                                    ),
+                                    {},
+                                ).get("ip")
+
+                                prev_ip = next(
+                                    filter(
+                                        lambda adi: adi.get("parent_id") is not None,
+                                        prev_node.adapter_info,
+                                    ),
+                                    {},
+                                ).get("ip")
+
+                                if cur_ip != prev_ip:
+                                    attr_to_update["configuration_url"] = (
+                                        f"http://{cur_ip}/ca"
+                                        if cur_ip is not None
+                                        else None
+                                    )
+                        elif attr == "name":
+                            if cur_node.name != prev_node.name:
+                                attr_to_update["name"] = cur_node.name
+                    if len(attr_to_update) > 0:
+                        _LOGGER.debug(
+                            "updating the following attributes for %s: %s",
+                            prev_node.name,
+                            attr_to_update,
+                        )
+                        device_registry.async_update_device(
+                            dr_node.id,
+                            **attr_to_update,
+                        )
+
+        # endregion
+
         # region #-- missing UI devices --#
         if len(self.config_entry.options.get(CONF_UI_DEVICES, [])) > 0:
             missing_ui_devices: set[str] = set(
@@ -450,7 +519,6 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             ).difference(current_devices)
             missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
             if missing_ui_devices:
-                device_registry: DeviceRegistry = dr.async_get(self.hass)
                 for ui_device in missing_ui_devices:
                     found_device: DeviceEntry | None = device_registry.async_get_device(
                         identifiers={(DOMAIN, ui_device)}
@@ -486,8 +554,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         # endregion
 
         # region #-- missing nodes --#
-        if stale_nodes := previous_nodes - current_nodes:
-            device_registry: DeviceRegistry = dr.async_get(self.hass)
+        if stale_nodes := previous_nodes_serials - current_nodes_serials:
             for node_serial in stale_nodes:
                 dr_device: DeviceEntry | None = device_registry.async_get_device(
                     identifiers={(DOMAIN, node_serial)}
@@ -499,48 +566,48 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     )
         # endregion
 
+        # region #-- check for new nodes --#
+        if EventSubTypes.NEW_NODE_FOUND.value in self._configured_events:
+            new_nodes_serials: set[str] = current_nodes_serials.difference(
+                previous_nodes_serials
+            )
+            node_info: NodeEntity | None
+            for node in new_nodes_serials:
+                if (
+                    node_info := next(
+                        (
+                            n
+                            for n in self.config_entry.runtime_data.mesh.nodes
+                            if n.serial == node
+                        ),
+                        None,
+                    )
+                ) is not None:
+                    async_dispatcher_send(
+                        self.hass,
+                        f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
+                        node_info,
+                    )
+        # endregion
+
         # region #-- new device found --#
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             new_devices: set[str] = current_devices.difference(previous_devices)
-            device_info: list[DeviceEntity] | DeviceEntity
+            device_info: DeviceEntity | None
             for device in new_devices:
-                if (
-                    device_info := [
+                if device_info := next(
+                    (
                         d
                         for d in self.config_entry.runtime_data.mesh.devices
                         if d.unique_id == device
-                    ]
-                ) != []:
-                    device_info = device_info[0]
+                    ),
+                    None,
+                ):
                     async_dispatcher_send(
                         self.hass,
                         f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
                         device_info,
                     )
-        # endregion
-
-        # region #-- check for new nodes --#
-        if (
-            EventSubTypes.NEW_NODE_FOUND.value in self._configured_events
-            and len(previous_nodes) > 0
-        ):
-            new_nodes: set[str] = current_nodes.difference(previous_nodes)
-            if len(new_nodes) > 0:
-                node_info: list[NodeEntity]
-                for node in new_nodes:
-                    if node_info := [
-                        n
-                        for n in self.config_entry.runtime_data.mesh.nodes
-                        if n.unique_id == node
-                    ]:
-                        async_dispatcher_send(
-                            self.hass,
-                            f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                            node_info[0],
-                        )
-                self.hass.config_entries.async_schedule_reload(
-                    self.config_entry.entry_id
-                )
         # endregion
 
         return self.config_entry.runtime_data.mesh
@@ -589,10 +656,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         now: float = time.monotonic()
         _data: dict[str, Any] = copy.copy(self.data)
 
-        # establish the functions that need to run
+        # region #-- establish the functions that need to run--#
         timers_running: list[CoordinatorTimers] = []
         coro_running: list = []
-        for timer, timer_data in self._timers.items():
+        for timer_type, timer_data in self._timers.items():
             last_success: float | None = timer_data.get("last_success")
             interval: float = timer_data.get("interval", 0)
             run_update: bool = (
@@ -600,27 +667,30 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             )
             if run_update:
                 timer_data["is_running"] = True
-                timers_running.append(timer)
+                timers_running.append(timer_type)
 
-                if timer == CoordinatorTimers.DEVICE_TRACKER:
+                if timer_type == CoordinatorTimers.DEVICE_TRACKER:
                     coro_running.append(self._async_get_device_tracker_data())
-                elif timer == CoordinatorTimers.MESH:
+                elif timer_type == CoordinatorTimers.MESH:
                     coro_running.append(self._async_get_mesh_data())
                 else:
                     raise UpdateFailed(
-                        f"unknown timer type: {timer} - cannot update data"
+                        f"unknown timer type: {timer_type} - cannot update data"
                     )
 
         _LOGGER.debug(
-            "retrieving data for the multi use coordinator: %s", timers_running
+            "retrieving data for the multi use coordinator, %s", timers_running
         )
+        # endregion
 
+        # run the tasks
         res: list = await asyncio.gather(*coro_running)
+
+        # region #-- set the results and appropriate attributes --#
         for idx, timer in enumerate(timers_running):
             _data.update({timer.value: res[idx]})
             self._timers.get(timer, {}).update({"last_success": now})
-            if self._timers.get(timer, {}).get("listener_count", 0) == 0:
-                self._timers.get(timer, {}).update({"is_running": False})
+        # endregion
 
         return _data
 

@@ -154,18 +154,25 @@ class LinksysVelopMultiUseEntity(
                     serial_number=node_info.serial,
                     sw_version=node_info.firmware.get("version", ""),
                 )
+
                 if node_info.adapter_info:
-                    ip_address: list[dict[str, Any]] = list(
+                    ip_address: dict[str, Any] = next(
                         filter(
                             lambda adi: adi.get("parent_id") is not None,
                             node_info.adapter_info,
-                        )
+                        ),
+                        {},
                     )
-                    if len(ip_address) > 0:
+                    if node_info.type == NodeType.SECONDARY:
+                        if len(ip_address) > 0:
+                            self._attr_device_info["configuration_url"] = (
+                                f"http://{ip_address.get('ip')}/ca"
+                            )
+                    else:
                         self._attr_device_info["configuration_url"] = (
-                            f"http://{ip_address[0].get('ip')}"
-                            f"{'/ca' if node_info.type == NodeType.SECONDARY else ''}"
+                            f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
                         )
+
         # endregion
 
     def __repr__(self) -> str:
