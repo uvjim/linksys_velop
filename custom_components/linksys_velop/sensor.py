@@ -267,7 +267,8 @@ async def async_setup_entry(
                                         DeviceEntity, d
                                     ).parental_control_schedule.get("blocked_sites", [])
                                 }
-                                if len(
+                                if d is not None
+                                and len(
                                     cast(DeviceEntity, d).parental_control_schedule.get(
                                         "blocked_sites", []
                                     )
@@ -952,6 +953,17 @@ class LinksysVelopSensorMultiUseEntity(
         ret: str | None = None
         if self.entity_description.pic_fn is not None:
             ret = self.entity_description.pic_fn(self._get_target())
+
+        return ret
+
+    @property
+    @override
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+
+        ret: dict[str, Any] | None = None
+
+        if self.entity_description.esa_fn is not None:
+            ret = self.entity_description.esa_fn(self._get_target())
 
         return ret
 

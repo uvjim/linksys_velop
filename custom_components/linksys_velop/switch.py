@@ -412,6 +412,17 @@ class LinksysVelopSwitchMultiUseEntity(
 
     @property
     @override
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+
+        ret: dict[str, Any] | None = None
+
+        if self.entity_description.esa_fn is not None:
+            ret = self.entity_description.esa_fn(self._get_target())
+
+        return ret
+
+    @property
+    @override
     def is_on(self) -> bool | None:
 
         ret: bool | None = None
