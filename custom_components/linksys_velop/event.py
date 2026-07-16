@@ -15,6 +15,7 @@ from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import DOMAIN, EventSubTypes
 from .coordinator import (
+    CoordinatorTimers,
     CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
@@ -135,6 +136,13 @@ async def async_setup_entry(
     _remove_stale_entities()
     _create_entities()
     create_node_entities()
+
+    config_entry.async_on_unload(
+        cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+    )
 
 
 def _build_event_properties(
