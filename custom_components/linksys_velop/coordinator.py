@@ -451,7 +451,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         # endregion
 
         # region #-- update node `device` attributes if we need to --#
-        attr_to_check: set[str] = {"ip", "name"}
+        attr_to_check: set[str] = {"ip", "name", "parent_id"}
         device_registry = dr.async_get(self.hass)
         prev_node: NodeEntity
         for prev_node in previous_nodes:
@@ -473,6 +473,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     attr_to_update: dict[str, Any] = {}
                     for attr in attr_to_check:
                         if attr == "ip":
+                            # region #-- update the configuration_url --#
                             if cur_node.type == NodeType.SECONDARY:
                                 cur_ip = next(
                                     filter(
@@ -496,9 +497,56 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                                         if cur_ip is not None
                                         else None
                                     )
+                            # endregion
                         elif attr == "name":
+                            # region #-- update the name --#
+                            # this doesn't change the visible name in Home Assistant if that was set by the user.
                             if cur_node.name != prev_node.name:
                                 attr_to_update["name"] = cur_node.name
+                            # endregion
+                        elif attr == "parent_id":
+                            # region #-- update the via_device --#
+                            # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
+                            prev_adapter_main: dict[str, Any] | None = next(
+                                (
+                                    adi
+                                    for adi in prev_node.adapter_info
+                                    if adi.get("parent_id") is not None
+                                ),
+                                None,
+                            )
+                            cur_adapter_main: dict[str, Any] | None = next(
+                                (
+                                    adi
+                                    for adi in cur_node.adapter_info
+                                    if adi.get("parent_id") is not None
+                                ),
+                                None,
+                            )
+                            if (
+                                cur_adapter_main is not None
+                                and prev_adapter_main is not None
+                                and cur_adapter_main.get("parent_id")
+                                != prev_adapter_main.get("parent_id")
+                            ):
+                                parent_node: NodeEntity | None = next(
+                                    (
+                                        n
+                                        for n in self.config_entry.runtime_data.mesh.nodes
+                                        if n.unique_id
+                                        == cur_adapter_main.get("parent_id")
+                                    ),
+                                    None,
+                                )
+                                if (
+                                    parent_node is not None
+                                    and parent_node.serial is not None
+                                ):
+                                    attr_to_update["via_device"] = (
+                                        DOMAIN,
+                                        parent_node.serial,
+                                    )
+                            # endregion
                     if len(attr_to_update) > 0:
                         _LOGGER.debug(
                             "updating the following attributes for %s: %s",
