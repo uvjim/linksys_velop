@@ -31,6 +31,7 @@ from .coordinator import (
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
 )
+from .helpers import get_mesh_parent_node
 from .logger import (
     LinksysVelopLogFormatter,
 )
@@ -157,37 +158,30 @@ class LinksysVelopMultiUseEntity(
 
                 # region #-- calculate additional attributes --#
                 # additional device attributes that are conditional or need more calculation.
-                adapter_main: dict[str, Any] | None = next(
-                    (
-                        adi
-                        for adi in node_info.adapter_info
-                        if adi.get("parent_id") is not None
-                    ),
-                    None,
-                )
-
                 # region #-- calculate the configuration url --#
-                if node_info.adapter_info:
-                    if node_info.type == NodeType.SECONDARY:
-                        if adapter_main is not None:
-                            self._attr_device_info["configuration_url"] = (
-                                f"http://{adapter_main.get('ip')}/ca"
-                            )
-                    else:
+                if node_info.type == NodeType.SECONDARY and node_info.adapter_info:
+                    adapter_main: dict[str, Any] | None = next(
+                        (
+                            adi
+                            for adi in node_info.adapter_info
+                            if adi.get("primary", False)
+                        ),
+                        None,
+                    )
+                    if adapter_main is not None:
                         self._attr_device_info["configuration_url"] = (
-                            f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
+                            f"http://{adapter_main.get('ip')}/ca"
                         )
+                elif node_info.type == NodeType.PRIMARY:
+                    self._attr_device_info["configuration_url"] = (
+                        f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
+                    )
                 # endregion
 
                 # region #-- calculate the via_device information --#
-                if node_info.type == NodeType.SECONDARY and adapter_main is not None:
-                    parent_node: NodeEntity | None = next(
-                        (
-                            n
-                            for n in self.coordinator.config_entry.runtime_data.mesh.nodes
-                            if n.unique_id == adapter_main.get("parent_id")
-                        ),
-                        None,
+                if node_info.type == NodeType.SECONDARY:
+                    parent_node: NodeEntity | None = get_mesh_parent_node(
+                        node_info, self.coordinator.config_entry.runtime_data.mesh
                     )
                     if parent_node is not None and parent_node.serial is not None:
                         self._attr_device_info["via_device"] = (
