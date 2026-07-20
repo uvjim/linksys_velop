@@ -155,33 +155,56 @@ class LinksysVelopMultiUseEntity(
                     sw_version=node_info.firmware.get("version", ""),
                 )
 
+                # region #-- calculate additional attributes --#
+                # additional device attributes that are conditional or need more calculation.
+                adapter_main: dict[str, Any] | None = next(
+                    (
+                        adi
+                        for adi in node_info.adapter_info
+                        if adi.get("parent_id") is not None
+                    ),
+                    None,
+                )
+
+                # region #-- calculate the configuration url --#
                 if node_info.adapter_info:
-                    ip_address: dict[str, Any] = next(
-                        filter(
-                            lambda adi: adi.get("parent_id") is not None,
-                            node_info.adapter_info,
-                        ),
-                        {},
-                    )
                     if node_info.type == NodeType.SECONDARY:
-                        if len(ip_address) > 0:
+                        if adapter_main is not None:
                             self._attr_device_info["configuration_url"] = (
-                                f"http://{ip_address.get('ip')}/ca"
+                                f"http://{adapter_main.get('ip')}/ca"
                             )
                     else:
                         self._attr_device_info["configuration_url"] = (
                             f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
                         )
+                # endregion
+
+                # region #-- calculate the via_device information --#
+                if node_info.type == NodeType.SECONDARY and adapter_main is not None:
+                    parent_node: NodeEntity | None = next(
+                        (
+                            n
+                            for n in self.coordinator.config_entry.runtime_data.mesh.nodes
+                            if n.unique_id == adapter_main.get("parent_id")
+                        ),
+                        None,
+                    )
+                    if parent_node is not None and parent_node.serial is not None:
+                        self._attr_device_info["via_device"] = (
+                            DOMAIN,
+                            parent_node.serial,
+                        )
+                # endregion
+                # endregion
 
         # endregion
 
     def __repr__(self) -> str:
-        """"""
 
         return f"{self.__class__.__name__}: {self.entity_context.unique_id} : { self.entity_description.name }"
 
     def _get_target(self) -> Any:
-        """"""
+        """Retrieve the target mesh entity for the current entity."""
 
         ret: Any = None
 
