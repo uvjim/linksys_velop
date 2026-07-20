@@ -2,6 +2,7 @@
 
 # region #-- imports --#
 import logging
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
@@ -10,9 +11,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.loader import Integration, async_get_integration
+from pyvelop.mesh import Mesh
+from pyvelop.mesh_entity import NodeEntity
 
 from .const import DOMAIN
-from .coordinator import LinksysVelopConfigEntry
 
 # endregion
 
@@ -20,15 +22,40 @@ from .coordinator import LinksysVelopConfigEntry
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def get_mesh_device_for_config_entry(
-    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
-) -> DeviceEntry | None:
-    """Retrieve the Mesh device from the registry."""
-    device_registry: DeviceRegistry = dr.async_get(hass)
-    found_mesh: DeviceEntry | None = device_registry.async_get_device(
-        {(DOMAIN, config_entry.entry_id)}
+def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
+    """Retrieve the parent node from the mesh."""
+
+    parent_node: NodeEntity | None = None
+
+    _LOGGER.debug("getting parent node for, %s", node)
+
+    # region #-- get the primary adapater for the node --#
+    adapter_main: dict[str, Any] | None = next(
+        (adi for adi in node.adapter_info if adi.get("primary", False)),
+        None,
     )
-    return found_mesh
+    # endregion
+
+    # region #-- get the parent based on ID --#
+    if adapter_main:
+        _LOGGER.debug("looking for parent based on ID")
+        parent_node = next(
+            (n for n in mesh.nodes if n.unique_id == adapter_main.get("parent_id")),
+            None,
+        )
+    # endregion
+
+    # region #-- if we don't have the parent yet lookup based on name --#
+    if parent_node is None:
+        _LOGGER.debug("looking for parent based on name")
+        parent_node = next(
+            (n for n in mesh.nodes if n.name == node.parent_name),
+            None,
+        )
+    # endregion
+
+    _LOGGER.debug("parent_node, %s", parent_node)
+    return parent_node
 
 
 def remove_velop_device_from_registry(hass: HomeAssistant, device_id: str) -> None:

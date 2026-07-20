@@ -29,6 +29,7 @@ from .coordinator import (
     CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
+    get_mesh_device_for_config_entry,
 )
 from .entities import (
     EntityType,
@@ -36,7 +37,6 @@ from .entities import (
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
 )
-from .helpers import get_mesh_device_for_config_entry
 
 # endregion
 

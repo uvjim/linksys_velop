@@ -64,6 +64,7 @@ from .exceptions import (
     GeneralException,
     IntensiveTaskRunning,
 )
+from .helpers import get_mesh_parent_node
 from .logger import LinksysVelopLogFormatter
 
 # endregion
@@ -477,7 +478,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                             if cur_node.type == NodeType.SECONDARY:
                                 cur_ip = next(
                                     filter(
-                                        lambda adi: adi.get("parent_id") is not None,
+                                        lambda adi: adi.get("primary", False),
                                         cur_node.adapter_info,
                                     ),
                                     {},
@@ -485,7 +486,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
                                 prev_ip = next(
                                     filter(
-                                        lambda adi: adi.get("parent_id") is not None,
+                                        lambda adi: adi.get("primary", False),
                                         prev_node.adapter_info,
                                     ),
                                     {},
@@ -507,45 +508,26 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         elif attr == "parent_id":
                             # region #-- update the via_device --#
                             # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
-                            prev_adapter_main: dict[str, Any] | None = next(
-                                (
-                                    adi
-                                    for adi in prev_node.adapter_info
-                                    if adi.get("parent_id") is not None
-                                ),
-                                None,
-                            )
-                            cur_adapter_main: dict[str, Any] | None = next(
-                                (
-                                    adi
-                                    for adi in cur_node.adapter_info
-                                    if adi.get("parent_id") is not None
-                                ),
-                                None,
-                            )
-                            if (
-                                cur_adapter_main is not None
-                                and prev_adapter_main is not None
-                                and cur_adapter_main.get("parent_id")
-                                != prev_adapter_main.get("parent_id")
-                            ):
-                                parent_node: NodeEntity | None = next(
-                                    (
-                                        n
-                                        for n in self.config_entry.runtime_data.mesh.nodes
-                                        if n.unique_id
-                                        == cur_adapter_main.get("parent_id")
-                                    ),
-                                    None,
+                            if cur_node.type == NodeType.SECONDARY:
+                                parent_node: NodeEntity | None = get_mesh_parent_node(
+                                    cur_node, self.config_entry.runtime_data.mesh
                                 )
                                 if (
                                     parent_node is not None
                                     and parent_node.serial is not None
                                 ):
-                                    attr_to_update["via_device"] = (
-                                        DOMAIN,
-                                        parent_node.serial,
+                                    parent_dr_node: DeviceEntry | None = (
+                                        device_registry.async_get_device(
+                                            identifiers={(DOMAIN, parent_node.serial)}
+                                        )
                                     )
+                                    if (
+                                        parent_dr_node is not None
+                                        and dr_node.via_device_id != parent_dr_node.id
+                                    ):
+                                        attr_to_update["via_device_id"] = (
+                                            parent_dr_node.id
+                                        )
                             # endregion
                     if len(attr_to_update) > 0:
                         _LOGGER.debug(
@@ -997,3 +979,14 @@ class LinksysVelopDataUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableIn
         else:
             self.update_interval = self.progress_update_interval
         return ret
+
+
+def get_mesh_device_for_config_entry(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> DeviceEntry | None:
+    """Retrieve the Mesh device from the registry."""
+    device_registry: DeviceRegistry = dr.async_get(hass)
+    found_mesh: DeviceEntry | None = device_registry.async_get_device(
+        {(DOMAIN, config_entry.entry_id)}
+    )
+    return found_mesh
