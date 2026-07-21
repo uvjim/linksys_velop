@@ -42,30 +42,6 @@ class IntensiveTask(StrEnum):
     REBOOT = "Reboot"
 
 
-@dataclass
-class SpeedtestResults(DataCoordinatorFormattedData):
-    """Representation of Speedtest results."""
-
-    download_bandwidth: int | None = None
-    exit_code: str | None = None
-    friendly_status: str | None = None
-    latency: float | None = None
-    result_id: int | None = None
-    timestamp: str = ""
-    upload_bandwidth: int | None = None
-
-
-class SpeedtestStatus(StrEnum):
-    """Possible Speedtest statuses."""
-
-    CHECKING_DOWNLOAD_SPEED = auto()
-    CHECKING_LATENCY = auto()
-    CHECKING_UPLOAD_SPEED = auto()
-    DETECTING_SERVER = auto()
-    FINISHED = auto()
-    UNKNOWN = auto()
-
-
 class EventSubTypes(StrEnum):
     """Available event types."""
 

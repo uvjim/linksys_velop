@@ -11,10 +11,9 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from pyvelop.const import Weekdays
 from pyvelop.exceptions import MeshInvalidInput, MeshTooManyMatches
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity, ParentalControl
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, ParentalControl, Weekdays
 from pyvelop.types import NodeType
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN, EventSubTypes
