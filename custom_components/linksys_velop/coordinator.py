@@ -34,7 +34,7 @@ from pyvelop.exceptions import (
     MeshInvalidCredentials,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, SpeedtestStatus
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
@@ -53,10 +53,9 @@ from .const import (
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
     ChannelScanInfo,
+    DataCoordinatorFormattedData,
     EventSubTypes,
     IntensiveTask,
-    SpeedtestResults,
-    SpeedtestStatus,
 )
 from .exceptions import (
     CoordinatorMeshTimeout,
@@ -117,6 +116,19 @@ class DataItems(StrEnum):
     DEVICE_TRACKER = auto()
     MESH = auto()
     SPEEDTEST = auto()
+
+
+@dataclass
+class SpeedtestResults(DataCoordinatorFormattedData):
+    """Representation of Speedtest results."""
+
+    download_bandwidth: int | None = None
+    exit_code: str | None = None
+    friendly_status: str | None = None
+    latency: float | None = None
+    result_id: int | None = None
+    timestamp: str = ""
+    upload_bandwidth: int | None = None
 
 
 class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):

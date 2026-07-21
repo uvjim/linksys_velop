@@ -11,9 +11,8 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.const import Weekdays
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.mesh_entity import DeviceEntity, ParentalControl
+from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_UI_DEVICES

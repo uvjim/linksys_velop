@@ -12,8 +12,8 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.const import DEF_EMPTY_NAME, MeshCapability, ScheduledRebootInterval
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshCapability, ScheduledRebootInterval
+from pyvelop.mesh_entity import EMPTY_NAME
 
 from .const import (
     CONF_UI_DEVICES,
@@ -74,7 +74,7 @@ def get_placeholder_device_options(mesh: Mesh) -> list[str]:
     for d in mesh.devices:
         name: str = (
             d.name
-            if d.name != DEF_EMPTY_NAME
+            if d.name != EMPTY_NAME
             else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
         )
         ret.append(name)
@@ -102,12 +102,12 @@ async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
     # region #-- match the display name back to an ID --#
     match_on: str = (
         option
-        if not option.startswith(f"{DEF_EMPTY_NAME} (")
+        if not option.startswith(f"{EMPTY_NAME} (")
         else option.split("(")[1].strip(")")
     )
     for dev in mesh.devices:
         match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
-        if option.startswith(f"{DEF_EMPTY_NAME} (") and dev.status:
+        if option.startswith(f"{EMPTY_NAME} (") and dev.status:
             match_against.append(dev.adapter_info[0].get("ip", ""))
         if match_on.lower() in match_against:
             velop_id = dev.unique_id
