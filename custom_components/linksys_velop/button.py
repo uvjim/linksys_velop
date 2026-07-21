@@ -448,6 +448,7 @@ class LinksysVelopButtonSpeedtestEntity(
             await self.entity_description.press_fn(
                 self.coordinator.config_entry.runtime_data.mesh
             )
+        await self.coordinator.async_refresh()
 
 
 class LinksysVelopButtonChannelScanEntity(
