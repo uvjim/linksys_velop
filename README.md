@@ -139,6 +139,7 @@ Available events are: -
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
 | --- | --- | :---: | --- | --- | --- |
 | Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
+| Device | Icon | ✔️ | | Set the ison based on a predefined list (the list matches that used by the Linksys App/Web UI) | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
 | Mesh | Scheduled Reboot | ✔️ | The schedule used for the automatic reboot of the mesh | | See details [Scheduled Reboot on Linksys](https://support.linksys.com/kb/article/4960-en/) |
 
 ### Sensors
@@ -154,12 +155,10 @@ Available events are: -
 | Device | MAC | ✔️ | | | |
 | Device | Manufacturer | ✔️ | | | |
 | Device | Model | ✔️ | | | |
-| Device | Name | ✔️ | | | |
 | Device | Operating system | ✔️ | | | |
 | Device | Parent | ✔️ | | | |
 | Device | Serial | ✔️ | | | |
 | Device | Signal strength | ✔️ | RSSI value | | |
-| Device | UI type | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
 | Mesh | Available Storage | ✖️ | Count of partitions available | List of the available partitions including: IP, label, available Kb, used Kb, used %age and last checked time | |
 | Mesh | DHCP Reservations | ✖️ | Count of DHCP reservations | List of DHCP reservations | |
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
@@ -194,6 +193,12 @@ Available events are: -
 | Mesh | Parental Control | ✔️ | List of objects defining the devices, blocked times and blocked sites | |
 | Mesh | UPnP | ✔️ | | Only controls the state of the UPnP not the sub-components of UPnP, these are only binary sensors |
 | Mesh | WPS | ✔️ | | |
+
+### Text
+
+| Location | Name | Enabled by default | Additional Information | Comments |
+| Device | Name | ✔️ | Allows viewing and changing the name of the device | This
+writes the update back to the mesh |
 
 ### Update
 
