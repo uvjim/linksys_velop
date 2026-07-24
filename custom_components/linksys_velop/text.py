@@ -73,18 +73,17 @@ async def async_setup_entry(
                 unique_id=ui_device
             )
             mesh_entities: list[LinksysVelopTextEntityDescription] = []
-            if ui_device == DEF_UI_PLACEHOLDER_DEVICE_ID:
-                mesh_entities.extend(
-                    [
-                        LinksysVelopTextEntityDescription(
-                            entity_category=EntityCategory.CONFIG,
-                            key="name",
-                            name="Name",
-                            target_type=EntityType.DEVICE,
-                            translation_key="name",
-                        ),
-                    ]
-                )
+            mesh_entities.extend(
+                [
+                    LinksysVelopTextEntityDescription(
+                        entity_category=EntityCategory.CONFIG,
+                        key="name",
+                        name="Name",
+                        target_type=EntityType.DEVICE,
+                        translation_key="name",
+                    ),
+                ]
+            )
 
             ret_temp.extend(
                 [

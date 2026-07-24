@@ -4,7 +4,7 @@
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import cast, override
+from typing import Any, cast, override
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
@@ -13,9 +13,10 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability, ScheduledRebootInterval
-from pyvelop.mesh_entity import EMPTY_NAME
+from pyvelop.mesh_entity import EMPTY_NAME, DeviceEntity, UiType
 
 from .const import (
+    CONF_NODE_IMAGES,
     CONF_UI_DEVICES,
     DEF_UI_PLACEHOLDER_DEVICE_ID,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
@@ -46,7 +47,8 @@ class LinksysVelopSelectEntityDescription(
     """Describes Velop select entity."""
 
     options_fn: Callable[[Mesh], list[str]] | None = None
-    set_fn: Callable[[Mesh, str], Awaitable[None]] | None = None
+    pic_fn: Callable[..., str | None] | None = None
+    set_fn: Callable[[Any, str], Awaitable[None]] | None = None
     value_fn: Callable[[Mesh, str], str | None] | None = None
 
 
@@ -124,6 +126,15 @@ async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
     # endregion
 
 
+async def async_update_placeholder_device_icon(
+    device: DeviceEntity, option: str
+) -> None:
+    """Set the new UI type/icon for the device."""
+
+    ui_type: UiType = UiType(option)
+    await device.async_set_icon(ui_type)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: LinksysVelopConfigEntry,
@@ -151,6 +162,32 @@ async def async_setup_entry(
                 unique_id=ui_device
             )
 
+            mesh_entities.append(
+                LinksysVelopSelectEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="ui_type",
+                    name="Icon",
+                    options_fn=lambda _: sorted(
+                        list(
+                            map(
+                                str.lower,
+                                UiType,
+                            )
+                        )
+                    ),
+                    pic_fn=lambda d: (
+                        f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, d).ui_type}.png"
+                        if d is not None
+                        and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
+                        not in (None, "")
+                        else None
+                    ),
+                    set_fn=async_update_placeholder_device_icon,
+                    target_type=EntityType.DEVICE,
+                    translation_key="ui_type",
+                )
+            )
+
             if context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID:
                 mesh_entities.append(
                     LinksysVelopSelectEntityDescription(
@@ -166,7 +203,7 @@ async def async_setup_entry(
                         value_fn=lambda m, uid: get_placeholder_device_options(m).get(
                             uid
                         ),
-                    ),
+                    )
                 )
 
             for desc in mesh_entities:
@@ -315,8 +352,26 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
             return self.entity_description.value_fn(
                 mesh, self.entity_context.data.get("velop", {}).get("id")
             )
+        elif self.entity_description.key:
+            ret: Any | None = getattr(
+                self._get_target(), self.entity_description.key, None
+            )
+            if ret is not None:
+                ret = str(ret)
+
+            return ret
 
         return self._attr_current_option
+
+    @property
+    @override
+    def entity_picture(self) -> str | None:
+
+        ret: str | None = None
+        if self.entity_description.pic_fn is not None:
+            ret = self.entity_description.pic_fn(self._get_target())
+
+        return ret
 
     @property
     @override
@@ -345,10 +400,19 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
             self.entity_description.set_fn is not None
             and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
         ):
-            await self.entity_description.set_fn(
-                mesh,
-                option,
-            )
+            if (
+                self.entity_context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID
+                and self.entity_description.key
+            ):
+                await self.entity_description.set_fn(
+                    self._get_target(),
+                    option,
+                )
+            else:
+                await self.entity_description.set_fn(
+                    mesh,
+                    option,
+                )
             # refresh the data
             await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
         else:

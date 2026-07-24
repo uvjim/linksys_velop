@@ -224,20 +224,6 @@ async def async_setup_entry(
                     ),
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
-                        key="ui_type",
-                        name="UI Type",
-                        pic_fn=lambda d: (
-                            f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, d).ui_type}.png"
-                            if d is not None
-                            and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
-                            not in (None, "")
-                            else None
-                        ),
-                        target_type=EntityType.DEVICE,
-                        translation_key="ui_type",
-                    ),
-                    LinksysVelopSensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
                         key="unique_id",
                         name="ID",
                         target_type=EntityType.DEVICE,
@@ -245,17 +231,6 @@ async def async_setup_entry(
                     ),
                 ]
             )
-
-            if ui_device != DEF_UI_PLACEHOLDER_DEVICE_ID:
-                mesh_entities.append(
-                    LinksysVelopSensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
-                        key="name",
-                        name="Name",
-                        target_type=EntityType.DEVICE,
-                        translation_key="name",
-                    )
-                )
 
             if (
                 MeshCapability.GET_PARENTAL_CONTROL_INFO
@@ -832,8 +807,12 @@ async def async_setup_entry(
 
         # region #-- remove unnecessary device entities --#
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
-            if ui_device == DEF_UI_PLACEHOLDER_DEVICE_ID:
-                entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::name")
+            entities_to_remove.update(
+                {
+                    f"{ui_device}::{ENTITY_DOMAIN}::name",
+                    f"{ui_device}::{ENTITY_DOMAIN}::ui_type",
+                }
+            )
 
             if (
                 MeshCapability.GET_PARENTAL_CONTROL_INFO
@@ -908,6 +887,7 @@ async def async_setup_entry(
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wan_ip")
         # endregion
 
+        _LOGGER.debug("entities_to_remove, %s", entities_to_remove)
         if len(entities_to_remove) > 0:
             for entity_unique_id in entities_to_remove:
                 remove_velop_entity_from_registry(
