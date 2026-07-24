@@ -31,7 +31,6 @@ from .entities import (
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
-    LinksysVelopSpeedtestEntity,
 )
 from .helpers import remove_velop_entity_from_registry
 
@@ -48,10 +47,10 @@ class LinksysVelopSelectEntityDescription(
 
     options_fn: Callable[[Mesh], list[str]] | None = None
     set_fn: Callable[[Mesh, str], Awaitable[None]] | None = None
-    value_fn: Callable[[Mesh], str | None] | None = None
+    value_fn: Callable[[Mesh, str], str | None] | None = None
 
 
-def get_current_reboot_schedule(mesh: Mesh) -> str | None:
+def get_current_reboot_schedule(mesh: Mesh, *args) -> str | None:
     """Retrieve the current reboot schedule for display in the select entity."""
 
     if mesh.scheduled_reboot_enabled:
@@ -66,10 +65,10 @@ def get_current_reboot_schedule(mesh: Mesh) -> str | None:
     return ret
 
 
-def get_placeholder_device_options(mesh: Mesh) -> list[str]:
+def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
     """Retrieve the list of device options available for the placeholder device."""
 
-    ret: list[str] = []
+    ret: dict[str, str] = {}
 
     for d in mesh.devices:
         name: str = (
@@ -77,7 +76,8 @@ def get_placeholder_device_options(mesh: Mesh) -> list[str]:
             if d.name != EMPTY_NAME
             else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
         )
-        ret.append(name)
+        if d.unique_id is not None:
+            ret[d.unique_id] = name
 
     return ret
 
@@ -157,10 +157,15 @@ async def async_setup_entry(
                         entity_category=EntityCategory.CONFIG,
                         key="",
                         name="Devices",
-                        options_fn=get_placeholder_device_options,
+                        options_fn=lambda m: list(
+                            get_placeholder_device_options(m).values()
+                        ),
                         set_fn=async_update_placeholder_device,
                         target_type=EntityType.DEVICE,
                         translation_key="mesh_devices",
+                        value_fn=lambda m, uid: get_placeholder_device_options(m).get(
+                            uid
+                        ),
                     ),
                 )
 
@@ -298,22 +303,20 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
 
     entity_description: LinksysVelopSelectEntityDescription
     _entity_domain: str = ENTITY_DOMAIN
-    _option_mapping: dict[str, str] = {}
 
     @property
     @override
     def current_option(self) -> str | None:
 
-        ret: str | None = None
         if (
             self.entity_description.value_fn is not None
             and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
         ):
-            ret = self.entity_description.value_fn(mesh)
-        else:
-            return self._attr_current_option
+            return self.entity_description.value_fn(
+                mesh, self.entity_context.data.get("velop", {}).get("id")
+            )
 
-        return ret
+        return self._attr_current_option
 
     @property
     @override

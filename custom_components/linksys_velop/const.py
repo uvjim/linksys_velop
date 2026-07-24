@@ -15,6 +15,7 @@ from homeassistant.components.event import DOMAIN as EVENT_DOMAIN  # noqa: F401
 from homeassistant.components.select import DOMAIN as SELECT_DOMAIN  # noqa: F401
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.components.text import DOMAIN as TEXT_DOMAIN
 from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
 
 # endregion
@@ -89,6 +90,7 @@ PLATFORMS: list[str | None] = [
     BUTTON_DOMAIN,
     SENSOR_DOMAIN,
     SWITCH_DOMAIN,
+    TEXT_DOMAIN,
     UPDATE_DOMAIN,
 ]
 

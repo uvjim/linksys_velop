@@ -25,7 +25,7 @@ from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 from pyvelop.types import NodeType
 
-from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES
+from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES, DEF_UI_PLACEHOLDER_DEVICE_ID
 from .coordinator import (
     CoordinatorTimers,
     CoordinatorTypes,
@@ -187,13 +187,6 @@ async def async_setup_entry(
                     ),
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
-                        key="name",
-                        name="Name",
-                        target_type=EntityType.DEVICE,
-                        translation_key="name",
-                    ),
-                    LinksysVelopSensorEntityDescription(
-                        entity_category=EntityCategory.DIAGNOSTIC,
                         key="operating_system",
                         name="Operating System",
                         target_type=EntityType.DEVICE,
@@ -252,6 +245,17 @@ async def async_setup_entry(
                     ),
                 ]
             )
+
+            if ui_device != DEF_UI_PLACEHOLDER_DEVICE_ID:
+                mesh_entities.append(
+                    LinksysVelopSensorEntityDescription(
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        key="name",
+                        name="Name",
+                        target_type=EntityType.DEVICE,
+                        translation_key="name",
+                    )
+                )
 
             if (
                 MeshCapability.GET_PARENTAL_CONTROL_INFO
@@ -828,6 +832,9 @@ async def async_setup_entry(
 
         # region #-- remove unnecessary device entities --#
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
+            if ui_device == DEF_UI_PLACEHOLDER_DEVICE_ID:
+                entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::name")
+
             if (
                 MeshCapability.GET_PARENTAL_CONTROL_INFO
                 not in config_entry.runtime_data.mesh.capabilities
