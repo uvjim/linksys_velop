@@ -145,22 +145,23 @@ async def async_setup_entry(
     def _create_entities() -> None:
         """Create the mesh and device entities."""
 
-        entities_to_add: list[LinksysVelopSelectEntity] = (
+        entities_to_add: tuple[LinksysVelopSelectEntity, ...] = (
             _init_device_entities() + _init_mesh_entities()
         )
 
         if len(entities_to_add) > 0:
             async_add_entities(entities_to_add)
 
-    def _init_device_entities() -> list[LinksysVelopSelectEntity]:
+    def _init_device_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target devices."""
-        ret: list[LinksysVelopSelectEntity] = []
-        mesh_entities: list[LinksysVelopSelectEntityDescription] = []
+        ret: tuple[LinksysVelopSelectEntity, ...] = ()
+        ret_temp: list[LinksysVelopSelectEntity] = []
 
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
             context: LinksysVelopEntityContext = LinksysVelopEntityContext(
                 unique_id=ui_device
             )
+            mesh_entities: list[LinksysVelopSelectEntityDescription] = []
 
             mesh_entities.append(
                 LinksysVelopSelectEntityDescription(
@@ -206,8 +207,8 @@ async def async_setup_entry(
                     )
                 )
 
-            for desc in mesh_entities:
-                ret.append(
+            ret_temp.extend(
+                [
                     LinksysVelopSelectEntity(
                         entity_context=context,
                         coordinator=cast(
@@ -218,20 +219,22 @@ async def async_setup_entry(
                         ),
                         description=desc,
                     )
-                )
+                    for desc in mesh_entities
+                ]
+            )
 
+        ret = tuple(ret_temp)
         return ret
 
-    def _init_mesh_entities() -> list[LinksysVelopSelectEntity]:
+    def _init_mesh_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target the mesh."""
-        ret = []
+        ret: tuple[LinksysVelopSelectEntity, ...] = ()
 
         context: LinksysVelopEntityContext = LinksysVelopEntityContext(
             unique_id=config_entry.entry_id
         )
 
         mesh_entities: list[LinksysVelopSelectEntityDescription] = []
-        speedtest_entities: list[LinksysVelopSelectEntityDescription] = []
 
         if (
             MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
@@ -255,8 +258,8 @@ async def async_setup_entry(
                 ),
             )
 
-        for desc in mesh_entities:
-            ret.append(
+        ret = tuple(
+            [
                 LinksysVelopSelectEntity(
                     entity_context=context,
                     coordinator=cast(
@@ -267,27 +270,15 @@ async def async_setup_entry(
                     ),
                     description=desc,
                 )
-            )
-
-        for desc in speedtest_entities:
-            ret.append(
-                LinksysVelopSelectEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorMultiUse,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.SPEEDTEST
-                        ),
-                    ),
-                    description=desc,
-                )
-            )
+                for desc in mesh_entities
+            ]
+        )
 
         return ret
 
-    def _init_node_entities() -> list[LinksysVelopSelectEntity]:
+    def _init_node_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target nodes."""
-        ret = []
+        ret: tuple[LinksysVelopSelectEntity, ...] = ()
 
         return ret
 
@@ -318,7 +309,7 @@ async def async_setup_entry(
         This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
         """
 
-        entities_to_add: list[LinksysVelopSelectEntity] = _init_node_entities()
+        entities_to_add: tuple[LinksysVelopSelectEntity, ...] = _init_node_entities()
 
         if len(entities_to_add) > 0:
             async_add_entities(entities_to_add)

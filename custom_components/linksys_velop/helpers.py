@@ -27,8 +27,6 @@ def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
 
     parent_node: NodeEntity | None = None
 
-    _LOGGER.debug("getting parent node for, %s", node)
-
     # region #-- get the primary adapater for the node --#
     adapter_main: dict[str, Any] | None = next(
         (adi for adi in node.adapter_info if adi.get("primary", False)),
@@ -38,7 +36,6 @@ def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
 
     # region #-- get the parent based on ID --#
     if adapter_main:
-        _LOGGER.debug("looking for parent based on ID")
         parent_node = next(
             (n for n in mesh.nodes if n.unique_id == adapter_main.get("parent_id")),
             None,
@@ -47,14 +44,12 @@ def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
 
     # region #-- if we don't have the parent yet lookup based on name --#
     if parent_node is None:
-        _LOGGER.debug("looking for parent based on name")
         parent_node = next(
             (n for n in mesh.nodes if n.name == node.parent_name),
             None,
         )
     # endregion
 
-    _LOGGER.debug("parent_node, %s", parent_node)
     return parent_node
 
 
