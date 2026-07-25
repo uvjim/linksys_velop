@@ -887,7 +887,6 @@ async def async_setup_entry(
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wan_ip")
         # endregion
 
-        _LOGGER.debug("entities_to_remove, %s", entities_to_remove)
         if len(entities_to_remove) > 0:
             for entity_unique_id in entities_to_remove:
                 remove_velop_entity_from_registry(
