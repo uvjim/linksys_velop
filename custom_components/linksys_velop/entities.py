@@ -269,7 +269,6 @@ class LinksysVelopMultiUseEntity(
     def _handle_placeholder_device_update(self, velop_id: str | None) -> None:
         """"""
 
-        _LOGGER.debug("velop_id, %s", velop_id)
         self.entity_context.data.update({"velop": {"id": velop_id}})
 
 

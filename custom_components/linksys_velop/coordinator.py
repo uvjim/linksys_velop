@@ -367,6 +367,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         current_devices: set[str] = set()
         current_nodes_serials: set[str] = set()
+        dr_ui_device: DeviceEntry | None = None
         previous_devices: set[str] = set()
         previous_nodes: list[NodeEntity] = []
         previous_nodes_serials: set[str] = set()
@@ -554,6 +555,31 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         # endregion
 
+        # region #-- update UI device names if we need to --#
+        for ui_device in self.config_entry.options.get(CONF_UI_DEVICES, []):
+            if ui_device != DEF_UI_PLACEHOLDER_DEVICE_ID:
+                dr_ui_device = device_registry.async_get_device(
+                    identifiers={(DOMAIN, ui_device)}
+                )
+                cur_ui_device: DeviceEntity | None = next(
+                    (
+                        device
+                        for device in self.config_entry.runtime_data.mesh.devices
+                        if device.unique_id == ui_device
+                    ),
+                    None,
+                )
+                if (
+                    cur_ui_device is not None
+                    and dr_ui_device is not None
+                    and cur_ui_device.name != dr_ui_device.name
+                ):
+                    device_registry.async_update_device(
+                        dr_ui_device.id,
+                        name=cur_ui_device.name,
+                    )
+        # endregion
+
         # region #-- missing UI devices --#
         if len(self.config_entry.options.get(CONF_UI_DEVICES, [])) > 0:
             missing_ui_devices: set[str] = set(
@@ -562,18 +588,18 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
             if missing_ui_devices:
                 for ui_device in missing_ui_devices:
-                    found_device: DeviceEntry | None = device_registry.async_get_device(
+                    dr_ui_device: DeviceEntry | None = device_registry.async_get_device(
                         identifiers={(DOMAIN, ui_device)}
                     )
-                    if found_device is not None:
+                    if dr_ui_device is not None:
                         ir.async_create_issue(
                             self.hass,
                             DOMAIN,
                             f"{ISSUE_MISSING_UI_DEVICE}::{ui_device}",
                             data={
                                 "config_entry": self.config_entry.entry_id,
-                                "device_name": found_device.name_by_user
-                                or found_device.name,
+                                "device_name": dr_ui_device.name_by_user
+                                or dr_ui_device.name,
                                 "velop_id": ui_device,
                             },
                             is_fixable=True,
@@ -582,7 +608,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                             translation_key=ISSUE_MISSING_UI_DEVICE,
                             translation_placeholders={
                                 "device_name": str(
-                                    found_device.name_by_user or found_device.name
+                                    dr_ui_device.name_by_user or dr_ui_device.name
                                 )
                             },
                         )
