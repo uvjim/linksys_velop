@@ -306,6 +306,11 @@ async def async_setup_entry(
                 [
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
+                        esa_fn=lambda m: (
+                            {"devices": get_devices(m, False)}
+                            if get_devices(m, False)
+                            else {}
+                        ),
                         key="",
                         name="Offline Devices",
                         state_class=SensorStateClass.MEASUREMENT,
@@ -341,7 +346,7 @@ async def async_setup_entry(
                                 [d for d in get_devices(m) if d.get("guest_network")]
                             )
                         }
-                        if get_devices(m)
+                        if [d for d in get_devices(m) if d.get("guest_network")]
                         else {}
                     ),
                     key="",
