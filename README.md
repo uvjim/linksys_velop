@@ -197,8 +197,8 @@ Available events are: -
 ### Text
 
 | Location | Name | Enabled by default | Additional Information | Comments |
-| Device | Name | ✔️ | Allows viewing and changing the name of the device | This
-writes the update back to the mesh |
+| --- | --- | :---: | --- | --- |
+| Device | Name | ✔️ | Allows viewing and changing the name of the device | This writes the update back to the mesh |
 
 ### Update
 
