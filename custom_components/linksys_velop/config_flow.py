@@ -38,6 +38,7 @@ from .const import (
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_TO_REMOVE,
     CONF_EVENTS_OPTIONS,
+    CONF_EVENTS_WAIT_IP,
     CONF_FLOW_NAME,
     CONF_NODE,
     CONF_NODE_IMAGES,
@@ -51,6 +52,7 @@ from .const import (
     DEF_API_REQUEST_TIMEOUT,
     DEF_CONSIDER_HOME,
     DEF_EVENTS_OPTIONS,
+    DEF_EVENTS_WAIT_IP,
     DEF_FLOW_NAME,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
@@ -172,7 +174,11 @@ async def _async_build_schema_with_user_input(
                         options=DEF_EVENTS_OPTIONS,
                         translation_key=CONF_EVENTS_OPTIONS,
                     )
-                )
+                ),
+                vol.Required(
+                    CONF_EVENTS_WAIT_IP,
+                    default=user_input.get(CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP),
+                ): selector.BooleanSelector(),
             }
         )
     elif step == Steps.REAUTH_CONFIRM:

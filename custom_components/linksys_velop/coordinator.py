@@ -41,10 +41,12 @@ from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_EVENTS_OPTIONS,
+    CONF_EVENTS_WAIT_IP,
     CONF_UI_DEVICES,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
+    DEF_EVENTS_WAIT_IP,
     DEF_REBOOT_BACKOFF,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
     DEF_UI_PLACEHOLDER_DEVICE_ID,
@@ -197,6 +199,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         self._configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         )
+        self._max_rebooting_skip_count: int = math.ceil(
+            DEF_REBOOT_BACKOFF / update_interval_secs
+        )
+        self._rebooting_skip_count: int = 0
         self._timers: dict[CoordinatorTimers, Any] = {
             CoordinatorTimers.MESH: {
                 "interval": update_interval_secs,
@@ -216,11 +222,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     }
                 }
             )
-
-        self._max_rebooting_skip_count: int = math.ceil(
-            DEF_REBOOT_BACKOFF / update_interval_secs
-        )
-        self._rebooting_skip_count: int = 0
+        self._waiting_for_ip: set[str] = set()
         # endregion
 
         # region #-- add a listener --#
@@ -661,8 +663,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         # region #-- new device found --#
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             new_devices: set[str] = current_devices.difference(previous_devices)
+            all_new_devices: set[str] = new_devices.union(self._waiting_for_ip)
             device_info: DeviceEntity | None
-            for device in new_devices:
+            for device in all_new_devices:
                 if device_info := next(
                     (
                         d
@@ -671,11 +674,28 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     ),
                     None,
                 ):
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
-                        device_info,
+                    dev_ip = next(
+                        (
+                            adi
+                            for adi in device_info.adapter_info
+                            if adi.get("ip") is not None or adi.get("ipv6") is not None
+                        ),
+                        None,
                     )
+                    if (
+                        self.config_entry.options.get(
+                            CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP
+                        )
+                        and dev_ip is None
+                    ):
+                        self._waiting_for_ip.add(device)
+                    else:
+                        self._waiting_for_ip.discard(device)
+                        async_dispatcher_send(
+                            self.hass,
+                            f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
+                            device_info,
+                        )
         # endregion
 
         return self.config_entry.runtime_data.mesh
