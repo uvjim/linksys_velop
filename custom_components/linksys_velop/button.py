@@ -416,6 +416,7 @@ class LinksysVelopButtonMultiUseEntity(
         if device is not None:
             await device.async_delete()
             async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
+            await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
 
     async def _async_restart_node(self, node: NodeEntity) -> None:
         """Restart the node."""
