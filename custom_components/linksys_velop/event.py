@@ -169,7 +169,7 @@ class LinksysVelopEventMultiUseEntity(
         """Respond to a new device beig found."""
 
         event_properties: list[str] = [
-            "connected_adapters",
+            "adapter_info",
             "description",
             "manufacturer",
             "model",
@@ -192,7 +192,7 @@ class LinksysVelopEventMultiUseEntity(
 
         event_properties: list[str] = [
             "backhaul",
-            "connected_adapters",
+            "adapter_info",
             "model",
             "name",
             "parent_name",

@@ -545,7 +545,8 @@
             },
             "events": {
                 "data": {
-                    "events_options": "Available events"
+                    "events_options": "Available events",
+                    "events_wait_ip": "Wait for an IP address before raising the new device event"
                 },
                 "description": "Select the events that you would like to be notified of.",
                 "title": "Linksys Velop: Events"

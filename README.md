@@ -321,6 +321,9 @@ create automations based on a device signal strength, parent node or state
 
 The events selected here will be raised with the `event` entity.
 
+You can also specify whether a new device should have an IP address assigned before
+raising the `New device found on the mesh` event - this is enabled by default.
+
 ![Configure Events](images/config_events.png)
 
 ### Advanced Options
