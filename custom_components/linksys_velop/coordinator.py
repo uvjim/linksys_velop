@@ -919,21 +919,16 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
 
         result: dict[str, Any]
         result = responses[0][0] if len(responses[0]) else {}
+        _LOGGER.debug("SpeedTest: result, %s", result)
 
-        friendly_status: str | None = responses[1] if result else None
-        slug_friendly_status: str = slugify(responses[1])
-        try:
-            friendly_status = (
-                SpeedtestStatus.FINISHED
-                if slug_friendly_status == ""
-                else SpeedtestStatus(slug_friendly_status)
-            )
-        except ValueError:
-            friendly_status = SpeedtestStatus.UNKNOWN
+        friendly_status: SpeedtestStatus | None = responses[1] if result else None
+        _LOGGER.debug("SpeedTest: friendly_status, %s", friendly_status)
 
         ret = SpeedtestResults(
             connected_node=self.config_entry.runtime_data.mesh.connected_node,
-            friendly_status=friendly_status,
+            friendly_status=(
+                friendly_status.value if friendly_status is not None else None
+            ),
             **result,
         )
 
@@ -942,8 +937,10 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
             SpeedtestStatus.FINISHED,
             SpeedtestStatus.UNKNOWN,
         ):
+            _LOGGER.debug("SpeedTest: switching to normal update interval")
             self.update_interval = self.normal_update_interval
         else:
+            _LOGGER.debug("SpeedTest: switching to progress update interval")
             self.update_interval = self.progress_update_interval
 
         return ret
