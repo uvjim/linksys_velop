@@ -177,18 +177,6 @@ class LinksysVelopMultiUseEntity(
                         f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
                     )
                 # endregion
-
-                # region #-- calculate the via_device information --#
-                if node_info.type == NodeType.SECONDARY:
-                    parent_node: NodeEntity | None = get_mesh_parent_node(
-                        node_info, self.coordinator.config_entry.runtime_data.mesh
-                    )
-                    if parent_node is not None and parent_node.serial is not None:
-                        self._attr_device_info["via_device"] = (
-                            DOMAIN,
-                            parent_node.serial,
-                        )
-                # endregion
                 # endregion
 
         # endregion
