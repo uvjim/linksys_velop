@@ -95,6 +95,9 @@
             "mac_filtering": {
                 "name": "MAC Filtering"
             },
+            "multi_link_operation": {
+                "name": "Multi-Link Operation (MLO)"
+            },
             "node_steering": {
                 "name": "Node Steering"
             },

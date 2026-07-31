@@ -314,6 +314,22 @@ async def async_setup_entry(
             )
 
         if (
+            MeshCapability.GET_MLO_SETTINGS
+            in config_entry.runtime_data.mesh.capabilities
+        ):
+            if config_entry.runtime_data.mesh.mlo_state is not None:
+                mesh_entities.append(
+                    LinksysVelopBinarySensorEntityDescription(
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        entity_registry_enabled_default=False,
+                        key="mlo_state",
+                        name="Muti-Link Operation (MLO)",
+                        translation_key="multi_link_operation",
+                        target_type=EntityType.MESH,
+                    )
+                )
+
+        if (
             MeshCapability.GET_SPEEDTEST_STATUS
             in config_entry.runtime_data.mesh.capabilities
         ):
@@ -564,6 +580,15 @@ async def async_setup_entry(
         ):
             entities_to_remove.add(
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::mac_filtering"
+            )
+
+        if (
+            MeshCapability.GET_MLO_SETTINGS
+            not in config_entry.runtime_data.mesh.capabilities
+            or config_entry.runtime_data.mesh.mlo_state is None
+        ):
+            entities_to_remove.add(
+                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::mlo_state"
             )
 
         if (
