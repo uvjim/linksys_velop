@@ -433,7 +433,8 @@
                     "checking_latency": "Checking latency",
                     "checking_upload_speed": "Checking upload speed",
                     "detecting_server": "Detecting server",
-                    "finished": "N/A",
+                    "finished": "Finished",
+                    "not_running": "Not running",
                     "unknown": "Unknown"
                 }
             },
