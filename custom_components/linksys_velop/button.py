@@ -462,11 +462,9 @@ class LinksysVelopButtonChannelScanEntity(
 
         if isinstance(self.entity_description.press_fn, str):
             if (func := getattr(self, self.entity_description.press_fn)) is not None:
-                func(self.coordinator.config_entry.runtime_data.mesh)
+                func(self.coordinator.config_entry)
         else:
-            await self.entity_description.press_fn(
-                self.coordinator.config_entry.runtime_data.mesh
-            )
+            await self.entity_description.press_fn(self.coordinator.config_entry)
 
 
 type LinksysVelopButtonCoordinatorEntity = LinksysVelopButtonChannelScanEntity | LinksysVelopButtonMultiUseEntity | LinksysVelopButtonSpeedtestEntity
