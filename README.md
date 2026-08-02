@@ -28,7 +28,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
   * [Device Trackers](#device-trackers-1)
   * [UI Devices](#ui-devices)
   * [Events](#events)
-  * [Advanced Options](#advanced-options)
+  * [Entity Options](#entity-options)
 * [Troubleshooting](#troubleshooting)
   * [Debug Logging](#debug-logging)
   * [Diagnostics Integration](#diagnostics-integration)
@@ -97,7 +97,7 @@ then the entities detailing storage partitions etc. will not be available.
 | --- | --- | :---: | --- |
 | Device | Delete | ✔️ | |
 | Mesh | Check for Updates | ✔️ | |
-| Mesh | Reboot the Whole Mesh | ✖️ | See [Advanced Options](#advanced-options) |
+| Mesh | Reboot the Whole Mesh | ✖️ | See [Entity Options](#entity-options) |
 | Mesh | Start Channel Scan | ✖️ | Adjusts the interval for channel scanning data collection to 40s |
 | Mesh | Start Speedtest | ✖️ | Adjusts the interval for speedtest data collection to 1s |
 | Node | Reboot | ✔️ | |
@@ -138,8 +138,8 @@ Available events are: -
 
 | Location | Name | Enabled by default | Primary value | Additional Information | Comments |
 | --- | --- | :---: | --- | --- | --- |
-| Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#advanced-options) is enabled |
-| Device | Icon | ✔️ | | Set the ison based on a predefined list (the list matches that used by the Linksys App/Web UI) | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
+| Device | Devices | ✔️ | Selected device to show in the UI | Allows selecting of a device to show the information for the placeholder device | Only available if [temporary device](#entity-options) is enabled |
+| Device | Icon | ✔️ | | Set the ison based on a predefined list (the list matches that used by the Linksys App/Web UI) | The `entity_picture` attribute will be set if `node_images` are configured, see [Entity Options](#entity-options) |
 | Mesh | Scheduled Reboot | ✔️ | The schedule used for the automatic reboot of the mesh | | See details [Scheduled Reboot on Linksys](https://support.linksys.com/kb/article/4960-en/) |
 
 ### Sensors
@@ -178,7 +178,7 @@ Available events are: -
 | Node | Backhaul Type | ✔️ | Wired/Wireless | | only available if a secondary node |
 | Node | Connected Devices | ✔️ | Count of connected devices | List of connected device names, unique ID, IP, connection type and if they're on the guest network | |
 | Node | Last Update Check | ✖️ | Timestamp when the last check for a firmmware update was made | | |
-| Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Advanced Options](#advanced-options) |
+| Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Entity Options](#entity-options) |
 | Node | Parent Name | ✔️ | | IP address of the parent | only available if a secondary node |
 | Node | Serial | ✔️ | | | |
 | Node | Type | ✔️ | Primary/Secondary | | |
@@ -330,9 +330,9 @@ not be very useful for you.
 
 ![Configure Events](images/config_events.png)
 
-### Advanced Options
+### Entity Options
 
-![Configure Advanced Options](images/config_advanced_options.png)
+![Configure Entity Options](images/config_entity_options.png)
 
 * `Velop image path`: the path to the folder location containing the images to
   use for integration purposes. This is currently used for to set the entity

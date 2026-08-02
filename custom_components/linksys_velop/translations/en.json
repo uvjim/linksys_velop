@@ -526,7 +526,14 @@
     },
     "options": {
         "step": {
-            "advanced_options": {
+            "device_trackers": {
+                "data": {
+                    "tracked": "Available devices"
+                },
+                "description": "Select the devices you would like to use for presence tracking.",
+                "title": "Linksys Velop: Device Trackers"
+            },
+            "entity_options": {
                 "data": {
                     "allow_mesh_reboot": "Allow rebooting the mesh",
                     "node_images": "Velop image path",
@@ -537,15 +544,8 @@
                     "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value.",
                     "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
-                "description": "Options below are considered advanced for various reasons.\nConfigure them carefully.",
-                "title": "Linksys Velop: Advanced Options"
-            },
-            "device_trackers": {
-                "data": {
-                    "tracked": "Available devices"
-                },
-                "description": "Select the devices you would like to use for presence tracking.",
-                "title": "Linksys Velop: Device Trackers"
+                "description": "Options below allow for additional configuration/creation of certain entities.",
+                "title": "Linksys Velop: Additional Entity Options"
             },
             "events": {
                 "data": {
@@ -557,8 +557,8 @@
             },
             "init": {
                 "menu_options": {
-                    "advanced_options": "Advanced Options",
                     "device_trackers": "Device Trackers",
+                    "entity_options": "Entity Options",
                     "events": "Events",
                     "logging": "Logging",
                     "timers": "Timers",
