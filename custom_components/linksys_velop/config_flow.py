@@ -70,7 +70,7 @@ from .logger import Logger
 class Steps(StrEnum):
     """Define the steps vailable to the config flow."""
 
-    ADVANCED_OPTIONS = auto()
+    ENTITY_OPTIONS = auto()
     DEVICE_TRACKERS = auto()
     EVENTS = auto()
     FINALISE = auto()
@@ -118,7 +118,7 @@ async def _async_build_schema_with_user_input(
     :return: the schema including necessary restrictions, defaults, pre-selections etc.
     """
     schema: vol.Schema = vol.Schema({})
-    if step == Steps.ADVANCED_OPTIONS:
+    if step == Steps.ENTITY_OPTIONS:
         schema = vol.Schema(
             {
                 vol.Optional(
@@ -697,27 +697,6 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._options: dict = dict(self._config_entry.options)
         self._log_formatter: Logger = Logger()
 
-    async def async_step_advanced_options(
-        self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        """Manage the advanced options for the configuration."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
-
-        if user_input is not None:
-            if user_input.get(CONF_NODE_IMAGES) == "*":
-                user_input[CONF_NODE_IMAGES] = ""
-            self._options.update(user_input)
-            return await self.async_step_finalise()
-
-        return self.async_show_form(
-            step_id=Steps.ADVANCED_OPTIONS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.ADVANCED_OPTIONS, self._options
-            ),
-            errors=self._errors,
-            last_step=True,
-        )
-
     async def async_step_device_trackers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
@@ -751,6 +730,27 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             last_step=False,
         )
 
+    async def async_step_entity_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the advanced options for the configuration."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            if user_input.get(CONF_NODE_IMAGES) == "*":
+                user_input[CONF_NODE_IMAGES] = ""
+            self._options.update(user_input)
+            return await self.async_step_finalise()
+
+        return self.async_show_form(
+            step_id=Steps.ENTITY_OPTIONS,
+            data_schema=await _async_build_schema_with_user_input(
+                Steps.ENTITY_OPTIONS, self._options
+            ),
+            errors=self._errors,
+            last_step=True,
+        )
+
     async def async_step_events(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
@@ -759,7 +759,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self._options.update(user_input)
-            return await self.async_step_advanced_options()
+            return await self.async_step_entity_options()
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
@@ -837,7 +837,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             Steps.DEVICE_TRACKERS,
             Steps.UI_DEVICE,
             Steps.EVENTS,
-            Steps.ADVANCED_OPTIONS,
+            Steps.ENTITY_OPTIONS,
         ]
 
         return self.async_show_menu(
