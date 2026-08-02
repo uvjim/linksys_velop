@@ -3,31 +3,60 @@
 # region #-- imports --#
 from __future__ import annotations
 
+import copy
+import logging
 from typing import Any
 
-from homeassistant.components.diagnostics import REDACTED, async_redact_data
-from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntry
-from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import NodeEntity
+from pyvelop.jnap import RESPONSE_REDACTIONS, Actions
+from pyvelop.mesh import Mesh, MeshCapability
 
-from .coordinator import LinksysVelopConfigEntry, get_mesh_device_for_config_entry
+from .const import CONF_REDACT_OPTIONS
+from .coordinator import LinksysVelopConfigEntry
 
 # endregion
 
+_LOGGER = logging.getLogger(__name__)
 
-ATTR_REDACT: set[str] = {
-    CONF_PASSWORD,
-    "apBSSID",
-    "gateway",
-    "guestSSID",
-    "guestWPAPassphrase",
-    "macAddress",
-    "serialNumber",
-    "stationBSSID",
-    "unique_id",
-}
+DEF_REDACTED: str = "**REDACTED**"
+
+
+def redact(data: dict[str, Any], to_redact: set[str] = set()) -> dict[str, Any]:
+    """Redact sensitive data in a dict. Dotted paths may traverse dicts and lists."""
+    ret: dict[str, Any] = copy.copy(data)
+
+    def apply_redaction(obj: Any, parts: list[str]) -> None:
+        if not parts:
+            return
+
+        # If we're at the final key, redact it wherever obj is a dict.
+        if len(parts) == 1:
+            key = parts[0]
+            if isinstance(obj, dict) and key in obj:
+                obj[key] = DEF_REDACTED
+            elif isinstance(obj, list):
+                for item in obj:
+                    apply_redaction(item, parts)
+            return
+
+        # Still have more segments to traverse.
+        head = parts[0]
+        tail = parts[1:]
+
+        if isinstance(obj, dict):
+            if head in obj:
+                apply_redaction(obj[head], tail)
+
+        elif isinstance(obj, list):
+            for item in obj:
+                apply_redaction(item, parts)
+
+    for redaction in to_redact:
+        parts = [p for p in redaction.split(".") if p]
+        if parts:
+            apply_redaction(ret, parts)
+
+    return ret
 
 
 async def async_get_config_entry_diagnostics(
@@ -38,7 +67,7 @@ async def async_get_config_entry_diagnostics(
     mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
 
     # region #-- unwanted attributes --#
-    exclude_props: list[str] = ["devices"]
+    exclude_props: list[str] = ["processed_devices"]
     # endregion
 
     # region #-- create generic details --#
@@ -49,57 +78,28 @@ async def async_get_config_entry_diagnostics(
             for key in mesh_attributes
             if key not in exclude_props
         },
-        "nodes": [node.__dict__ for node in mesh.nodes],
-        "devices": [device.__dict__ for device in mesh.devices],
     }
     # endregion
 
-    # region #-- redact additional buried data --#
-    if (
-        ret.get("mesh_details", {})
-        .get("wan_info", {})
-        .get("wanConnection", {})
-        .get("ipAddress")
-    ):
-        ret["mesh_details"]["wan_info"]["wanConnection"]["ipAddress"] = REDACTED
-    # endregion
+    # region #-- carry out redaction --#
+    to_redact: set[str] = {
+        "config_entry.options.node",
+        "config_entry.options.password",
+        "config_entry.unique_id",
+    }
+    for capability in MeshCapability:
+        action: Actions = Actions[capability.name]
+        default_redactions: set[str] = RESPONSE_REDACTIONS.get(action.value)
+        supplementary_redactions: set[str] = config_entry.options.get(
+            CONF_REDACT_OPTIONS, {}
+        ).get(capability.name, set())
+        redactions: set[str] = default_redactions.union(supplementary_redactions)
+        to_redact.update([f"mesh_details.{capability.value}.{r}" for r in redactions])
 
-    return async_redact_data(
+    ret = redact(
         ret,
-        ATTR_REDACT,
+        to_redact,
     )
-
-
-async def async_get_device_diagnostics(
-    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry, device: DeviceEntry
-):
-    """Diagnostics for a specific device.
-
-    N.B. If the device is the Mesh then data for the ConfigEntry diagnostics is returned
-    """
-    if get_mesh_device_for_config_entry(hass, config_entry) == device:
-        return await async_get_config_entry_diagnostics(hass, config_entry)
-
-    mesh: Mesh = config_entry.runtime_data.mesh
-
-    ret: dict[str, Any] = {
-        "device_entry": {
-            p: getattr(device, p, None)
-            for p in [prop for prop in dir(DeviceEntry) if not prop.startswith("_")]
-        }
-    }
-
-    node: NodeEntity | None = next(
-        (
-            n
-            for n in mesh.nodes
-            if mesh.nodes and n.serial == next(iter(device.identifiers))[1]
-        ),
-        None,
-    )
-    if node is not None:
-        ret["node"] = node.__dict__
-
-    ret = async_redact_data(ret, ATTR_REDACT.union({"identifiers"}))
+    # endregion
 
     return ret

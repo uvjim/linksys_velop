@@ -28,7 +28,7 @@ from pyvelop.exceptions import (
     MeshNodeNotPrimary,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from . import LinksysVelopConfigEntry
@@ -42,6 +42,7 @@ from .const import (
     CONF_FLOW_NAME,
     CONF_NODE,
     CONF_NODE_IMAGES,
+    CONF_REDACT_OPTIONS,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_TITLE_PLACEHOLDERS,
@@ -76,6 +77,7 @@ class Steps(StrEnum):
     FINALISE = auto()
     GATHER_DETAILS = auto()
     INIT = auto()
+    LOGGING = auto()
     LOGIN = auto()
     REAUTH_CONFIRM = auto()
     TIMERS = auto()
@@ -179,6 +181,18 @@ async def _async_build_schema_with_user_input(
                     CONF_EVENTS_WAIT_IP,
                     default=user_input.get(CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP),
                 ): selector.BooleanSelector(),
+            }
+        )
+    elif step == Steps.LOGGING:
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_REDACT_OPTIONS,
+                    default=user_input.get(
+                        CONF_REDACT_OPTIONS,
+                        {capability.name: [] for capability in MeshCapability},
+                    ),
+                ): selector.ObjectSelector(config=selector.ObjectSelectorConfig())
             }
         )
     elif step == Steps.REAUTH_CONFIRM:
@@ -711,10 +725,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             mesh: Mesh
             if (mesh := self._config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
-                    node=self._options[CONF_NODE],
-                    password=self._options[CONF_PASSWORD],
-                    request_timeout=self._options[CONF_API_REQUEST_TIMEOUT],
+                    node=self._options.get(CONF_NODE),
+                    password=self._options.get(CONF_PASSWORD),
+                    request_timeout=self._options.get(CONF_API_REQUEST_TIMEOUT),
                     session=async_get_clientsession(hass=self.hass),
+                    supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
                 )
                 await mesh.async_initialise()
             self._devices = await _async_get_devices(mesh=mesh)
@@ -740,7 +755,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             if user_input.get(CONF_NODE_IMAGES) == "*":
                 user_input[CONF_NODE_IMAGES] = ""
             self._options.update(user_input)
-            return await self.async_step_finalise()
+            return await self.async_step_logging()
 
         return self.async_show_form(
             step_id=Steps.ENTITY_OPTIONS,
@@ -748,7 +763,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 Steps.ENTITY_OPTIONS, self._options
             ),
             errors=self._errors,
-            last_step=True,
+            last_step=False,
         )
 
     async def async_step_events(
@@ -838,11 +853,31 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             Steps.UI_DEVICE,
             Steps.EVENTS,
             Steps.ENTITY_OPTIONS,
+            Steps.LOGGING,
         ]
 
         return self.async_show_menu(
             step_id=Steps.INIT,
             menu_options=menu_options,
+        )
+
+    async def async_step_logging(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Display and process logging options."""
+        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+
+        if user_input is not None:
+            self._options.update(user_input)
+            return await self.async_step_finalise()
+
+        return self.async_show_form(
+            step_id=Steps.LOGGING,
+            data_schema=await _async_build_schema_with_user_input(
+                Steps.LOGGING, self._options
+            ),
+            errors=self._errors,
+            last_step=True,
         )
 
     async def async_step_timers(
@@ -885,10 +920,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             mesh: Mesh
             if (mesh := self._config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
-                    node=self._options[CONF_NODE],
-                    password=self._options[CONF_PASSWORD],
-                    request_timeout=self._options[CONF_API_REQUEST_TIMEOUT],
+                    node=self._options.get(CONF_NODE),
+                    password=self._options.get(CONF_PASSWORD),
+                    request_timeout=self._options.get(CONF_API_REQUEST_TIMEOUT),
                     session=async_get_clientsession(hass=self.hass),
+                    supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
                 )
                 await mesh.async_initialise()
             self._devices = await _async_get_devices(mesh=mesh)

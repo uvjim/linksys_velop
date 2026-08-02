@@ -20,6 +20,7 @@ from .const import (
     CONF_DEVICE_TRACKERS_TO_REMOVE,
     CONF_EVENTS_OPTIONS,
     CONF_NODE,
+    CONF_REDACT_OPTIONS,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_UI_DEVICES_TO_REMOVE,
@@ -98,6 +99,7 @@ async def async_setup_entry(
                 CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
             ),
             session=async_get_clientsession(hass=hass),
+            supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
         ),
         platforms=list(filter(None, PLATFORMS)),
     )

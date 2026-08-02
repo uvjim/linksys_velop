@@ -29,6 +29,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
   * [UI Devices](#ui-devices)
   * [Events](#events)
   * [Entity Options](#entity-options)
+  * [Logging Options](#logging-options)
 * [Troubleshooting](#troubleshooting)
   * [Debug Logging](#debug-logging)
   * [Diagnostics Integration](#diagnostics-integration)
@@ -348,6 +349,20 @@ not be very useful for you.
   details populated to its attributes.
 * `Allow rebooting the Mesh`: creates a button on the Mesh entity that allows
   rebooting the whole mesh.
+
+### Logging Options
+
+![Configure Logging Options](images/config_logging_options.png)
+
+On this screen you are able to define the redaction paths on a per mesh capability
+basis.
+
+Under normal circumstances you shouldn't need to update these. However, if
+you find there is information in the debug logs, or diagnostics output, that you
+need to have redacted, then you can add them here.
+
+The paths specified here are in addition to the paths maintained by the `pyvelop`
+module.
 
 ## Troubleshooting
 
