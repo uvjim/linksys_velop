@@ -568,15 +568,9 @@
             },
             "logging": {
                 "data": {
-                    "logging_jnap_response": "Include query responses in debug logs",
-                    "logging_mode": "Logging mode",
-                    "logging_options": "Logging options",
-                    "logging_serial": "Include the serial number in debug logs"
+                    "redact_options": "Enter the redaction paths for each Mesh capability. These act as additional redactions to the defaults and will apply to the log and diagnostics download."
                 },
-                "data_description": {
-                    "logging_mode": "The mode setting has no effect if logging for the integration is defined in configuration.yaml"
-                },
-                "description": "Configure logging details and state.{logging_mode_warning}",
+                "description": "Configure logging details.",
                 "title": "Linksys Velop: Logging"
             },
             "timers": {
