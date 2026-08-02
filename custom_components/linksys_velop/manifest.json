@@ -16,7 +16,7 @@
     "pyvelop"
   ],
   "requirements": [
-    "pyvelop@git+https://github.com/uvjim/pyvelop.git@2026.8.5b2"
+    "pyvelop==2026.8.5"
   ],
   "ssdp": [
     {
