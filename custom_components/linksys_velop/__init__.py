@@ -84,8 +84,15 @@ async def async_setup_entry(
 ) -> bool:
     """Create a config entry."""
 
+    all_config_entries: list[LinksysVelopConfigEntry] = (
+        hass.config_entries.async_entries(domain=DOMAIN)
+    )
     log_formatter: Logger = Logger(
-        unique_id=config_entry.unique_id if config_entry.unique_id is not None else ""
+        unique_id=(
+            config_entry.unique_id
+            if len(all_config_entries) != 1 and config_entry.unique_id is not None
+            else ""
+        )
     )
     _LOGGER.debug(log_formatter.format("entered"))
 
