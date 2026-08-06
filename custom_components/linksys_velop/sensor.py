@@ -67,13 +67,13 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
         if device.status is state:
             ret.append({"name": device.name, "id": device.unique_id})
             for adapter in device.adapter_info:
-                if adapter.get("ip"):
-                    ret[-1] = dict(
-                        **ret[-1],
-                        ip=adapter.get("ip"),
-                        connection=adapter.get("type"),
-                        guest_network=adapter.get("guest_network"),
-                    )
+                ret[-1] = dict(
+                    **ret[-1],
+                    connection=adapter.get("type"),
+                    guest_network=adapter.get("guest_network"),
+                    ip=adapter.get("ip"),
+                    ipv6=adapter.get("ipv6"),
+                )
 
     return ret
 
