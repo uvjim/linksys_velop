@@ -163,7 +163,7 @@ Available events are: -
 | Mesh | Available Storage | ✖️ | Count of partitions available | List of the available partitions including: IP, label, available Kb, used Kb, used %age and last checked time | |
 | Mesh | DHCP Reservations | ✖️ | Count of DHCP reservations | List of DHCP reservations | |
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
-| Mesh | Online Devices | ✔️ | Count of online devices | List of online device names, unique ID, IP, connection type and if they're on the guest network | |
+| Mesh | Online Devices | ✔️ | Count of online devices | List of online device names, unique ID, IP,IPv6, connection type and if they're on the guest network | |
 | Mesh | Guest Devices | ✔️ | Count of guest devices | List of guest devices | List of online device names, unique ID, IP, connection type |
 | Mesh | Speedtest Download Bandwidth | ✖️ | | | |
 | Mesh | Speedtest Last Run | ✖️ | Timestamp when a Speedtest was last executed | | |
