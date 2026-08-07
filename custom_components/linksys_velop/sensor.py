@@ -65,15 +65,17 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     device: DeviceEntity
     for device in mesh.devices:
         if device.status is state:
-            ret.append({"name": device.name, "id": device.unique_id})
-            for adapter in device.adapter_info:
-                ret[-1] = dict(
-                    **ret[-1],
-                    connection=adapter.get("type"),
-                    guest_network=adapter.get("guest_network"),
-                    ip=adapter.get("ip"),
-                    ipv6=adapter.get("ipv6"),
-                )
+            props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
+            adi: dict[str, Any] | None = next(
+                (adapter for adapter in device.adapter_info), None
+            )
+            if adi is not None:
+                if device.status:
+                    props["connection"] = adi.get("type")
+                    props["guest_network"] = adi.get("guest_network")
+                    props["ip"] = adi.get("ip")
+                    props["ipv6"] = adi.get("ipv6")
+            ret.append(props)
 
     return ret
 
