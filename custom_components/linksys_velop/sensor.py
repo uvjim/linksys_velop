@@ -72,6 +72,7 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
                 props["guest_network"] = adi.get("guest_network")
                 props["ip"] = adi.get("ip")
                 props["ipv6"] = adi.get("ipv6")
+                props["parent_name"] = device.parent_name
             ret.append(props)
 
     return ret
