@@ -25,7 +25,7 @@ from pyvelop.mesh import Mesh, MeshCapability
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 from pyvelop.types import NodeType
 
-from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES, DEF_UI_PLACEHOLDER_DEVICE_ID
+from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES
 from .coordinator import (
     CoordinatorTimers,
     CoordinatorTypes,
@@ -66,16 +66,30 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     for device in mesh.devices:
         if device.status is state:
             props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
-            adi: dict[str, Any] | None = next(
-                (adapter for adapter in device.adapter_info), None
-            )
-            if adi is not None:
-                if device.status:
-                    props["connection"] = adi.get("type")
-                    props["guest_network"] = adi.get("guest_network")
-                    props["ip"] = adi.get("ip")
-                    props["ipv6"] = adi.get("ipv6")
+            adi: dict[str, Any] = next((adapter for adapter in device.adapter_info), {})
+            if device.status:
+                props["connection"] = adi.get("type")
+                props["guest_network"] = adi.get("guest_network")
+                props["ip"] = adi.get("ip")
+                props["ipv6"] = adi.get("ipv6")
             ret.append(props)
+
+    return ret
+
+
+def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
+    """Get the details needed for the connected devices extra attributes."""
+
+    ret: list[dict[str, Any]] = []
+    for device in node.connected_devices:
+        adi: dict[str, Any] = next((adi for adi in device.adapter_info), {})
+        props: dict[str, Any] = {
+            "guest_network": adi.get("guest_network"),
+            "ip": adi.get("ip"),
+            "name": device.name,
+            "type": adi.get("type"),
+        }
+        ret.append(props)
 
     return ret
 
@@ -671,9 +685,9 @@ async def async_setup_entry(
                                     entity_category=EntityCategory.DIAGNOSTIC,
                                     esa_fn=lambda n: (
                                         {
-                                            "devices": cast(
-                                                NodeEntity, n
-                                            ).connected_devices
+                                            "devices": get_node_devices(
+                                                cast(NodeEntity, n)
+                                            )
                                         }
                                         if cast(NodeEntity, n).connected_devices
                                         else {}
