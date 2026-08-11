@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability, ScheduledRebootInterval
-from pyvelop.mesh_entity import EMPTY_NAME, DeviceEntity, UiType
+from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
 from .const import (
     CONF_NODE_IMAGES,
@@ -72,11 +72,13 @@ def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
 
     ret: dict[str, str] = {}
 
+    d: DeviceEntity
     for d in mesh.devices:
+        adi: AdapterInfo | None = next(iter(d.adapter_info), None)
         name: str = (
             d.name
             if d.name != EMPTY_NAME
-            else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
+            else f"{d.name} ({adi.ip if adi is not None and d.status else d.unique_id})"
         )
         if d.unique_id is not None:
             ret[d.unique_id] = name
@@ -107,10 +109,13 @@ async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
         if not option.startswith(f"{EMPTY_NAME} (")
         else option.split("(")[1].strip(")")
     )
+    dev: DeviceEntity
     for dev in mesh.devices:
         match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
         if option.startswith(f"{EMPTY_NAME} (") and dev.status:
-            match_against.append(dev.adapter_info[0].get("ip", ""))
+            adi: AdapterInfo | None = next(iter(dev.adapter_info), None)
+            if adi is not None and adi.ip is not None:
+                match_against.append(adi.ip)
         if match_on.lower() in match_against:
             velop_id = dev.unique_id
             break
