@@ -284,7 +284,7 @@ async def async_setup_entry(
                 connections.discard(
                     (
                         dr.CONNECTION_NETWORK_MAC,
-                        dr.format_mac(adapter[0].get("mac", "")),
+                        dr.format_mac(adapter[0].mac),
                     )
                 )
         # endregion

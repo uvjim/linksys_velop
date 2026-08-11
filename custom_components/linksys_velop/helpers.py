@@ -12,7 +12,7 @@ from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.loader import Integration, async_get_integration
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import NodeEntity
+from pyvelop.mesh_entity import AdapterInfo, NodeEntity
 
 from .const import DOMAIN
 
@@ -28,8 +28,8 @@ def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
     parent_node: NodeEntity | None = None
 
     # region #-- get the primary adapater for the node --#
-    adapter_main: dict[str, Any] | None = next(
-        (adi for adi in node.adapter_info if adi.get("primary", False)),
+    adapter_main: AdapterInfo | None = next(
+        (adi for adi in node.adapter_info if adi.primary),
         None,
     )
     # endregion
@@ -37,7 +37,7 @@ def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
     # region #-- get the parent based on ID --#
     if adapter_main:
         parent_node = next(
-            (n for n in mesh.nodes if n.unique_id == adapter_main.get("parent_id")),
+            (n for n in mesh.nodes if n.unique_id == adapter_main.parent_id),
             None,
         )
     # endregion

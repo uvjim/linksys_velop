@@ -302,7 +302,7 @@ async def _async_get_devices(mesh: Mesh) -> dict:
     devices: list[DeviceEntity] = await mesh.async_get_devices()
     for device in devices:
         for adapter in device.adapter_info:
-            ret[device.unique_id] = f"{device.name} --> {adapter.get('mac')}"
+            ret[device.unique_id] = f"{device.name} --> {adapter.mac}"
 
     return ret
 

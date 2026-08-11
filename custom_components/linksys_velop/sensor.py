@@ -1,10 +1,10 @@
 """Sensor entities for Linksys Velop."""
 
 # region #-- imports --#
+import datetime as dt
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, cast, override
 
@@ -21,9 +21,21 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
-from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
-from pyvelop.types import NodeType
+from pyvelop.mesh import (
+    Mesh,
+    MeshCapability,
+    SpeedtestExitCode,
+    SpeedtestResult,
+    SpeedtestStatus,
+)
+from pyvelop.mesh_entity import (
+    AdapterInfo,
+    ConnectionType,
+    DeviceEntity,
+    NodeEntity,
+    NodeType,
+    SignalStrength,
+)
 
 from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES
 from .coordinator import (
@@ -32,7 +44,6 @@ from .coordinator import (
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
-    SpeedtestResults,
 )
 from .entities import (
     EntityType,
@@ -56,7 +67,7 @@ class LinksysVelopSensorEntityDescription(
 
     esa_fn: Callable[[Mesh], dict[str, Any]] | None = None
     pic_fn: Callable[..., str | None] | None = None
-    value_fn: Callable[..., StateType | date | datetime | Decimal] | None = None
+    value_fn: Callable[..., StateType | dt.date | dt.datetime | Decimal] | None = None
 
 
 def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
@@ -66,14 +77,24 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     for device in mesh.devices:
         if device.status is state:
             props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
-            adi: dict[str, Any] = next((adapter for adapter in device.adapter_info), {})
-            if device.status:
-                props["connection"] = adi.get("type")
-                props["guest_network"] = adi.get("guest_network")
-                props["ip"] = adi.get("ip")
-                props["ipv6"] = adi.get("ipv6")
+            adi: AdapterInfo | None = next((adapter for adapter in device.adapter_info))
+            if adi is not None and device.status:
+                props["connection"] = adi.type
+                props["guest_network"] = adi.guest_network
+                props["ip"] = adi.ip
+                props["ipv6"] = adi.ipv6
                 props["parent_name"] = device.parent_name
             ret.append(props)
+
+    return ret
+
+
+def get_node_bachaul_info(node: NodeEntity, key: str) -> Any:
+    """Get the given backhaul property."""
+
+    ret: Any = None
+    if node.backhaul is not None:
+        ret = getattr(node.backhaul, key, None)
 
     return ret
 
@@ -83,12 +104,12 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
 
     ret: list[dict[str, Any]] = []
     for device in node.connected_devices:
-        adi: dict[str, Any] = next((adi for adi in device.adapter_info), {})
+        adi: AdapterInfo | None = next((adi for adi in device.adapter_info))
         props: dict[str, Any] = {
-            "guest_network": adi.get("guest_network"),
-            "ip": adi.get("ip"),
+            "guest_network": adi.guest_network if adi is not None else None,
+            "ip": adi.ip if adi is not None else None,
             "name": device.name,
-            "type": adi.get("type"),
+            "type": adi.type if adi is not None else None,
         }
         ret.append(props)
 
@@ -141,10 +162,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="friendly_signal_strength",
                         value_fn=lambda d: (
-                            next(iter(cast(DeviceEntity, d).adapter_info), {}).get(
-                                "signal_strength", ""
-                            )
-                            if d is not None
+                            cast(DeviceEntity, d).adapter_info[0].signal_strength
+                            if d is not None and cast(DeviceEntity, d).adapter_info
                             else None
                         ),
                     ),
@@ -155,8 +174,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="ip",
                         value_fn=lambda d: (
-                            next(iter(cast(DeviceEntity, d).adapter_info), {}).get("ip")
-                            if d is not None
+                            cast(DeviceEntity, d).adapter_info[0].ip
+                            if d is not None and cast(DeviceEntity, d).adapter_info
                             else None
                         ),
                     ),
@@ -167,10 +186,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="ipv6",
                         value_fn=lambda d: (
-                            next(iter(cast(DeviceEntity, d).adapter_info), {}).get(
-                                "ipv6"
-                            )
-                            if d is not None
+                            cast(DeviceEntity, d).adapter_info[0].ipv6
+                            if d is not None and cast(DeviceEntity, d).adapter_info
                             else None
                         ),
                     ),
@@ -181,10 +198,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="mac",
                         value_fn=lambda d: (
-                            next(iter(cast(DeviceEntity, d).adapter_info), {}).get(
-                                "mac"
-                            )
-                            if d is not None
+                            cast(DeviceEntity, d).adapter_info[0].mac
+                            if d is not None and cast(DeviceEntity, d).adapter_info
                             else None
                         ),
                     ),
@@ -232,10 +247,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="signal_strength",
                         value_fn=lambda d: (
-                            next(iter(cast(DeviceEntity, d).adapter_info), {}).get(
-                                "rssi"
-                            )
-                            if d is not None
+                            cast(DeviceEntity, d).adapter_info[0].rssi_dbm
+                            if d is not None and cast(DeviceEntity, d).adapter_info
                             else None
                         ),
                     ),
@@ -433,7 +446,11 @@ async def async_setup_entry(
                         target_type=EntityType.MESH,
                         translation_key="speedtest_last_run",
                         value_fn=lambda r: (
-                            dt_util.parse_datetime(cast(SpeedtestResults, r).timestamp)
+                            cast(SpeedtestResult, r).timestamp
+                            if r is not None
+                            and cast(SpeedtestResult, r).timestamp
+                            != dt.datetime.min.replace(tzinfo=dt.UTC)
+                            else None
                         ),
                     ),
                     LinksysVelopSensorEntityDescription(
@@ -446,12 +463,17 @@ async def async_setup_entry(
                         translation_key="speedtest_latency",
                     ),
                     LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.ENUM,
                         entity_category=EntityCategory.DIAGNOSTIC,
                         entity_registry_enabled_default=False,
-                        key="exit_code",
+                        key="",
                         name="Speedtest Result",
+                        options=[val.lower() for val in SpeedtestExitCode],
                         target_type=EntityType.MESH,
                         translation_key="speedtest_result",
+                        value_fn=lambda sr: (
+                            sr.exit_code.lower() if sr is not None else None
+                        ),
                     ),
                     LinksysVelopSensorEntityDescription(
                         device_class=SensorDeviceClass.DATA_RATE,
@@ -473,12 +495,17 @@ async def async_setup_entry(
         ):
             speedtest_entities.append(
                 LinksysVelopSensorEntityDescription(
+                    device_class=SensorDeviceClass.ENUM,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
-                    key="friendly_status",
+                    key="",
                     name="Speedtest Progress",
+                    options=[val.lower() for val in SpeedtestStatus],
                     target_type=EntityType.MESH,
                     translation_key="speedtest_progress",
+                    value_fn=lambda sr: (
+                        sr.friendly_status.lower() if sr is not None else None
+                    ),
                 ),
             )
 
@@ -571,8 +598,8 @@ async def async_setup_entry(
 
                 if node_details is not None:
                     is_wifi_node: bool = (
-                        node_details.backhaul.get("connection", "").lower()
-                        == "wireless"
+                        node_details.backhaul is not None
+                        and node_details.backhaul.connection == ConnectionType.WIRELESS
                     )
 
                     if (
@@ -591,14 +618,8 @@ async def async_setup_entry(
                                     target_type=EntityType.NODE,
                                     translation_key="backhaul_last_checked",
                                     value_fn=lambda n: (
-                                        dt_util.parse_datetime(
-                                            cast(NodeEntity, n).backhaul.get(
-                                                "last_checked", ""
-                                            )
-                                        )
-                                        if cast(NodeEntity, n).backhaul.get(
-                                            "last_checked"
-                                        )
+                                        get_node_bachaul_info(n, "last_checked")
+                                        if isinstance(n, NodeEntity)
                                         else None
                                     ),
                                 ),
@@ -612,7 +633,9 @@ async def async_setup_entry(
                                     target_type=EntityType.NODE,
                                     translation_key="backhaul_speed",
                                     value_fn=lambda n: (
-                                        cast(NodeEntity, n).backhaul.get("speed_mbps")
+                                        get_node_bachaul_info(n, "speed_mbps")
+                                        if isinstance(n, NodeEntity)
+                                        else None
                                     ),
                                 ),
                                 LinksysVelopSensorEntityDescription(
@@ -620,13 +643,18 @@ async def async_setup_entry(
                                     entity_category=EntityCategory.DIAGNOSTIC,
                                     key="",
                                     name="Backhaul Type",
-                                    options=["unknown", "wired", "wireless"],
+                                    options=[val.lower() for val in ConnectionType],
                                     target_type=EntityType.NODE,
                                     translation_key="backhaul_connection_type",
                                     value_fn=lambda n: (
-                                        cast(NodeEntity, n)
-                                        .backhaul.get("connection", "unknown")
-                                        .lower()
+                                        cast(
+                                            ConnectionType,
+                                            get_node_bachaul_info(n, "connection"),
+                                        ).lower()
+                                        if isinstance(n, NodeEntity)
+                                        and get_node_bachaul_info(n, "connection")
+                                        is not None
+                                        else None
                                     ),
                                 ),
                                 LinksysVelopSensorEntityDescription(
@@ -646,18 +674,25 @@ async def async_setup_entry(
                             mesh_entities.extend(
                                 [
                                     LinksysVelopSensorEntityDescription(
+                                        device_class=SensorDeviceClass.ENUM,
                                         entity_category=EntityCategory.DIAGNOSTIC,
                                         key="",
                                         name="Backhaul Friendly Signal Strength",
+                                        options=[val.lower() for val in SignalStrength],
                                         target_type=EntityType.NODE,
                                         translation_key="backhaul_friendly_signal_strength",
                                         value_fn=lambda n: (
-                                            cast(NodeEntity, n)
-                                            .backhaul.get("signal_strength", "")
-                                            .lower()
-                                            if cast(NodeEntity, n).backhaul.get(
-                                                "signal_strength"
+                                            cast(
+                                                SignalStrength,
+                                                get_node_bachaul_info(
+                                                    n, "signal_strength"
+                                                ),
+                                            ).lower()
+                                            if isinstance(n, NodeEntity)
+                                            and get_node_bachaul_info(
+                                                n, "signal_strength"
                                             )
+                                            is not None
                                             else None
                                         ),
                                     ),
@@ -670,7 +705,9 @@ async def async_setup_entry(
                                         target_type=EntityType.NODE,
                                         translation_key="backhaul_signal_strength",
                                         value_fn=lambda n: (
-                                            cast(NodeEntity, n).backhaul.get("rssi_dbm")
+                                            get_node_bachaul_info(n, "rssi_dbm")
+                                            if isinstance(n, NodeEntity)
+                                            else None
                                         ),
                                     ),
                                 ]
@@ -790,7 +827,8 @@ async def async_setup_entry(
         # region #-- remove unnecessary node entities  --#
         for node in config_entry.runtime_data.mesh.nodes:
             is_wifi_node: bool = (
-                node.backhaul.get("connection", "").lower() == "wireless"
+                node.backhaul is not None
+                and node.backhaul.connection == ConnectionType.WIRELESS
             )
 
             if (
@@ -977,9 +1015,9 @@ class LinksysVelopSensorMultiUseEntity(
 
     @property
     @override
-    def native_value(self) -> StateType | date | datetime | Decimal:
+    def native_value(self) -> StateType | dt.date | dt.datetime | Decimal:
 
-        ret: StateType | date | datetime | Decimal = None
+        ret: StateType | dt.date | dt.datetime | Decimal = None
         if self.entity_description.value_fn is not None:
             ret = self.entity_description.value_fn(self._get_target())
         elif self.entity_description.key:
@@ -999,9 +1037,9 @@ class LinksysVelopSensorSpeedtestEntity(
 
     @property
     @override
-    def native_value(self) -> StateType | date | datetime | Decimal:
+    def native_value(self) -> StateType | dt.date | dt.datetime | Decimal:
 
-        ret: StateType | date | datetime | Decimal = None
+        ret: StateType | dt.date | dt.datetime | Decimal = None
         if self.entity_description.value_fn is not None:
             ret = self.entity_description.value_fn(self.coordinator.data)
         elif self.entity_description.key:

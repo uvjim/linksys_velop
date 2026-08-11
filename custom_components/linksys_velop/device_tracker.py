@@ -19,7 +19,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity
+from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
 from .const import (
     CONF_DEVICE_TRACKERS,
@@ -57,7 +57,7 @@ async def async_setup_entry(
 ) -> None:
     """Create entities for device trackers."""
 
-    adapter: list[dict]
+    adapter: list[AdapterInfo]
     device: DeviceEntity | None
     device_trackers: list[LinksysVelopDeviceTrackerCoordinatorEntity] = []
     connections: set[tuple[str, str]] = set()
@@ -93,12 +93,14 @@ async def async_setup_entry(
             # these will be used to ensure the device tracker entities are displayed as part
             # of the Mesh device.
             if adapter := list(device.adapter_info):
-                connections.add(
-                    (
-                        dr.CONNECTION_NETWORK_MAC,
-                        dr.format_mac(next(iter(adapter), {}).get("mac", "")),
+                adi: AdapterInfo | None = next(iter(adapter), None)
+                if adi is not None:
+                    connections.add(
+                        (
+                            dr.CONNECTION_NETWORK_MAC,
+                            dr.format_mac(adi.mac),
+                        )
                     )
-                )
             # endregion
 
     # region #-- merge the connection information in to the Mesh device --#
@@ -183,8 +185,8 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         device: DeviceEntity | None = self._get_target()
         if device is not None:
-            adapter_info: list[dict[str, Any]] | None = device.adapter_info
-            ret = next(iter(adapter_info)).get("ip")
+            adapter_info: list[AdapterInfo] | None = device.adapter_info
+            ret = next(iter(adapter_info)).ip
 
         return ret
 
@@ -203,8 +205,8 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         device: DeviceEntity | None = self._get_target()
         if device is not None:
-            adapter_info: list[dict[str, Any]] | None = device.adapter_info
-            ret = next(iter(adapter_info)).get("mac")
+            adapter_info: list[AdapterInfo] | None = device.adapter_info
+            ret = next(iter(adapter_info)).mac
 
         return ret
 
