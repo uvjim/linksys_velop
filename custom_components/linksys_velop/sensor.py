@@ -83,7 +83,6 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
                 props["guest_network"] = adi.guest_network
                 props["ip"] = adi.ip
                 props["ipv6"] = adi.ipv6
-                props["negotiated_mbps"] = adi.negotiated_mbps
                 props["parent_name"] = device.parent_name
             ret.append(props)
 
@@ -123,7 +122,6 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
             props["guest_network"] = adi.guest_network
             props["ip"] = adi.ip
             props["ipv6"] = adi.ipv6
-            props["negotiated_mbps"] = adi.negotiated_mbps
         ret.append(props)
 
     return ret
