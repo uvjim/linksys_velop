@@ -67,6 +67,17 @@ def get_current_reboot_schedule(mesh: Mesh, *args) -> str | None:
     return ret
 
 
+def get_placeholder_device_identifier(device: DeviceEntity) -> str:
+    """Return the identifier displayed for an unnamed placeholder device."""
+
+    if device.status:
+        adapter = next(iter(device.adapter_info), None)
+        if adapter is not None and adapter.ip is not None:
+            return adapter.ip
+
+    return str(device.unique_id)
+
+
 def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
     """Retrieve the list of device options available for the placeholder device."""
 
@@ -76,7 +87,7 @@ def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
         name: str = (
             d.name
             if d.name != EMPTY_NAME
-            else f"{d.name} ({next(iter(d.adapter_info), {}).get('ip') if d.status else d.unique_id})"
+            else f"{d.name} ({get_placeholder_device_identifier(d)})"
         )
         if d.unique_id is not None:
             ret[d.unique_id] = name
@@ -109,8 +120,8 @@ async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
     )
     for dev in mesh.devices:
         match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
-        if option.startswith(f"{EMPTY_NAME} (") and dev.status:
-            match_against.append(dev.adapter_info[0].get("ip", ""))
+        if option.startswith(f"{EMPTY_NAME} ("):
+            match_against.append(get_placeholder_device_identifier(dev))
         if match_on.lower() in match_against:
             velop_id = dev.unique_id
             break
