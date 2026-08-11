@@ -90,6 +90,17 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     return ret
 
 
+def get_device_adapter_info(device: DeviceEntity, key: str) -> Any:
+    """Retrieve the give details about a device adapter."""
+
+    ret: Any = None
+    adi: AdapterInfo | None = next(iter(device.adapter_info), None)
+    if adi is not None:
+        ret = getattr(adi, key, None)
+
+    return ret
+
+
 def get_node_bachaul_info(node: NodeEntity, key: str) -> Any:
     """Get the given backhaul property."""
 
@@ -158,14 +169,21 @@ async def async_setup_entry(
                         translation_key="description",
                     ),
                     LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.ENUM,
                         entity_category=EntityCategory.DIAGNOSTIC,
                         key="",
                         name="Friendly Signal Strength",
+                        options=[val.lower() for val in SignalStrength],
                         target_type=EntityType.DEVICE,
                         translation_key="friendly_signal_strength",
                         value_fn=lambda d: (
-                            cast(DeviceEntity, d).adapter_info[0].signal_strength
-                            if d is not None and cast(DeviceEntity, d).adapter_info
+                            cast(
+                                SignalStrength,
+                                get_device_adapter_info(d, "signal_strength"),
+                            ).lower()
+                            if isinstance(d, DeviceEntity)
+                            and get_device_adapter_info(d, "signal_strength")
+                            is not None
                             else None
                         ),
                     ),
@@ -176,9 +194,7 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="ip",
                         value_fn=lambda d: (
-                            cast(DeviceEntity, d).adapter_info[0].ip
-                            if d is not None and cast(DeviceEntity, d).adapter_info
-                            else None
+                            get_device_adapter_info(d, "ip") if d is not None else None
                         ),
                     ),
                     LinksysVelopSensorEntityDescription(
@@ -188,8 +204,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="ipv6",
                         value_fn=lambda d: (
-                            cast(DeviceEntity, d).adapter_info[0].ipv6
-                            if d is not None and cast(DeviceEntity, d).adapter_info
+                            get_device_adapter_info(d, "ipv6")
+                            if d is not None
                             else None
                         ),
                     ),
@@ -200,9 +216,7 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="mac",
                         value_fn=lambda d: (
-                            cast(DeviceEntity, d).adapter_info[0].mac
-                            if d is not None and cast(DeviceEntity, d).adapter_info
-                            else None
+                            get_device_adapter_info(d, "mac") if d is not None else None
                         ),
                     ),
                     LinksysVelopSensorEntityDescription(
@@ -249,8 +263,8 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="signal_strength",
                         value_fn=lambda d: (
-                            cast(DeviceEntity, d).adapter_info[0].rssi_dbm
-                            if d is not None and cast(DeviceEntity, d).adapter_info
+                            get_device_adapter_info(d, "rssi_dbm")
+                            if d is not None
                             else None
                         ),
                     ),
