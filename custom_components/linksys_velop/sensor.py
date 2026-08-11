@@ -79,10 +79,11 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
             props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
             adi: AdapterInfo | None = next((adapter for adapter in device.adapter_info))
             if adi is not None and device.status:
-                props["connection"] = adi.type
+                props["type"] = adi.type
                 props["guest_network"] = adi.guest_network
                 props["ip"] = adi.ip
                 props["ipv6"] = adi.ipv6
+                props["negotiated_mbps"] = adi.negotiated_mbps
                 props["parent_name"] = device.parent_name
             ret.append(props)
 
@@ -104,13 +105,14 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
 
     ret: list[dict[str, Any]] = []
     for device in node.connected_devices:
+        props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
         adi: AdapterInfo | None = next((adi for adi in device.adapter_info))
-        props: dict[str, Any] = {
-            "guest_network": adi.guest_network if adi is not None else None,
-            "ip": adi.ip if adi is not None else None,
-            "name": device.name,
-            "type": adi.type if adi is not None else None,
-        }
+        if adi is not None:
+            props["type"] = adi.type
+            props["guest_network"] = adi.guest_network
+            props["ip"] = adi.ip
+            props["ipv6"] = adi.ipv6
+            props["negotiated_mbps"] = adi.negotiated_mbps
         ret.append(props)
 
     return ret
