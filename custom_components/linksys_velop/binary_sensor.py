@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import MeshCapability
-from pyvelop.mesh_entity import NodeEntity
+from pyvelop.mesh_entity import AdapterInfo, DeviceEntity, NodeEntity
 
 from .const import CONF_UI_DEVICES
 from .coordinator import (
@@ -51,6 +51,17 @@ class LinksysVelopBinarySensorEntityDescription(
 
     esa_fn: Callable[..., dict[str, Any] | None] | None = None
     value_fn: Callable[..., bool | None] | None = None
+
+
+def get_device_adapter_info(device: DeviceEntity, key: str) -> Any:
+    """Retrieve the give details about a device adapter."""
+
+    ret: Any = None
+    adi: AdapterInfo | None = next(iter(device.adapter_info), None)
+    if adi is not None:
+        ret = getattr(adi, key, None)
+
+    return ret
 
 
 def status_extra_attributes(n: NodeEntity) -> dict[str, Any] | None:
@@ -122,7 +133,7 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="guest_network",
                         value_fn=lambda d: (
-                            next(iter(d.adapter_info), {}).get("guest_network")
+                            get_device_adapter_info(d, "guest_network")
                             if d is not None
                             else None
                         ),
@@ -141,7 +152,7 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="reserved_ip",
                         value_fn=lambda d: (
-                            next(iter(d.adapter_info), {}).get("reservation")
+                            get_device_adapter_info(d, "reservation")
                             if d is not None
                             else None
                         ),
