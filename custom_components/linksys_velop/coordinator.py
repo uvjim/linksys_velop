@@ -26,7 +26,6 @@ from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import slugify
 from pyvelop.exceptions import (
     MeshConnectionError,
     MeshDeviceNotFoundResponse,
@@ -34,7 +33,7 @@ from pyvelop.exceptions import (
     MeshInvalidCredentials,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh, SpeedtestStatus
+from pyvelop.mesh import Mesh, SpeedtestResult, SpeedtestStatus
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
@@ -118,19 +117,6 @@ class DataItems(StrEnum):
     DEVICE_TRACKER = auto()
     MESH = auto()
     SPEEDTEST = auto()
-
-
-@dataclass
-class SpeedtestResults(DataCoordinatorFormattedData):
-    """Representation of Speedtest results."""
-
-    download_bandwidth: int | None = None
-    exit_code: str | None = None
-    friendly_status: str | None = None
-    latency: float | None = None
-    result_id: int | None = None
-    timestamp: str = ""
-    upload_bandwidth: int | None = None
 
 
 class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
@@ -470,6 +456,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         attr_to_check: set[str] = {"ip", "name", "parent_id"}
         device_registry = dr.async_get(self.hass)
         prev_node: NodeEntity
+        cur_node: NodeEntity | None
         for prev_node in previous_nodes:
             if prev_node.serial is not None:
                 if (
@@ -491,21 +478,19 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         if attr == "ip":
                             # region #-- update the configuration_url --#
                             if cur_node.type == NodeType.SECONDARY:
-                                cur_ip = next(
+                                cur_ip: str | None = next(
                                     filter(
-                                        lambda adi: adi.get("primary", False),
+                                        lambda adi: adi.primary,
                                         cur_node.adapter_info,
                                     ),
-                                    {},
-                                ).get("ip")
+                                ).ip
 
-                                prev_ip = next(
+                                prev_ip: str | None = next(
                                     filter(
-                                        lambda adi: adi.get("primary", False),
+                                        lambda adi: adi.primary,
                                         prev_node.adapter_info,
                                     ),
-                                    {},
-                                ).get("ip")
+                                ).ip
 
                                 if cur_ip != prev_ip:
                                     attr_to_update["configuration_url"] = (
@@ -678,7 +663,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         (
                             adi
                             for adi in device_info.adapter_info
-                            if adi.get("ip") is not None or adi.get("ipv6") is not None
+                            if adi.ip is not None or adi.ipv6 is not None
                         ),
                         None,
                     )
@@ -846,7 +831,7 @@ class UpdateCoordinatorChangeableInterval(LinksyVelopDataUpdateCoordinator):
 class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval):
     """Retrieve the Speedtest data from the Velop mesh."""
 
-    data: SpeedtestResults
+    data: SpeedtestResult | None
 
     def __init__(
         self,
@@ -869,22 +854,25 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
             progress_update_interval_secs=progress_update_interval_secs,
         )
 
-    async def _async_update_data(self) -> SpeedtestResults:
+    async def _async_update_data(self) -> SpeedtestResult | None:
         """Refresh the Speedtest data."""
 
         _LOGGER.debug("retrieving data for the Speedtest coordinator")
-
+        _result: SpeedtestResult | list[SpeedtestResult] | None
+        result: SpeedtestResult | None = None
+        ret: SpeedtestResult | None
         try:
             if self.config_entry.runtime_data.mesh_is_rebooting:
                 return self.data
 
-            api_calls: list = [
-                self.config_entry.runtime_data.mesh.async_get_speedtest_results(
-                    only_latest=True
-                ),
-                self.config_entry.runtime_data.mesh.async_get_speedtest_state(),
-            ]
-            responses = await asyncio.gather(*api_calls)
+            if self.update_interval == self.progress_update_interval:
+                _result = (
+                    await self.config_entry.runtime_data.mesh.async_get_speedtest_state()
+                )
+            else:
+                _result = await self.config_entry.runtime_data.mesh.async_get_speedtest_results(
+                    only_latest=True,
+                )
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
                 exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
@@ -917,32 +905,26 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
 
-        result: dict[str, Any]
-        result = responses[0][0] if len(responses[0]) else {}
-        _LOGGER.debug("SpeedTest: result, %s", result)
+        if _result:
+            result = _result[0] if isinstance(_result, list) else _result
+            if result.friendly_status in (
+                SpeedtestStatus.NOT_RUNNING,
+                SpeedtestStatus.UNKNOWN,
+            ):
+                if self.update_interval == self.progress_update_interval:
+                    self.update_interval = self.normal_update_interval
+                    _result = await self.config_entry.runtime_data.mesh.async_get_speedtest_results(
+                        only_latest=True,
+                        only_completed=True,
+                    )
+                    result = (
+                        _result[0] if isinstance(_result, list) and result else None
+                    )
+            else:
+                if self.update_interval == self.normal_update_interval:
+                    self.update_interval = self.progress_update_interval
 
-        friendly_status: SpeedtestStatus | None = responses[1] if result else None
-        _LOGGER.debug("SpeedTest: friendly_status, %s", friendly_status)
-
-        ret = SpeedtestResults(
-            connected_node=self.config_entry.runtime_data.mesh.connected_node,
-            friendly_status=(
-                friendly_status.value if friendly_status is not None else None
-            ),
-            **result,
-        )
-
-        if friendly_status in (
-            None,
-            SpeedtestStatus.FINISHED,
-            SpeedtestStatus.UNKNOWN,
-        ):
-            _LOGGER.debug("SpeedTest: switching to normal update interval")
-            self.update_interval = self.normal_update_interval
-        else:
-            _LOGGER.debug("SpeedTest: switching to progress update interval")
-            self.update_interval = self.progress_update_interval
-
+        ret = result
         return ret
 
 

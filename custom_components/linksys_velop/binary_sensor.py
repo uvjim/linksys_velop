@@ -59,12 +59,10 @@ def status_extra_attributes(n: NodeEntity) -> dict[str, Any] | None:
     ret: dict[str, Any] | None = None
 
     if (
-        primary_adapter := next(
-            (adapter for adapter in n.adapter_info if adapter.get("primary")), None
-        )
+        primary_adapter := next((adi for adi in n.adapter_info if adi.primary), None)
     ) is not None:
-        del primary_adapter["primary"]
-        ret = primary_adapter
+        ret = primary_adapter.as_dict()
+        del ret["primary"]
 
     return ret
 
@@ -342,8 +340,12 @@ async def async_setup_entry(
                     name="Speedtest Status",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_status",
-                    value_fn=lambda r: r.friendly_status
-                    not in (SpeedtestStatus.FINISHED, SpeedtestStatus.UNKNOWN),
+                    value_fn=lambda r: (
+                        r.friendly_status
+                        not in (SpeedtestStatus.NOT_RUNNING, SpeedtestStatus.UNKNOWN)
+                        if r is not None
+                        else None
+                    ),
                 )
             )
 

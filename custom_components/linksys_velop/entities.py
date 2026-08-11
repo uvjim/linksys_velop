@@ -14,8 +14,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
-from pyvelop.types import NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from .const import (
     DEF_UI_PLACEHOLDER_DEVICE_ID,
@@ -160,17 +159,13 @@ class LinksysVelopMultiUseEntity(
                 # additional device attributes that are conditional or need more calculation.
                 # region #-- calculate the configuration url --#
                 if node_info.type == NodeType.SECONDARY and node_info.adapter_info:
-                    adapter_main: dict[str, Any] | None = next(
-                        (
-                            adi
-                            for adi in node_info.adapter_info
-                            if adi.get("primary", False)
-                        ),
+                    adapter_main: NodeAdapterInfo | None = next(
+                        (adi for adi in node_info.adapter_info if adi.primary),
                         None,
                     )
                     if adapter_main is not None:
                         self._attr_device_info["configuration_url"] = (
-                            f"http://{adapter_main.get('ip')}/ca"
+                            f"http://{adapter_main.ip}/ca"
                         )
                 elif node_info.type == NodeType.PRIMARY:
                     self._attr_device_info["configuration_url"] = (

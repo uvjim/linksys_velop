@@ -13,8 +13,13 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.exceptions import MeshInvalidInput, MeshTooManyMatches
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity, ParentalControl, Weekdays
-from pyvelop.types import NodeType
+from pyvelop.mesh_entity import (
+    DeviceEntity,
+    NodeEntity,
+    NodeType,
+    ParentalControl,
+    Weekdays,
+)
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN, EventSubTypes
 from .coordinator import LinksysVelopConfigEntry

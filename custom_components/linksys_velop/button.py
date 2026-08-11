@@ -16,8 +16,7 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyvelop.mesh import Mesh, MeshCapability
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
-from pyvelop.types import NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
     CONF_ALLOW_MESH_REBOOT,
@@ -166,7 +165,7 @@ async def async_setup_entry(
         channelscan_entities: list[LinksysVelopButtonEntityDescription] = []
 
         if (
-            MeshCapability.GET_FIRMWARE_UPDATE_SETTINGS
+            MeshCapability.GET_UPDATE_SETTINGS
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -337,7 +336,7 @@ async def async_setup_entry(
         # endregion
 
         if (
-            MeshCapability.GET_FIRMWARE_UPDATE_SETTINGS
+            MeshCapability.GET_UPDATE_SETTINGS
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(

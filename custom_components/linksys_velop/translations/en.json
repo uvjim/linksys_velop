@@ -433,13 +433,17 @@
                     "checking_latency": "Checking latency",
                     "checking_upload_speed": "Checking upload speed",
                     "detecting_server": "Detecting server",
-                    "finished": "Finished",
                     "not_running": "Not running",
                     "unknown": "Unknown"
                 }
             },
             "speedtest_result": {
-                "name": "Speedtest Result"
+                "name": "Speedtest Result",
+                "state": {
+                    "speedtestexecutionerror": "SpeedTestExecutionError",
+                    "success": "Success",
+                    "unavailable": "Unavailable"
+                }
             },
             "upload_bandwidth": {
                 "name": "Speedtest Upload Bandwidth"
