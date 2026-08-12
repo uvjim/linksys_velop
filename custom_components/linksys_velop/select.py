@@ -18,7 +18,7 @@ from pyvelop.mesh_entity import EMPTY_NAME, DeviceEntity, UiType
 from .const import (
     CONF_NODE_IMAGES,
     CONF_UI_DEVICES,
-    DEF_UI_PLACEHOLDER_DEVICE_ID,
+    CONF_UI_PLACEHOLDER_DEVICE_ID,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
 from .coordinator import (
@@ -189,7 +189,9 @@ async def async_setup_entry(
                 )
             )
 
-            if context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID:
+            if context.unique_id == config_entry.data.get(
+                CONF_UI_PLACEHOLDER_DEVICE_ID
+            ):
                 mesh_entities.append(
                     LinksysVelopSelectEntityDescription(
                         entity_category=EntityCategory.CONFIG,
@@ -392,7 +394,8 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
             and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
         ):
             if (
-                self.entity_context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID
+                self.entity_context.unique_id
+                == self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
                 and self.entity_description.key
             ):
                 await self.entity_description.set_fn(

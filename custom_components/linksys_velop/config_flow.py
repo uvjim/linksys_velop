@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import uuid
 from enum import StrEnum, auto
 from typing import Any
 
@@ -48,6 +49,7 @@ from .const import (
     CONF_TITLE_PLACEHOLDERS,
     CONF_UI_DEVICES,
     CONF_UI_DEVICES_TO_REMOVE,
+    CONF_UI_PLACEHOLDER_DEVICE_ID,
     DEF_ALLOW_MESH_REBOOT,
     DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT,
     DEF_API_REQUEST_TIMEOUT,
@@ -58,7 +60,6 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
-    DEF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
     ST_IGD,
 )
@@ -289,7 +290,7 @@ async def _async_build_schema_with_user_input(
     return schema
 
 
-async def _async_get_devices(mesh: Mesh) -> dict:
+async def _async_get_devices(mesh: Mesh) -> dict[str, str]:
     """Get the devices from the mesh for display purposes.
 
     The device unique_id (as per the Mesh) is used as the key.
@@ -309,6 +310,8 @@ async def _async_get_devices(mesh: Mesh) -> dict:
 
 class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the initial installation ConfigFlow."""
+
+    VERSION = 2
 
     reauth_entry: LinksysVelopConfigEntry | None = None
     task_login: asyncio.Task | None = None
@@ -702,13 +705,13 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options from the configuration of the integration."""
 
-    def __init__(self, config_entry: LinksysVelopConfigEntry):
+    def __init__(self, config_entry: LinksysVelopConfigEntry) -> None:
         """Intialise."""
         super().__init__()
-        self._config_entry: LinksysVelopConfigEntry = config_entry
-        self._devices: dict | None = None
-        self._errors: dict = {}
-        self._options: dict = dict(self._config_entry.options)
+        self._data: dict[str, Any] = {**config_entry.data}
+        self._devices: dict[str, str] | None = None
+        self._errors: dict[str, str] = {}
+        self._options: dict[str, Any] = {**config_entry.options}
         self._log_formatter: Logger = Logger()
 
     async def async_step_device_trackers(
@@ -723,7 +726,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if self._devices is None:
             mesh: Mesh
-            if (mesh := self._config_entry.runtime_data.mesh) is None:
+            if (mesh := self.config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
                     node=self._options.get(CONF_NODE),
                     password=self._options.get(CONF_PASSWORD),
@@ -752,9 +755,17 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
 
         if user_input is not None:
+            # region #-- update options --#
+            # blank out the image path if needed
             if user_input.get(CONF_NODE_IMAGES) == "*":
                 user_input[CONF_NODE_IMAGES] = ""
             self._options.update(user_input)
+            # endregion
+
+            # region #-- create a unique id for the placeholder device --#
+            if self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID) is None:
+                self._data.update({CONF_UI_PLACEHOLDER_DEVICE_ID: str(uuid.uuid4())})
+            # endregion
             return await self.async_step_logging()
 
         return self.async_show_form(
@@ -793,7 +804,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         # region #-- set device trackers no longer required to be removed --#
         prev_trackers: set[str] = set(
-            self._config_entry.options.get(CONF_DEVICE_TRACKERS, [])
+            self.config_entry.options.get(CONF_DEVICE_TRACKERS, [])
         )
         self._options[CONF_DEVICE_TRACKERS_TO_REMOVE] = list(
             prev_trackers.difference(set(self._options.get(CONF_DEVICE_TRACKERS, [])))
@@ -802,43 +813,42 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         # region #-- set ui devices to remove if no longer needed --#
         prev_ui_devices: set[str] = set(
-            self._config_entry.options.get(CONF_UI_DEVICES, [])
+            self.config_entry.options.get(CONF_UI_DEVICES, [])
         )
-        prev_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
+        prev_ui_devices.discard(self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID))
         self._options[CONF_UI_DEVICES_TO_REMOVE] = list(
             prev_ui_devices.difference(set(self._options.get(CONF_UI_DEVICES, [])))
         )
         if not self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
             self._options[CONF_UI_DEVICES_TO_REMOVE].append(
-                DEF_UI_PLACEHOLDER_DEVICE_ID
+                self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
             )
         # endregion
 
         # region #-- add the placeholder ui device if needed --#
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            if DEF_UI_PLACEHOLDER_DEVICE_ID not in self._options.get(
+            if self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID) not in self._options.get(
                 CONF_UI_DEVICES, []
             ):
                 if self._options.get(CONF_UI_DEVICES) is not None:
-                    self._options[CONF_UI_DEVICES].append(DEF_UI_PLACEHOLDER_DEVICE_ID)
+                    self._options[CONF_UI_DEVICES].append(
+                        self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
+                    )
                 else:
-                    self._options[CONF_UI_DEVICES] = [DEF_UI_PLACEHOLDER_DEVICE_ID]
+                    self._options[CONF_UI_DEVICES] = [
+                        self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
+                    ]
         else:
             with contextlib.suppress(ValueError):
                 self._options.get(CONF_UI_DEVICES, []).remove(
-                    DEF_UI_PLACEHOLDER_DEVICE_ID
+                    self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
                 )
         # endregion
 
-        # region #-- remove up the old options --#
-        self._options.pop("logging_jnap_response", None)
-        self._options.pop("logging_serial", None)
-        self._options.pop("logging_mode", None)
-        self._options.pop("logging_options", None)
-        self._options.pop("ui_devices_missing", None)
-        self._options.pop("tracked_missing", None)
-        # endregion
+        _LOGGER.debug("self._options, %s", self._options)
+        _LOGGER.debug("self._data, %s", self._data)
 
+        self.hass.config_entries.async_update_entry(self.config_entry, data=self._data)
         return self.async_create_entry(title="", data=self._options)
 
     async def async_step_init(
@@ -918,7 +928,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         if self._devices is None:
             mesh: Mesh
-            if (mesh := self._config_entry.runtime_data.mesh) is None:
+            if (mesh := self.config_entry.runtime_data.mesh) is None:
                 mesh = Mesh(
                     node=self._options.get(CONF_NODE),
                     password=self._options.get(CONF_PASSWORD),

@@ -66,6 +66,7 @@ CONF_NODE: str = "node"
 CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
 CONF_SELECT_TEMP_UI_DEVICE: str = "select_temp_ui_device"
+CONF_UI_PLACEHOLDER_DEVICE_ID: str = "ui_placeholder_device_id"
 CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
 CONF_UI_DEVICES_TO_REMOVE: str = "ui_devices_to_remove"
 CONF_UI_DEVICES: str = "ui_devices"
@@ -83,7 +84,6 @@ DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 DEF_SELECT_TEMP_UI_DEVICE: bool = False
 DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS: float = 1
-DEF_UI_PLACEHOLDER_DEVICE_ID: str = str(uuid.UUID(int=0))
 
 ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"

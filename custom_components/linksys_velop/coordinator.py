@@ -42,13 +42,13 @@ from .const import (
     CONF_EVENTS_OPTIONS,
     CONF_EVENTS_WAIT_IP,
     CONF_UI_DEVICES,
+    CONF_UI_PLACEHOLDER_DEVICE_ID,
     DEF_API_REQUEST_TIMEOUT,
     DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
     DEF_EVENTS_WAIT_IP,
     DEF_REBOOT_BACKOFF,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
-    DEF_UI_PLACEHOLDER_DEVICE_ID,
     DEVICE_TRACKER_DOMAIN,
     DOMAIN,
     ISSUE_MISSING_DEVICE_TRACKER,
@@ -544,7 +544,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         # region #-- update UI device names if we need to --#
         for ui_device in self.config_entry.options.get(CONF_UI_DEVICES, []):
-            if ui_device != DEF_UI_PLACEHOLDER_DEVICE_ID:
+            if ui_device != self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID):
                 dr_ui_device = device_registry.async_get_device(
                     identifiers={(DOMAIN, ui_device)}
                 )
@@ -572,7 +572,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             missing_ui_devices: set[str] = set(
                 self.config_entry.options.get(CONF_UI_DEVICES, [])
             ).difference(current_devices)
-            missing_ui_devices.discard(DEF_UI_PLACEHOLDER_DEVICE_ID)
+            missing_ui_devices.discard(
+                self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
+            )
             if missing_ui_devices:
                 for ui_device in missing_ui_devices:
                     dr_ui_device: DeviceEntry | None = device_registry.async_get_device(

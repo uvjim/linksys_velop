@@ -16,7 +16,6 @@ from .const import (
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_UI_DEVICES,
     DEF_SELECT_TEMP_UI_DEVICE,
-    DEF_UI_PLACEHOLDER_DEVICE_ID,
 )
 from .coordinator import (
     CoordinatorTimers,
