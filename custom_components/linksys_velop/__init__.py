@@ -4,6 +4,8 @@
 import contextlib
 import copy
 import logging
+import uuid
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
@@ -24,6 +26,7 @@ from .const import (
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
     CONF_UI_DEVICES_TO_REMOVE,
+    CONF_UI_PLACEHOLDER_DEVICE_ID,
     DEF_API_REQUEST_TIMEOUT,
     DEF_EVENTS_OPTIONS,
     DEF_SCAN_INTERVAL,
@@ -57,6 +60,14 @@ from .service_handler import LinksysVelopServiceHandler
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+async def _async_update_listener(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> None:
+    """Reload the config entry."""
+
+    hass.config_entries.async_schedule_reload(config_entry.entry_id)
+
+
 async def async_remove_config_entry_device(
     hass: HomeAssistant,  # pylint: disable=unused-argument
     config_entry: ConfigEntry,
@@ -77,6 +88,62 @@ async def async_remove_config_entry_device(
         return False
 
     return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+) -> bool:
+    """Migrate entries."""
+
+    _LOGGER.debug(
+        "migrating configuration from version %s.%s",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+
+    new_data: dict[str, Any] = {**config_entry.data}
+    new_options: dict[str, Any] = {**config_entry.options}
+    ret: bool = False
+
+    if config_entry.version == 1:
+        # region #-- migrate the ui device id --#
+        ## v1 only set this in the ui_devices, however, this causes issues with multiple instances.
+        ## if the placeholder device is already in use, ensure it exists in the data so the ConfigEntry
+        ## can pick it up.
+        ## The placeholder device was an all 0 guid - this will be randomised from v2 onwards.
+
+        # placeholder device is enabled and it isn't set in data
+        if (
+            config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, False)
+            and new_data.get(CONF_UI_PLACEHOLDER_DEVICE_ID) is None
+        ):
+            new_data[CONF_UI_PLACEHOLDER_DEVICE_ID] = str(uuid.UUID(int=0))
+
+        # endregion
+
+        # region #-- remove old options --#
+        new_options.pop("logging_jnap_response", None)
+        new_options.pop("logging_serial", None)
+        new_options.pop("logging_mode", None)
+        new_options.pop("logging_options", None)
+        new_options.pop("ui_devices_missing", None)
+        new_options.pop("tracked_missing", None)
+        # endregion
+
+        ret = hass.config_entries.async_update_entry(
+            config_entry,
+            data=new_data,
+            options=new_options,
+            version=2,
+        )
+
+    _LOGGER.debug(
+        "migration to configuration version %s.%s successful",
+        config_entry.version,
+        config_entry.minor_version,
+    )
+    return ret
 
 
 async def async_setup_entry(
@@ -348,11 +415,3 @@ async def async_unload_entry(
 
     _LOGGER.debug(config_entry.runtime_data.log_formatter("exited"))
     return ret
-
-
-async def _async_update_listener(
-    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
-) -> None:
-    """Reload the config entry."""
-
-    hass.config_entries.async_schedule_reload(config_entry.entry_id)

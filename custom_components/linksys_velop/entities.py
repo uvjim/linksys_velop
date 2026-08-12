@@ -17,7 +17,7 @@ from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from .const import (
-    DEF_UI_PLACEHOLDER_DEVICE_ID,
+    CONF_UI_PLACEHOLDER_DEVICE_ID,
     DOMAIN,
     PYVELOP_AUTHOR,
     PYVELOP_NAME,
@@ -106,7 +106,8 @@ class LinksysVelopMultiUseEntity(
             device_info: DeviceEntity | None = self._get_target()
             if (
                 device_info is not None
-                or self.entity_context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID
+                or self.entity_context.unique_id
+                == self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
             ):
                 self._attr_device_info = DeviceInfo(
                     identifiers={(DOMAIN, str(self.entity_context.unique_id))},
@@ -114,21 +115,27 @@ class LinksysVelopMultiUseEntity(
                         device_info.manufacturer
                         if device_info is not None
                         and self.entity_context.unique_id
-                        != DEF_UI_PLACEHOLDER_DEVICE_ID
+                        != self.coordinator.config_entry.data.get(
+                            CONF_UI_PLACEHOLDER_DEVICE_ID
+                        )
                         else ""
                     ),
                     model=(
                         device_info.model
                         if device_info is not None
                         and self.entity_context.unique_id
-                        != DEF_UI_PLACEHOLDER_DEVICE_ID
+                        != self.coordinator.config_entry.data.get(
+                            CONF_UI_PLACEHOLDER_DEVICE_ID
+                        )
                         else ""
                     ),
                     name=(
                         device_info.name
                         if device_info is not None
                         and self.entity_context.unique_id
-                        != DEF_UI_PLACEHOLDER_DEVICE_ID
+                        != self.coordinator.config_entry.data.get(
+                            CONF_UI_PLACEHOLDER_DEVICE_ID
+                        )
                         else "Placeholder Device"
                     ),
                 )
@@ -188,7 +195,8 @@ class LinksysVelopMultiUseEntity(
         if self.entity_description.target_type == EntityType.DEVICE:
             unique_id: str | None = (
                 self.entity_context.unique_id
-                if self.entity_context.unique_id != DEF_UI_PLACEHOLDER_DEVICE_ID
+                if self.entity_context.unique_id
+                != self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
                 else self.entity_context.data.get("velop", {}).get("id")
             )
 
@@ -239,7 +247,9 @@ class LinksysVelopMultiUseEntity(
         await super().async_added_to_hass()
 
         # region #-- create signal for updating the placeholder device --#
-        if self.entity_context.unique_id == DEF_UI_PLACEHOLDER_DEVICE_ID:
+        if self.entity_context.unique_id == self.coordinator.config_entry.data.get(
+            CONF_UI_PLACEHOLDER_DEVICE_ID
+        ):
             self.async_on_remove(
                 async_dispatcher_connect(
                     self.hass,
