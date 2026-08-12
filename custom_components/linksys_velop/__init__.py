@@ -122,6 +122,15 @@ async def async_migrate_entry(
 
         # endregion
 
+        # region #-- migrate the ui devices/trackers that should be removed --#
+        new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = new_options.pop(
+            CONF_DEVICE_TRACKERS_TO_REMOVE, []
+        )
+        new_data[CONF_UI_DEVICES_TO_REMOVE] = new_options.pop(
+            CONF_UI_DEVICES_TO_REMOVE, []
+        )
+        # endregion
+
         # region #-- remove old options --#
         new_options.pop("logging_jnap_response", None)
         new_options.pop("logging_serial", None)
@@ -317,11 +326,11 @@ async def async_setup_entry(
 
     # region #-- remove unnecessary ui devices --#
     _LOGGER.debug(config_entry.runtime_data.log_formatter("cleaning up ui devices"))
-    for ui_device in config_entry.options.get(CONF_UI_DEVICES_TO_REMOVE, []):
+    new_data: dict[str, Any] = {**config_entry.data}
+    for ui_device in new_data.get(CONF_UI_DEVICES_TO_REMOVE, []):
         remove_velop_device_from_registry(hass, ui_device)
-    new_options = copy.deepcopy(dict(config_entry.options))
-    new_options.get(CONF_UI_DEVICES_TO_REMOVE, []).clear()
-    hass.config_entries.async_update_entry(config_entry, options=new_options)
+    if CONF_UI_DEVICES_TO_REMOVE in new_data:
+        new_data[CONF_UI_DEVICES_TO_REMOVE] = []
     # endregion
 
     # region #-- remove unnecessary device trackers --#
@@ -334,7 +343,7 @@ async def async_setup_entry(
     )
     if mesh_device is not None:
         connections = mesh_device.connections
-    for tracker in config_entry.options.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []):
+    for tracker in new_data.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []):
         # region #-- remove entity --#
         remove_velop_entity_from_registry(
             hass,
@@ -363,9 +372,10 @@ async def async_setup_entry(
         device_registry.async_update_device(mesh_device.id, new_connections=connections)
     # endregion
 
-    new_options = copy.deepcopy(dict(config_entry.options))
-    new_options.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []).clear()
-    hass.config_entries.async_update_entry(config_entry, options=new_options)
+    if CONF_DEVICE_TRACKERS_TO_REMOVE in new_data:
+        new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = []
+
+    hass.config_entries.async_update_entry(config_entry, data=new_data)
     # endregion
 
     # region #-- service definition --#

@@ -806,47 +806,49 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         prev_trackers: set[str] = set(
             self.config_entry.options.get(CONF_DEVICE_TRACKERS, [])
         )
-        self._options[CONF_DEVICE_TRACKERS_TO_REMOVE] = list(
-            prev_trackers.difference(set(self._options.get(CONF_DEVICE_TRACKERS, [])))
+        self._data.update(
+            {
+                CONF_DEVICE_TRACKERS_TO_REMOVE: list(
+                    prev_trackers.difference(
+                        set(self._options.get(CONF_DEVICE_TRACKERS, []))
+                    )
+                )
+            }
         )
         # endregion
 
         # region #-- set ui devices to remove if no longer needed --#
+        ui_device_id: str | None = self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
         prev_ui_devices: set[str] = set(
             self.config_entry.options.get(CONF_UI_DEVICES, [])
         )
-        prev_ui_devices.discard(self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID))
-        self._options[CONF_UI_DEVICES_TO_REMOVE] = list(
-            prev_ui_devices.difference(set(self._options.get(CONF_UI_DEVICES, [])))
+        prev_ui_devices.discard(ui_device_id)
+        self._data.update(
+            {
+                CONF_UI_DEVICES_TO_REMOVE: list(
+                    prev_ui_devices.difference(
+                        set(self._options.get(CONF_UI_DEVICES, []))
+                    )
+                )
+            }
         )
-        if not self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            self._options[CONF_UI_DEVICES_TO_REMOVE].append(
-                self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-            )
+        if not self._options.get(
+            CONF_SELECT_TEMP_UI_DEVICE
+        ) and ui_device_id in self.config_entry.options.get(CONF_UI_DEVICES, []):
+            self._data.get(CONF_UI_DEVICES_TO_REMOVE, []).append(ui_device_id)
         # endregion
 
         # region #-- add the placeholder ui device if needed --#
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
-            if self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID) not in self._options.get(
-                CONF_UI_DEVICES, []
-            ):
+            if ui_device_id not in self._options.get(CONF_UI_DEVICES, []):
                 if self._options.get(CONF_UI_DEVICES) is not None:
-                    self._options[CONF_UI_DEVICES].append(
-                        self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-                    )
+                    self._options[CONF_UI_DEVICES].append(ui_device_id)
                 else:
-                    self._options[CONF_UI_DEVICES] = [
-                        self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-                    ]
+                    self._options[CONF_UI_DEVICES] = [ui_device_id]
         else:
             with contextlib.suppress(ValueError):
-                self._options.get(CONF_UI_DEVICES, []).remove(
-                    self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-                )
+                self._options.get(CONF_UI_DEVICES, []).remove(ui_device_id)
         # endregion
-
-        _LOGGER.debug("self._options, %s", self._options)
-        _LOGGER.debug("self._data, %s", self._data)
 
         self.hass.config_entries.async_update_entry(self.config_entry, data=self._data)
         return self.async_create_entry(title="", data=self._options)
