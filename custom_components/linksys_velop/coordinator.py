@@ -263,7 +263,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
     async def _async_get_device_tracker_data(self) -> list[DeviceEntity]:
         """Get the device tracker information from the mesh."""
 
-        if self._debounce():
+        if await self._debounce():
             return self.data.get(CoordinatorTimers.DEVICE_TRACKER, [])
 
         devices: list[DeviceEntity] = []
