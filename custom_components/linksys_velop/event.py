@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import DOMAIN, EventSubTypes
@@ -150,7 +151,14 @@ def _build_event_properties(
 ) -> dict[str, Any]:
     """Create the required properties for the event."""
 
-    return {"data": {prop: getattr(obj, prop, None) for prop in properties}}
+    props: dict[str, Any] = {}
+    for prop in properties:
+        attr = getattr(obj, prop, None)
+        if isinstance(attr, MeshAttribute):
+            attr = attr.to_dict(include_audit=False)
+        props[prop] = attr
+
+    return {"data": props}
 
 
 class LinksysVelopEventEntity(EventEntity):

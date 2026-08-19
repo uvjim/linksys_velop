@@ -1,10 +1,11 @@
 """Button entities for Linksys Velop."""
 
 # region #-- imports --#
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import cast, override
+from typing import Any, cast, override
 
 from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.button import (
@@ -15,7 +16,8 @@ from homeassistant.components.button import (
 from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
@@ -33,13 +35,11 @@ from .coordinator import (
     CoordinatorTimers,
     CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorChannelScan,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
 )
 from .entities import (
     EntityType,
-    LinksysVelopChannelScanEntity,
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
@@ -61,10 +61,22 @@ class LinksysVelopButtonEntityDescription(
     press_fn: Callable[..., Awaitable[None]] | str
 
 
+async def _wait_for_mesh(config_entry: LinksysVelopConfigEntry) -> None:
+    """Wait for the mesh to become available."""
+
+    while True:
+        await asyncio.sleep(10)
+        available: str | None = await config_entry.runtime_data.mesh.async_ping()
+        if available == "pong":
+            break
+
+
 async def async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> None:
     """Restart the primary node."""
 
     hass: HomeAssistant = async_get_hass()
+
+    # region #-- flag as rebooting and send event --#
     config_entry.runtime_data.mesh_is_rebooting = True
     if EventSubTypes.MESH_REBOOTING.value in config_entry.options.get(
         CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
@@ -73,14 +85,24 @@ async def async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> N
             hass,
             f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
         )
+    # endregion
+
+    # reboot
     await config_entry.runtime_data.mesh.async_reboot_mesh()
 
+    # wait for reboot to complete
+    await _wait_for_mesh(config_entry)
 
-async def async_start_channel_scan(config_entry: LinksysVelopConfigEntry) -> None:
-    """Start the channel scan."""
-
-    config_entry.runtime_data.intensive_running_tasks.append(IntensiveTask.CHANNEL_SCAN)
-    await config_entry.runtime_data.mesh.async_start_channel_scan()
+    # region #-- flag reboot complete and send event --#
+    config_entry.runtime_data.mesh_is_rebooting = False
+    if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+        CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+    ):
+        async_dispatcher_send(
+            hass,
+            f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
+        )
+    # endregion
 
 
 async def async_start_check_for_updates(config_entry: LinksysVelopConfigEntry) -> None:
@@ -162,10 +184,9 @@ async def async_setup_entry(
         )
         mesh_entities: list[LinksysVelopButtonEntityDescription] = []
         speedtest_entities: list[LinksysVelopButtonEntityDescription] = []
-        channelscan_entities: list[LinksysVelopButtonEntityDescription] = []
 
         if (
-            MeshCapability.GET_UPDATE_SETTINGS
+            Actions.GET_UPDATE_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -179,22 +200,22 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_CHANNEL_SCAN_STATUS
+            Actions.GET_CHANNEL_SCAN_STATUS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
-            channelscan_entities.append(
+            mesh_entities.append(
                 LinksysVelopButtonEntityDescription(
                     entity_registry_enabled_default=False,
                     key="",
                     name="Start Channel Scan",
                     translation_key="channel_scan",
                     target_type=EntityType.MESH,
-                    press_fn=async_start_channel_scan,
+                    press_fn="_async_start_channel_scan",
                 ),
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_RESULTS
+            Actions.GET_SPEEDTEST_RESULTS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             speedtest_entities.append(
@@ -247,19 +268,6 @@ async def async_setup_entry(
                 )
                 for desc in speedtest_entities
             ],
-            *[
-                LinksysVelopButtonChannelScanEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorChannelScan,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.CHANNEL_SCAN
-                        ),
-                    ),
-                    description=desc,
-                )
-                for desc in channelscan_entities
-            ],
         )
 
         return ret
@@ -287,7 +295,7 @@ async def async_setup_entry(
                     (
                         n
                         for n in config_entry.runtime_data.mesh.nodes
-                        if n.unique_id == context.unique_id
+                        if n.unique_id.value == context.unique_id
                     ),
                     None,
                 )
@@ -336,7 +344,7 @@ async def async_setup_entry(
         # endregion
 
         if (
-            MeshCapability.GET_UPDATE_SETTINGS
+            Actions.GET_UPDATE_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -344,7 +352,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_CHANNEL_SCAN_STATUS
+            Actions.GET_CHANNEL_SCAN_STATUS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -352,7 +360,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_RESULTS
+            Actions.GET_SPEEDTEST_RESULTS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -423,6 +431,37 @@ class LinksysVelopButtonMultiUseEntity(
         if node is not None:
             await node.async_reboot()
 
+    async def _async_start_channel_scan(self, mesh: Mesh) -> None:
+        """Start the channel scan."""
+
+        # flag as an intensive task running
+        self.coordinator.config_entry.runtime_data.intensive_running_tasks.append(
+            IntensiveTask.CHANNEL_SCAN
+        )
+        # force refresh so the state is picked up - it'll be debounced but the binary sesnor should change status
+        await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
+
+        # start the channel scan
+        await mesh.async_start_channel_scan()
+
+        # region #-- wait for the channel scan to finish --#
+        while True:
+            await asyncio.sleep(2)  # sleep first to let the scan start
+            csi: dict[str, Any] | None = (
+                await self.coordinator.config_entry.runtime_data.mesh.async_get_channel_scan_info()
+            )
+            if csi is not None and not csi.get("isRunning", False):
+                if (
+                    IntensiveTask.CHANNEL_SCAN
+                    in self.coordinator.config_entry.runtime_data.intensive_running_tasks
+                ):
+                    self.coordinator.config_entry.runtime_data.intensive_running_tasks.remove(
+                        IntensiveTask.CHANNEL_SCAN
+                    )
+                    await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
+                    break
+        # endregion
+
     @override
     async def async_press(self) -> None:
 
@@ -451,19 +490,4 @@ class LinksysVelopButtonSpeedtestEntity(
         await self.coordinator.async_refresh()
 
 
-class LinksysVelopButtonChannelScanEntity(
-    LinksysVelopButtonEntity, LinksysVelopChannelScanEntity
-):
-    """Linksys Velop button that uses the channel scan DataUpdateCoordinator."""
-
-    @override
-    async def async_press(self) -> None:
-
-        if isinstance(self.entity_description.press_fn, str):
-            if (func := getattr(self, self.entity_description.press_fn)) is not None:
-                func(self.coordinator.config_entry)
-        else:
-            await self.entity_description.press_fn(self.coordinator.config_entry)
-
-
-type LinksysVelopButtonCoordinatorEntity = LinksysVelopButtonChannelScanEntity | LinksysVelopButtonMultiUseEntity | LinksysVelopButtonSpeedtestEntity
+type LinksysVelopButtonCoordinatorEntity = LinksysVelopButtonMultiUseEntity | LinksysVelopButtonSpeedtestEntity

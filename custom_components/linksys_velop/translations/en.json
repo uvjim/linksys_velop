@@ -482,9 +482,6 @@
         "init_mesh_timeout": {
             "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the API timeout in the configuration."
         },
-        "coordinator_mesh_exception": {
-            "message": "An error was encountered whilst communicating with with the mesh, type: {exc_type}, msg: {exc_msg}"
-        },
         "coordinator_mesh_timeout": {
             "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
         },
@@ -498,7 +495,7 @@
             "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}."
         },
         "intensive_task": {
-            "message": "The following intensive tasks are currently running: {tasks}, ignoring errors."
+            "message": "{coordinator_name}, the following intensive tasks are currently running: {tasks}, ignoring errors."
         },
         "invalid_input": {
             "message": "The {action} action has failed. ({original_msg})"

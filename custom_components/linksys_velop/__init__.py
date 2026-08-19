@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity
 
 from .const import (
@@ -41,7 +42,6 @@ from .const import (
 from .coordinator import (
     CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorChannelScan,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
     LinksysVelopRuntimeData,
@@ -231,10 +231,7 @@ async def async_setup_entry(
     # endregion
 
     # region #-- speedtest coordinator --#
-    if (
-        MeshCapability.GET_SPEEDTEST_RESULTS
-        in config_entry.runtime_data.mesh.capabilities
-    ):
+    if Actions.GET_SPEEDTEST_RESULTS.key in config_entry.runtime_data.mesh.capabilities:
         update_interval: float = config_entry.options.get(
             CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
         )
@@ -258,36 +255,6 @@ async def async_setup_entry(
             CoordinatorTypes.SPEEDTEST
         ].async_config_entry_first_refresh()
     # endregion
-
-    # region #-- channel scan coordinator --#
-    if (
-        MeshCapability.GET_CHANNEL_SCAN_STATUS
-        in config_entry.runtime_data.mesh.capabilities
-    ):
-        update_interval: float = config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-        )
-        _LOGGER.debug(
-            config_entry.runtime_data.log_formatter(
-                "setting up the channel scan coordinator with interval: %s"
-            ),
-            update_interval,
-        )
-        coordinator_name = f"{DOMAIN} channel scan{coordinator_name_suffix}"
-        config_entry.runtime_data.coordinators[CoordinatorTypes.CHANNEL_SCAN] = (
-            LinksysVelopDataUpdateCoordinatorChannelScan(
-                hass,
-                _LOGGER,
-                coordinator_name,
-                config_entry=config_entry,
-                update_interval_secs=update_interval,
-            )
-        )
-        await config_entry.runtime_data.coordinators[
-            CoordinatorTypes.CHANNEL_SCAN
-        ].async_config_entry_first_refresh()
-    # endregion
-
     # endregion
 
     # region #-- setup the platforms --#
@@ -301,7 +268,7 @@ async def async_setup_entry(
         )
     if (
         config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE)
-        or MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
+        or Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
         in config_entry.runtime_data.mesh.capabilities
     ):
         config_entry.runtime_data.platforms.append(SELECT_DOMAIN)

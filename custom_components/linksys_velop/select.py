@@ -12,7 +12,8 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh, MeshCapability, ScheduledRebootInterval
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
 from .const import (
@@ -76,12 +77,12 @@ def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
     for d in mesh.devices:
         adi: AdapterInfo | None = next(iter(d.adapter_info), None)
         name: str = (
-            d.name
+            d.name.value
             if d.name != EMPTY_NAME
             else f"{d.name} ({adi.ip if adi is not None and d.status else d.unique_id})"
         )
-        if d.unique_id is not None:
-            ret[d.unique_id] = name
+        if d.unique_id.value is not None:
+            ret[d.unique_id.value] = name
 
     return ret
 
@@ -117,7 +118,7 @@ async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
             if adi is not None and adi.ip is not None:
                 match_against.append(adi.ip)
         if match_on.lower() in match_against:
-            velop_id = dev.unique_id
+            velop_id = dev.unique_id.value
             break
     # endregion
 
@@ -244,7 +245,7 @@ async def async_setup_entry(
         mesh_entities: list[LinksysVelopSelectEntityDescription] = []
 
         if (
-            MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
+            Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -295,7 +296,7 @@ async def async_setup_entry(
         entities_to_remove: set[str] = set()
 
         if (
-            MeshCapability.GET_SCHEDULED_REBOOT_SETTINGS
+            Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
