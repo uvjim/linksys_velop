@@ -217,7 +217,9 @@ class LinksysVelopMultiUseEntity(
                         d
                         for d in cast(
                             list[DeviceEntity],
-                            self.coordinator.data.get(CoordinatorTimers.DEVICE_TRACKER),
+                            self.coordinator.data.get(
+                                CoordinatorTimers.DEVICE_TRACKER, []
+                            ),
                         )
                         if d.unique_id.value
                         == self.entity_context.data.get("velop", {}).get("id")

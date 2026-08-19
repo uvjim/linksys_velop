@@ -187,7 +187,9 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
         if device is not None:
             adapter_info: list[AdapterInfo] = device.adapter_info.value
             if adapter_info:
-                ret = next(iter(adapter_info)).ip
+                adi: AdapterInfo | None = next(iter(adapter_info), None)
+                if adi is not None:
+                    ret = adi.ip
 
         return ret
 
@@ -208,7 +210,9 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
         if device is not None:
             adapter_info: list[AdapterInfo] = device.adapter_info.value
             if adapter_info:
-                ret = next(iter(adapter_info)).mac
+                adi: AdapterInfo | None = next(iter(adapter_info), None)
+                if adi is not None:
+                    ret = adi.mac
 
         return ret
 
