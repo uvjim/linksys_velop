@@ -26,7 +26,6 @@ from .const import (
 )
 from .coordinator import (
     CoordinatorTimers,
-    LinksysVelopDataUpdateCoordinatorChannelScan,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
 )
@@ -112,7 +111,7 @@ class LinksysVelopMultiUseEntity(
                 self._attr_device_info = DeviceInfo(
                     identifiers={(DOMAIN, str(self.entity_context.unique_id))},
                     manufacturer=(
-                        device_info.manufacturer
+                        str(device_info.manufacturer)
                         if device_info is not None
                         and self.entity_context.unique_id
                         != self.coordinator.config_entry.data.get(
@@ -121,7 +120,7 @@ class LinksysVelopMultiUseEntity(
                         else ""
                     ),
                     model=(
-                        device_info.model
+                        str(device_info.model)
                         if device_info is not None
                         and self.entity_context.unique_id
                         != self.coordinator.config_entry.data.get(
@@ -130,7 +129,7 @@ class LinksysVelopMultiUseEntity(
                         else ""
                     ),
                     name=(
-                        device_info.name
+                        str(device_info.name)
                         if device_info is not None
                         and self.entity_context.unique_id
                         != self.coordinator.config_entry.data.get(
@@ -153,12 +152,12 @@ class LinksysVelopMultiUseEntity(
             node_info: NodeEntity | None = self._get_target()
             if node_info is not None and node_info.serial is not None:
                 self._attr_device_info = DeviceInfo(
-                    hw_version=node_info.hardware_version,
-                    identifiers={(DOMAIN, node_info.serial)},
-                    model=node_info.model,
-                    name=node_info.name,
-                    manufacturer=node_info.manufacturer,
-                    serial_number=node_info.serial,
+                    hw_version=str(node_info.hardware_version),
+                    identifiers={(DOMAIN, str(node_info.serial))},
+                    model=str(node_info.model),
+                    name=str(node_info.name),
+                    manufacturer=str(node_info.manufacturer),
+                    serial_number=str(node_info.serial),
                     sw_version=node_info.firmware.get("version", ""),
                 )
 
@@ -207,7 +206,7 @@ class LinksysVelopMultiUseEntity(
                         for d in cast(
                             Mesh, self.coordinator.data.get(CoordinatorTimers.MESH)
                         ).devices
-                        if d.unique_id == unique_id
+                        if d.unique_id.value == unique_id
                     ),
                     None,
                 )
@@ -220,7 +219,7 @@ class LinksysVelopMultiUseEntity(
                             list[DeviceEntity],
                             self.coordinator.data.get(CoordinatorTimers.DEVICE_TRACKER),
                         )
-                        if d.unique_id
+                        if d.unique_id.value
                         == self.entity_context.data.get("velop", {}).get("id")
                     ),
                     None,
@@ -234,7 +233,7 @@ class LinksysVelopMultiUseEntity(
                     for n in cast(
                         Mesh, self.coordinator.data.get(CoordinatorTimers.MESH)
                     ).nodes
-                    if n.unique_id == self.entity_context.unique_id
+                    if n.unique_id.value == self.entity_context.unique_id
                 ),
                 None,
             )
@@ -278,56 +277,6 @@ class LinksysVelopSpeedtestEntity(
         self,
         *,
         coordinator: LinksysVelopDataUpdateCoordinatorSpeedtest,
-        description: LinksysVelopEntityDescription,
-        entity_context: LinksysVelopEntityContext,
-    ) -> None:
-        """Initialise entity."""
-
-        super().__init__(coordinator)
-
-        # region #-- custom attributes --#
-        self.entity_context: LinksysVelopEntityContext = entity_context
-        # endregion
-
-        # region #-- standard attributes --#
-        if description is not None:
-            self.entity_description = description
-
-        self._attr_unique_id = (
-            f"{self.entity_context.unique_id}::"
-            f"{self._entity_domain.lower()}::"
-            f"{slugify(str(self.entity_description.name))}"
-        )
-        # endregion
-
-        # region #-- setup device info --#
-        self._attr_device_info = DeviceInfo(
-            configuration_url=f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}",
-            entry_type=DeviceEntryType.SERVICE,
-            identifiers={(DOMAIN, self.entity_context.unique_id)},
-            manufacturer=PYVELOP_AUTHOR,
-            model=f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            name="Mesh",
-            sw_version="",
-        )
-        # endregion
-
-
-class LinksysVelopChannelScanEntity(
-    CoordinatorEntity[LinksysVelopDataUpdateCoordinatorChannelScan]
-):
-    """"""
-
-    """Representation of and entity that uses the Channel Scan DataUpdatCoordinator."""
-
-    entity_description: LinksysVelopEntityDescription
-    _attr_has_entity_name: bool = True
-    _entity_domain: str
-
-    def __init__(
-        self,
-        *,
-        coordinator: LinksysVelopDataUpdateCoordinatorChannelScan,
         description: LinksysVelopEntityDescription,
         entity_context: LinksysVelopEntityContext,
     ) -> None:

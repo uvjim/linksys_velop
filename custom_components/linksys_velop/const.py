@@ -79,7 +79,6 @@ DEF_CONSIDER_HOME: int = 180
 DEF_EVENTS_OPTIONS: list[str] = [event.value for event in EventSubTypes]
 DEF_EVENTS_WAIT_IP: bool = False
 DEF_FLOW_NAME: str = "Linksys Velop Mesh"
-DEF_REBOOT_BACKOFF: int = 30
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 DEF_SELECT_TEMP_UI_DEVICE: bool = False

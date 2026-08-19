@@ -47,7 +47,6 @@ from .const import (
     DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
     DEF_EVENTS_WAIT_IP,
-    DEF_REBOOT_BACKOFF,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
     DEVICE_TRACKER_DOMAIN,
     DOMAIN,
@@ -93,12 +92,9 @@ type LinksysVelopConfigEntry = ConfigEntry[LinksysVelopRuntimeData]
 class CoordinatorTimers(StrEnum):
     """The timer types available to a DataCoordinator."""
 
-    CHANNEL_SCAN = auto()
-    CHANNEL_SCAN_IN_PROGRESS = auto()
     DEVICE_TRACKER = auto()
     MESH = auto()
     SPEEDTEST = auto()
-    SPEEDTEST_IN_PROGRESS = auto()
 
 
 class CoordinatorTypes(StrEnum):
@@ -143,6 +139,32 @@ class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval_secs),
         )
 
+    async def _debounce(self) -> bool:
+        """Return True if the request to the mesh should be delayed."""
+
+        # region #-- intensive task running so back off --#
+        if len(self.config_entry.runtime_data.intensive_running_tasks) > 0:
+            exc: IntensiveTaskRunning = IntensiveTaskRunning(
+                translation_domain=DOMAIN,
+                translation_key="intensive_task",
+                translation_placeholders={
+                    "coordinator_name": self.__class__.__name__,
+                    "tasks": ",".join(
+                        self.config_entry.runtime_data.intensive_running_tasks
+                    ),
+                },
+            )
+            _LOGGER.warning(exc)
+            return True
+        # endregion
+
+        # region #-- check if we're rebooting --#
+        if self.config_entry.runtime_data.mesh_is_rebooting:
+            return True
+        # endregion
+
+        return False
+
 
 class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator):
     """Retrieve the data from the Velop mesh."""
@@ -185,10 +207,6 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         self._configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         )
-        self._max_rebooting_skip_count: int = math.ceil(
-            DEF_REBOOT_BACKOFF / update_interval_secs
-        )
-        self._rebooting_skip_count: int = 0
         self._timers: dict[CoordinatorTimers, Any] = {
             CoordinatorTimers.MESH: {
                 "interval": update_interval_secs,
@@ -245,7 +263,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
     async def _async_get_device_tracker_data(self) -> list[DeviceEntity]:
         """Get the device tracker information from the mesh."""
 
-        if self.config_entry.runtime_data.mesh_is_rebooting:
+        if self._debounce():
             return self.data.get(CoordinatorTimers.DEVICE_TRACKER, [])
 
         devices: list[DeviceEntity] = []
@@ -313,24 +331,12 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         )
                     # endregion
         except (MeshConnectionError, MeshTimeoutError) as err:
-            if len(self.config_entry.runtime_data.intensive_running_tasks) > 0:
-                exc: IntensiveTaskRunning = IntensiveTaskRunning(
-                    translation_domain=DOMAIN,
-                    translation_key="intensive_task",
-                    translation_placeholders={
-                        "tasks": ",".join(
-                            self.config_entry.runtime_data.intensive_running_tasks
-                        )
-                    },
-                )
-                _LOGGER.warning(exc)
-            else:
-                exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
-                    translation_domain=DOMAIN,
-                    translation_key="device_tracker_timeout",
-                )
-                _LOGGER.warning(exc_timeout)
-                raise UpdateFailed(err) from err
+            exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
+                translation_domain=DOMAIN,
+                translation_key="device_tracker_timeout",
+            )
+            _LOGGER.warning(exc_timeout)
+            raise UpdateFailed(err) from err
         except MeshInvalidCredentials as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
@@ -361,35 +367,28 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         previous_nodes_serials: set[str] = set()
         device_registry: DeviceRegistry
 
-        try:
-            # region #-- rebooting so just return the previous details --#
-            if (
-                self.config_entry.runtime_data.mesh_is_rebooting
-                and self._rebooting_skip_count != self._max_rebooting_skip_count
-            ):
-                self._rebooting_skip_count += 1
-                return self.config_entry.runtime_data.mesh
-            # endregion
+        # region #-- debounce? --#
+        if await self._debounce():
+            return self.config_entry.runtime_data.mesh
+        # endregion
 
-            # region #-- reset the skip flag --#
-            if self._rebooting_skip_count != 0:
-                self._rebooting_skip_count = 0
-            # endregion
-
-            # region #-- set the previous details before getting mesh details --#
-            previous_nodes = self.config_entry.runtime_data.mesh.nodes
-            previous_nodes_serials = {
-                node.serial for node in previous_nodes if node.serial is not None
+        # region #-- set the previous details before getting mesh details --#
+        previous_nodes = self.config_entry.runtime_data.mesh.nodes
+        previous_nodes_serials = {
+            node.serial.value
+            for node in previous_nodes
+            if node.serial.value is not None
+        }
+        if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
+            previous_devices = {
+                device.unique_id.value
+                for device in self.config_entry.runtime_data.mesh.devices
+                if device.unique_id.value is not None
             }
-            if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
-                previous_devices = {
-                    device.unique_id
-                    for device in self.config_entry.runtime_data.mesh.devices
-                    if device.unique_id is not None
-                }
-            # endregion
+        # endregion
 
-            # get details from the mesh
+        # region #-- get the details from the mesh --#
+        try:
             await self.config_entry.runtime_data.mesh.async_gather_details()
         except (MeshConnectionError, MeshTimeoutError) as err:
             if not self.config_entry.runtime_data.mesh_is_rebooting:
@@ -422,33 +421,19 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             )
             _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
-
-        # region #-- signal that the mesh has rebooted --#
-        if (
-            self.config_entry.runtime_data.mesh_is_rebooting
-            and self._rebooting_skip_count == 0
-        ):
-            self.config_entry.runtime_data.mesh_is_rebooting = False
-            if EventSubTypes.MESH_REBOOTED.value in self.config_entry.options.get(
-                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
-            ):
-                async_dispatcher_send(
-                    self.hass,
-                    f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
-                )
         # endregion
 
         # region #-- get the current details for comparison --#
         current_nodes_serials = {
-            node.serial
+            node.serial.value
             for node in self.config_entry.runtime_data.mesh.nodes
-            if node.serial is not None
+            if node.serial.value is not None
         }
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             current_devices = {
-                device.unique_id
+                device.unique_id.value
                 for device in self.config_entry.runtime_data.mesh.devices
-                if device.unique_id is not None
+                if device.unique_id.value is not None
             }
         # endregion
 
@@ -458,17 +443,17 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         prev_node: NodeEntity
         cur_node: NodeEntity | None
         for prev_node in previous_nodes:
-            if prev_node.serial is not None:
+            if prev_node.serial.value is not None:
                 if (
                     dr_node := device_registry.async_get_device(
-                        identifiers={(DOMAIN, prev_node.serial)}
+                        identifiers={(DOMAIN, prev_node.serial.value)}
                     )
                 ) is not None and (
                     cur_node := next(
                         (
                             n
                             for n in self.config_entry.runtime_data.mesh.nodes
-                            if n.serial == prev_node.serial
+                            if n.serial.value == prev_node.serial.value
                         ),
                         None,
                     )
@@ -502,23 +487,25 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         elif attr == "name":
                             # region #-- update the name --#
                             # this doesn't change the visible name in Home Assistant if that was set by the user.
-                            if cur_node.name != prev_node.name:
-                                attr_to_update["name"] = cur_node.name
+                            if cur_node.name.value != prev_node.name.value:
+                                attr_to_update["name"] = cur_node.name.value
                             # endregion
                         elif attr == "parent_id":
                             # region #-- update the via_device --#
                             # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
-                            if cur_node.type == NodeType.SECONDARY:
+                            if cur_node.type.value == NodeType.SECONDARY:
                                 parent_node: NodeEntity | None = get_mesh_parent_node(
                                     cur_node, self.config_entry.runtime_data.mesh
                                 )
                                 if (
                                     parent_node is not None
-                                    and parent_node.serial is not None
+                                    and parent_node.serial.value is not None
                                 ):
                                     parent_dr_node: DeviceEntry | None = (
                                         device_registry.async_get_device(
-                                            identifiers={(DOMAIN, parent_node.serial)}
+                                            identifiers={
+                                                (DOMAIN, parent_node.serial.value)
+                                            }
                                         )
                                     )
                                     if (
@@ -552,18 +539,18 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     (
                         device
                         for device in self.config_entry.runtime_data.mesh.devices
-                        if device.unique_id == ui_device
+                        if device.unique_id.value == ui_device
                     ),
                     None,
                 )
                 if (
                     cur_ui_device is not None
                     and dr_ui_device is not None
-                    and cur_ui_device.name != dr_ui_device.name
+                    and cur_ui_device.name.value != dr_ui_device.name
                 ):
                     device_registry.async_update_device(
                         dr_ui_device.id,
-                        name=cur_ui_device.name,
+                        name=cur_ui_device.name.value,
                     )
         # endregion
 
@@ -635,7 +622,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         (
                             n
                             for n in self.config_entry.runtime_data.mesh.nodes
-                            if n.serial == node
+                            if n.serial.value == node
                         ),
                         None,
                     )
@@ -657,7 +644,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     (
                         d
                         for d in self.config_entry.runtime_data.mesh.devices
-                        if d.unique_id == device
+                        if d.unique_id.value == device
                     ),
                     None,
                 ):
@@ -823,12 +810,6 @@ class UpdateCoordinatorChangeableInterval(LinksyVelopDataUpdateCoordinator):
             update_interval_secs=update_interval_secs,
         )
 
-    async def _async_setup(self) -> None:
-        """Set up the coordinator.
-
-        We don't need to do any testing here.  The default coordinator will have already done the testing and raised the errors.
-        """
-
 
 class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInterval):
     """Retrieve the Speedtest data from the Velop mesh."""
@@ -859,13 +840,14 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
     async def _async_update_data(self) -> SpeedtestResult | None:
         """Refresh the Speedtest data."""
 
-        _LOGGER.debug("retrieving data for the Speedtest coordinator")
         _result: SpeedtestResult | list[SpeedtestResult] | None
         result: SpeedtestResult | None = None
         ret: SpeedtestResult | None
         try:
-            if self.config_entry.runtime_data.mesh_is_rebooting:
+            if await self._debounce():
                 return self.data
+
+            _LOGGER.debug("retrieving data for the Speedtest coordinator")
 
             if self.update_interval == self.progress_update_interval:
                 _result = (
@@ -927,96 +909,6 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
                     self.update_interval = self.progress_update_interval
 
         ret = result
-        return ret
-
-
-class LinksysVelopDataUpdateCoordinatorChannelScan(UpdateCoordinatorChangeableInterval):
-    """Retrieve the Channel Scan data from the Velop mesh."""
-
-    data: ChannelScanInfo
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        logger: logging.Logger,
-        name: str,
-        *,
-        config_entry: LinksysVelopConfigEntry,
-        update_interval_secs: float,
-        progress_update_interval_secs: float = DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
-    ) -> None:
-        """Initialise."""
-
-        super().__init__(
-            hass,
-            logger,
-            name,
-            config_entry=config_entry,
-            update_interval_secs=update_interval_secs,
-            progress_update_interval_secs=progress_update_interval_secs,
-        )
-
-    async def _async_update_data(self) -> ChannelScanInfo:
-        """Refresh the Speedtest data."""
-
-        _LOGGER.debug("retrieving data for the channel scan coordinator")
-
-        try:
-            if self.config_entry.runtime_data.mesh_is_rebooting:
-                return self.data
-
-            api_calls: list = [
-                self.config_entry.runtime_data.mesh.async_get_channel_scan_info(),
-            ]
-            responses = await asyncio.gather(*api_calls)
-        except (MeshConnectionError, MeshTimeoutError) as err:
-            if not self.config_entry.runtime_data.mesh_is_rebooting:
-                exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
-                    translation_domain=DOMAIN,
-                    translation_key="coordinator_mesh_timeout",
-                    translation_placeholders={
-                        "current_timeout": self.config_entry.options.get(
-                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                        )
-                    },
-                )
-                _LOGGER.warning(exc_mesh_timeout)
-                raise UpdateFailed(err) from err
-        except MeshInvalidCredentials as err:
-            raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN,
-                translation_key="failed_login",
-            )
-        except MeshException as err:
-            raise UpdateFailed(type(err).__name__) from err
-        except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err).__name__,
-                    "exc_msg": str(err),
-                },
-            )
-            _LOGGER.warning(exc_general)
-            raise UpdateFailed(err) from err
-
-        result: dict[str, Any] = responses[0]
-        ret: ChannelScanInfo = ChannelScanInfo(
-            connected_node=self.config_entry.runtime_data.mesh.connected_node,
-            is_running=result.get("isRunning", False),
-        )
-        if not ret.is_running:
-            if (
-                IntensiveTask.CHANNEL_SCAN
-                in self.config_entry.runtime_data.intensive_running_tasks
-            ):
-                self.config_entry.runtime_data.intensive_running_tasks.remove(
-                    IntensiveTask.CHANNEL_SCAN
-                )
-            self.update_interval = self.normal_update_interval
-        else:
-            self.update_interval = self.progress_update_interval
         return ret
 
 

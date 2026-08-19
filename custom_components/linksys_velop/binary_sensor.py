@@ -15,22 +15,22 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh
+from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity, NodeEntity
 
-from .const import CONF_UI_DEVICES
+from .const import CONF_UI_DEVICES, IntensiveTask
 from .coordinator import (
     CoordinatorTimers,
     CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorChannelScan,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopDataUpdateCoordinatorSpeedtest,
     SpeedtestStatus,
 )
 from .entities import (
     EntityType,
-    LinksysVelopChannelScanEntity,
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
@@ -69,10 +69,11 @@ def status_extra_attributes(n: NodeEntity) -> dict[str, Any] | None:
 
     ret: dict[str, Any] | None = None
 
+    primary_adapter: AdapterInfo | None
     if (
         primary_adapter := next((adi for adi in n.adapter_info if adi.primary), None)
     ) is not None:
-        ret = primary_adapter.as_dict()
+        ret = primary_adapter.to_dict()
         del ret["primary"]
 
     return ret
@@ -122,7 +123,7 @@ async def async_setup_entry(
             )
 
             if (
-                MeshCapability.GET_GUEST_NETWORK_INFO
+                Actions.GET_GUEST_NETWORK_INFO.key
                 in config_entry.runtime_data.mesh.capabilities
             ):
                 mesh_entities.append(
@@ -141,7 +142,7 @@ async def async_setup_entry(
                 )
 
             if (
-                MeshCapability.GET_LAN_SETTINGS
+                Actions.GET_LAN_SETTINGS.key
                 in config_entry.runtime_data.mesh.capabilities
             ):
                 mesh_entities.append(
@@ -160,7 +161,7 @@ async def async_setup_entry(
                 )
 
             if (
-                MeshCapability.GET_PARENTAL_CONTROL_INFO
+                Actions.GET_PARENTAL_CONTROL_INFO.key
                 in config_entry.runtime_data.mesh.capabilities
             ):
                 mesh_entities.append(
@@ -223,10 +224,7 @@ async def async_setup_entry(
         channelscan_entities: list[LinksysVelopBinarySensorEntityDescription] = []
         speedtest_entities: list[LinksysVelopBinarySensorEntityDescription] = []
 
-        if (
-            MeshCapability.GET_ALG_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_ALG_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopBinarySensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
@@ -239,23 +237,25 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_CHANNEL_SCAN_STATUS
+            Actions.GET_CHANNEL_SCAN_STATUS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
-            channelscan_entities.append(
+            mesh_entities.append(
                 LinksysVelopBinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.RUNNING,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
-                    key="is_running",
+                    key="",
                     name="Channel Scanning",
                     target_type=EntityType.MESH,
                     translation_key="channel_scanning",
+                    value_fn=lambda _: IntensiveTask.CHANNEL_SCAN
+                    in config_entry.runtime_data.intensive_running_tasks,
                 )
             )
 
         if (
-            MeshCapability.GET_EXPRESS_FORWARDING
+            Actions.GET_EXPRESS_FORWARDING.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -270,7 +270,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_HOMEKIT_SETTINGS
+            Actions.GET_HOMEKIT_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -284,10 +284,7 @@ async def async_setup_entry(
                 )
             )
 
-        if (
-            MeshCapability.GET_LAN_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_LAN_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopBinarySensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
@@ -300,7 +297,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_MAC_FILTERING_SETTINGS
+            Actions.GET_MAC_FILTERING_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -309,8 +306,8 @@ async def async_setup_entry(
                     entity_registry_enabled_default=False,
                     esa_fn=lambda m: (
                         {
-                            "mode": m.mac_filtering_mode,
-                            "addresses": m.mac_filtering_addresses,
+                            "mode": str(cast(Mesh, m).mac_filtering_mode),
+                            "addresses": cast(Mesh, m).mac_filtering_addresses.value,
                         }
                         if m is not None
                         else None
@@ -322,10 +319,7 @@ async def async_setup_entry(
                 )
             )
 
-        if (
-            MeshCapability.GET_MLO_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_MLO_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             if config_entry.runtime_data.mesh.mlo_state is not None:
                 mesh_entities.append(
                     LinksysVelopBinarySensorEntityDescription(
@@ -339,7 +333,7 @@ async def async_setup_entry(
                 )
 
         if (
-            MeshCapability.GET_SPEEDTEST_STATUS
+            Actions.GET_SPEEDTEST_STATUS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             speedtest_entities.append(
@@ -361,7 +355,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_TOPOLOGY_OPTIMISATION_SETTINGS
+            Actions.GET_TOPOLOGY_OPTIMISATION_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.extend(
@@ -385,10 +379,7 @@ async def async_setup_entry(
                 ],
             )
 
-        if (
-            MeshCapability.GET_UPNP_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_UPNP_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.extend(
                 [
                     LinksysVelopBinarySensorEntityDescription(
@@ -410,16 +401,16 @@ async def async_setup_entry(
                 ]
             )
 
-        if MeshCapability.GET_WAN_INFO in config_entry.runtime_data.mesh.capabilities:
+        if Actions.GET_WAN_INFO.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopBinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.CONNECTIVITY,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     esa_fn=lambda m: (
                         {
-                            "ip": m.wan_ip,
-                            "dns": m.wan_dns or None,
-                            "mac": m.wan_mac,
+                            "ip": cast(Mesh, m).wan_ip.value,
+                            "dns": cast(Mesh, m).wan_dns.value or None,
+                            "mac": cast(Mesh, m).wan_mac.value,
                         }
                         if m is not None
                         else None
@@ -458,19 +449,6 @@ async def async_setup_entry(
                 )
                 for desc in speedtest_entities
             ],
-            *[
-                LinksysVelopBinarySensorChannelScanEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorChannelScan,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.CHANNEL_SCAN
-                        ),
-                    ),
-                    description=desc,
-                )
-                for desc in channelscan_entities
-            ],
         )
 
         return ret
@@ -481,9 +459,9 @@ async def async_setup_entry(
         ret_temp: list[LinksysVelopBinarySensorCoordinatorEntity] = []
 
         current_nodes: set[str] = {
-            n.unique_id
+            str(cast(NodeEntity, n).unique_id)
             for n in config_entry.runtime_data.mesh.nodes
-            if n.unique_id is not None
+            if cast(NodeEntity, n).unique_id.value is not None
         }
         new_nodes: set[str] = current_nodes - known_nodes
 
@@ -534,13 +512,13 @@ async def async_setup_entry(
         }
 
         if (
-            MeshCapability.GET_ALG_SETTINGS
+            Actions.GET_ALG_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::sip")
 
         if (
-            MeshCapability.GET_CHANNEL_SCAN_STATUS
+            Actions.GET_CHANNEL_SCAN_STATUS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -548,7 +526,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_EXPRESS_FORWARDING
+            Actions.GET_EXPRESS_FORWARDING.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -556,14 +534,14 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_GUEST_NETWORK_INFO
+            Actions.GET_GUEST_NETWORK_INFO.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
                 entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::guest_network")
 
         if (
-            MeshCapability.GET_HOMEKIT_SETTINGS
+            Actions.GET_HOMEKIT_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -571,7 +549,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_LAN_SETTINGS
+            Actions.GET_LAN_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -581,14 +559,14 @@ async def async_setup_entry(
                 entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::reserved_ip")
 
         if (
-            MeshCapability.GET_PARENTAL_CONTROL_INFO
+            Actions.GET_PARENTAL_CONTROL_INFO.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
                 entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::blocked_times")
 
         if (
-            MeshCapability.GET_MAC_FILTERING_SETTINGS
+            Actions.GET_MAC_FILTERING_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -596,7 +574,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_MLO_SETTINGS
+            Actions.GET_MLO_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
             or config_entry.runtime_data.mesh.mlo_state is None
         ):
@@ -605,7 +583,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_STATUS
+            Actions.GET_SPEEDTEST_STATUS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -613,7 +591,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_TOPOLOGY_OPTIMISATION_SETTINGS
+            Actions.GET_TOPOLOGY_OPTIMISATION_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.update(
@@ -624,7 +602,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_UPNP_SETTINGS
+            Actions.GET_UPNP_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.update(
@@ -634,10 +612,7 @@ async def async_setup_entry(
                 }
             )
 
-        if (
-            MeshCapability.GET_WAN_INFO
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_WAN_INFO.key not in config_entry.runtime_data.mesh.capabilities:
             entities_to_remove.add(
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wan_status"
             )
@@ -712,35 +687,8 @@ class LinksysVelopBinarySensorMultiUseEntity(
                 self.entity_description.key,
                 None,
             )
-
-        return ret
-
-
-class LinksysVelopBinarySensorChannelScanEntity(
-    LinksysVelopBinarySensorEntity, LinksysVelopChannelScanEntity
-):
-    """Linksys Velop binary sensor that uses the channel scan DataUpdateCoordinator."""
-
-    @property
-    @override
-    def extra_state_attributes(self) -> dict[str, Any] | None:
-
-        ret: dict[str, Any] | None = None
-
-        if self.entity_description.esa_fn is not None:
-            ret = self.entity_description.esa_fn(self.coordinator.data)
-
-        return ret
-
-    @property
-    @override
-    def is_on(self) -> bool | None:
-
-        ret: bool | None = None
-        if self.entity_description.value_fn is not None:
-            ret = self.entity_description.value_fn(self.coordinator.data)
-        elif self.entity_description.key:
-            ret = getattr(self.coordinator.data, self.entity_description.key, None)
+            if isinstance(ret, MeshAttribute):
+                ret = ret.value
 
         return ret
 
@@ -774,4 +722,4 @@ class LinksysVelopBinarySensorSpeedtestEntity(
         return ret
 
 
-type LinksysVelopBinarySensorCoordinatorEntity = LinksysVelopBinarySensorChannelScanEntity | LinksysVelopBinarySensorMultiUseEntity | LinksysVelopBinarySensorSpeedtestEntity
+type LinksysVelopBinarySensorCoordinatorEntity = LinksysVelopBinarySensorMultiUseEntity | LinksysVelopBinarySensorSpeedtestEntity

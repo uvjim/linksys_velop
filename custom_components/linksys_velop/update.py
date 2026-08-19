@@ -14,7 +14,8 @@ from homeassistant.components.update import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import FirmwareUpdatePolicy, Mesh
 from pyvelop.mesh_entity import NodeEntity
 
 from . import LinksysVelopConfigEntry
@@ -82,9 +83,9 @@ async def async_setup_entry(
         ret: tuple[LinksysVelopUpdateCoordinatorEntity, ...] = ()
         ret_temp: list[LinksysVelopUpdateCoordinatorEntity] = []
         current_nodes: set[str] = {
-            n.unique_id
+            str(cast(NodeEntity, n).unique_id)
             for n in config_entry.runtime_data.mesh.nodes
-            if n.unique_id is not None
+            if cast(NodeEntity, n).unique_id.value is not None
         }
         new_nodes: set[str] = current_nodes - known_nodes
 
@@ -97,7 +98,7 @@ async def async_setup_entry(
                 mesh_entities: list[LinksysVelopUpdateEntityDescription] = []
 
                 if (
-                    MeshCapability.GET_UPDATE_FIRMWARE_STATE
+                    Actions.GET_UPDATE_FIRMWARE_STATE.key
                     in config_entry.runtime_data.mesh.capabilities
                 ):
                     mesh_entities.append(
@@ -106,7 +107,7 @@ async def async_setup_entry(
                             key="",
                             name="Update",
                             pic_fn=lambda n: (
-                                f"{prefix.rstrip('/').strip()}/{cast(NodeEntity, n).model}.png"
+                                f"{prefix.rstrip('/').strip()}/{cast(NodeEntity, n).model.value}.png"
                                 if (
                                     prefix := config_entry.options.get(CONF_NODE_IMAGES)
                                 )
@@ -146,7 +147,7 @@ async def async_setup_entry(
         # region #-- remove unnecessary node entities --#
         for node in config_entry.runtime_data.mesh.nodes:
             if (
-                MeshCapability.GET_UPDATE_FIRMWARE_STATE
+                Actions.GET_UPDATE_FIRMWARE_STATE.key
                 not in config_entry.runtime_data.mesh.capabilities
             ):
                 entities_to_remove.add(f"{node.unique_id}::{ENTITY_DOMAIN}::update")
@@ -193,12 +194,10 @@ class LinksysVelopUpdateMultiUseEntity(LinksysVelopMultiUseEntity, UpdateEntity)
     @override
     def auto_update(self) -> bool:
 
-        ret: bool = (
-            self.coordinator.data.get(
-                CoordinatorTimers.MESH, {}
-            ).firmware_update_setting
-            != "manual"
-        )
+        _mesh: Mesh | None = self.coordinator.data.get(CoordinatorTimers.MESH)
+        ret: bool = False
+        if _mesh is not None:
+            ret = _mesh.firmware_update_setting != FirmwareUpdatePolicy.MANUAL
 
         return ret
 

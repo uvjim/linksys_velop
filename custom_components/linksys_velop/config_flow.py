@@ -21,6 +21,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
+from pyvelop.action_registry import Actions
 from pyvelop.exceptions import (
     MeshBadResponse,
     MeshConnectionError,
@@ -29,7 +30,7 @@ from pyvelop.exceptions import (
     MeshNodeNotPrimary,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from . import LinksysVelopConfigEntry
@@ -191,7 +192,7 @@ async def _async_build_schema_with_user_input(
                     CONF_REDACT_OPTIONS,
                     default=user_input.get(
                         CONF_REDACT_OPTIONS,
-                        {capability.name: [] for capability in MeshCapability},
+                        {action.key: [] for action in Actions.values()},
                     ),
                 ): selector.ObjectSelector(config=selector.ObjectSelectorConfig())
             }
@@ -303,7 +304,7 @@ async def _async_get_devices(mesh: Mesh) -> dict[str, str]:
     devices: list[DeviceEntity] = await mesh.async_get_devices()
     for device in devices:
         for adapter in device.adapter_info:
-            ret[device.unique_id] = f"{device.name} --> {adapter.mac}"
+            ret[device.unique_id.value] = f"{device.name} --> {adapter.mac}"
 
     return ret
 
@@ -607,7 +608,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 nodes: list[NodeEntity] = self._mesh.nodes
                 for node in nodes:
                     if node.type == "primary":
-                        unique_id = node.serial
+                        unique_id = node.serial.value
             # endregion
 
             # region #-- do we have matching host? --#

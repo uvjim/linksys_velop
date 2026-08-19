@@ -11,7 +11,9 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh
+from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
 
 from . import LinksysVelopConfigEntry
@@ -193,7 +195,7 @@ async def async_setup_entry(
         )
 
         if (
-            MeshCapability.GET_GUEST_NETWORK_INFO
+            Actions.GET_GUEST_NETWORK_INFO.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -201,7 +203,7 @@ async def async_setup_entry(
                     entity_category=EntityCategory.CONFIG,
                     esa_fn=lambda m: {
                         f"network {idx}": network
-                        for idx, network in enumerate(m.guest_wifi_details)
+                        for idx, network in enumerate(cast(Mesh, m).guest_wifi_details)
                     },
                     key="guest_wifi_enabled",
                     name="Guest Wi-Fi",
@@ -213,7 +215,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_HOMEKIT_SETTINGS
+            Actions.GET_HOMEKIT_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -229,7 +231,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_PARENTAL_CONTROL_INFO
+            Actions.GET_PARENTAL_CONTROL_INFO.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -238,9 +240,11 @@ async def async_setup_entry(
                     esa_fn=lambda m: (
                         {
                             "rules": {
-                                device.name: device.parental_control_schedule
-                                for device in m.devices
-                                if device.parental_control_schedule
+                                cast(DeviceEntity, device)
+                                .name.value: cast(DeviceEntity, device)
+                                .parental_control_schedule.value
+                                for device in cast(Mesh, m).devices
+                                if cast(DeviceEntity, device).parental_control_schedule
                             }
                         }
                     ),
@@ -253,10 +257,7 @@ async def async_setup_entry(
                 ),
             )
 
-        if (
-            MeshCapability.GET_UPNP_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_UPNP_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
@@ -270,7 +271,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_WPS_SERVER_SETTINGS
+            Actions.GET_WPS_SERVER_SETTINGS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -315,7 +316,7 @@ async def async_setup_entry(
         entities_to_remove: set[str] = set()
 
         if (
-            MeshCapability.GET_GUEST_NETWORK_INFO
+            Actions.GET_GUEST_NETWORK_INFO.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -323,7 +324,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_HOMEKIT_SETTINGS
+            Actions.GET_HOMEKIT_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -331,7 +332,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_PARENTAL_CONTROL_INFO
+            Actions.GET_PARENTAL_CONTROL_INFO.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -341,13 +342,13 @@ async def async_setup_entry(
                 entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::internet_access")
 
         if (
-            MeshCapability.GET_UPNP_SETTINGS
+            Actions.GET_UPNP_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp")
 
         if (
-            MeshCapability.GET_WPS_SERVER_SETTINGS
+            Actions.GET_WPS_SERVER_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wps")
@@ -433,6 +434,8 @@ class LinksysVelopSwitchMultiUseEntity(
                     self.entity_description.key,
                     None,
                 )
+                if isinstance(ret, MeshAttribute):
+                    ret = ret.value
         else:
             ret = self.entity_description.value_fn(self._get_target())
 

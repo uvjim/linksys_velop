@@ -8,8 +8,8 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from pyvelop.jnap import RESPONSE_REDACTIONS, Actions
-from pyvelop.mesh import Mesh, MeshCapability
+from pyvelop.action_registry import Actions
+from pyvelop.mesh import Mesh
 
 from .const import CONF_REDACT_OPTIONS
 from .coordinator import LinksysVelopConfigEntry
@@ -87,14 +87,13 @@ async def async_get_config_entry_diagnostics(
         "config_entry.options.password",
         "config_entry.unique_id",
     }
-    for capability in MeshCapability:
-        action: Actions = Actions[capability.name]
-        default_redactions: set[str] = RESPONSE_REDACTIONS.get(action.value)
+    for action in Actions.values():
+        default_redactions: set[str] = action.redactions
         supplementary_redactions: set[str] = config_entry.options.get(
             CONF_REDACT_OPTIONS, {}
-        ).get(capability.name, set())
+        ).get(action.key, set())
         redactions: set[str] = default_redactions.union(supplementary_redactions)
-        to_redact.update([f"mesh_details.{capability.value}.{r}" for r in redactions])
+        to_redact.update([f"mesh_details.{action.key}.{r}" for r in redactions])
 
     ret = redact(
         ret,

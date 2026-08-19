@@ -21,13 +21,14 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
+from pyvelop.action_registry import Actions
 from pyvelop.mesh import (
     Mesh,
-    MeshCapability,
     SpeedtestExitCode,
     SpeedtestResult,
     SpeedtestStatus,
 )
+from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import (
     AdapterInfo,
     ConnectionType,
@@ -75,15 +76,18 @@ def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
     ret: list[dict[str, Any]] = []
     device: DeviceEntity
     for device in mesh.devices:
-        if device.status is state:
-            props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
+        if bool(device.status) == state:
+            props: dict[str, Any] = {
+                "name": device.name.value,
+                "id": device.unique_id.value,
+            }
             adi: AdapterInfo | None = next((adapter for adapter in device.adapter_info))
-            if adi is not None and device.status:
-                props["type"] = adi.type
+            if adi is not None and device.status.value:
+                props["type"] = adi.type.value
                 props["guest_network"] = adi.guest_network
                 props["ip"] = adi.ip
                 props["ipv6"] = adi.ipv6
-                props["parent_name"] = device.parent_name
+                props["parent_name"] = device.parent_name.value
             ret.append(props)
 
     return ret
@@ -115,7 +119,10 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
 
     ret: list[dict[str, Any]] = []
     for device in node.connected_devices:
-        props: dict[str, Any] = {"name": device.name, "id": device.unique_id}
+        props: dict[str, Any] = {
+            "name": device.name.value,
+            "id": device.unique_id.value,
+        }
         adi: AdapterInfo | None = next((adi for adi in device.adapter_info))
         if adi is not None:
             props["type"] = adi.type
@@ -175,10 +182,7 @@ async def async_setup_entry(
                         target_type=EntityType.DEVICE,
                         translation_key="friendly_signal_strength",
                         value_fn=lambda d: (
-                            cast(
-                                SignalStrength,
-                                get_device_adapter_info(d, "signal_strength"),
-                            ).lower()
+                            str(get_device_adapter_info(d, "signal_strength")).lower()
                             if isinstance(d, DeviceEntity)
                             and get_device_adapter_info(d, "signal_strength")
                             is not None
@@ -277,7 +281,7 @@ async def async_setup_entry(
             )
 
             if (
-                MeshCapability.GET_PARENTAL_CONTROL_INFO
+                Actions.GET_PARENTAL_CONTROL_INFO.key
                 in config_entry.runtime_data.mesh.capabilities
             ):
                 mesh_entities.extend(
@@ -345,7 +349,7 @@ async def async_setup_entry(
         mesh_entities: list[LinksysVelopSensorEntityDescription] = []
         speedtest_entities: list[LinksysVelopSensorEntityDescription] = []
 
-        if MeshCapability.GET_DEVICES in config_entry.runtime_data.mesh.capabilities:
+        if Actions.GET_DEVICES.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.extend(
                 [
                     LinksysVelopSensorEntityDescription(
@@ -360,7 +364,7 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                         target_type=EntityType.MESH,
                         translation_key="offline_devices",
-                        value_fn=lambda m: (len(get_devices(cast(Mesh, m), False))),
+                        value_fn=lambda m: (len(get_devices(m, False))),
                     ),
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
@@ -372,13 +376,13 @@ async def async_setup_entry(
                         state_class=SensorStateClass.MEASUREMENT,
                         target_type=EntityType.MESH,
                         translation_key="online_devices",
-                        value_fn=lambda m: len(get_devices(cast(Mesh, m))),
+                        value_fn=lambda m: len(get_devices(m)),
                     ),
                 ]
             )
 
         if (
-            MeshCapability.GET_GUEST_NETWORK_INFO
+            Actions.GET_GUEST_NETWORK_INFO.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -399,28 +403,19 @@ async def async_setup_entry(
                     target_type=EntityType.MESH,
                     translation_key="guest_devices",
                     value_fn=lambda m: (
-                        len(
-                            [
-                                d
-                                for d in get_devices(cast(Mesh, m))
-                                if d.get("guest_network")
-                            ]
-                        )
+                        len([d for d in get_devices(m) if d.get("guest_network")])
                     ),
                 ),
             )
 
-        if (
-            MeshCapability.GET_LAN_SETTINGS
-            in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_LAN_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
                     esa_fn=lambda m: (
                         {
-                            "reservations": m.dhcp_reservations,
+                            "reservations": m.dhcp_reservations.value,
                         }
                         if m.dhcp_reservations
                         else {}
@@ -435,7 +430,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_RESULTS
+            Actions.GET_SPEEDTEST_RESULTS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             speedtest_entities.extend(
@@ -504,7 +499,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_STATUS
+            Actions.GET_SPEEDTEST_STATUS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             speedtest_entities.append(
@@ -524,7 +519,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_STORAGE_PARTITIONS
+            Actions.GET_STORAGE_PARTITIONS.key
             in config_entry.runtime_data.mesh.capabilities
         ):
             mesh_entities.append(
@@ -532,7 +527,7 @@ async def async_setup_entry(
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
                     esa_fn=lambda m: (
-                        {"partitions": (m.storage_available)}
+                        {"partitions": (m.storage_available.value)}
                         if len(m.storage_available) > 0
                         else {}
                     ),
@@ -541,11 +536,11 @@ async def async_setup_entry(
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="available_storage",
-                    value_fn=lambda m: (len(cast(Mesh, m).storage_available)),
+                    value_fn=lambda m: (len(m.storage_available)),
                 ),
             )
 
-        if MeshCapability.GET_WAN_INFO in config_entry.runtime_data.mesh.capabilities:
+        if Actions.GET_WAN_INFO.key in config_entry.runtime_data.mesh.capabilities:
             mesh_entities.append(
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
@@ -612,12 +607,12 @@ async def async_setup_entry(
 
                 if node_details is not None:
                     is_wifi_node: bool = (
-                        node_details.backhaul is not None
+                        node_details.backhaul.value is not None
                         and node_details.backhaul.connection == ConnectionType.WIRELESS
                     )
 
                     if (
-                        MeshCapability.GET_BACKHAUL
+                        Actions.GET_BACKHAUL.key
                         in config_entry.runtime_data.mesh.capabilities
                         and node_details.type == NodeType.SECONDARY
                     ):
@@ -728,7 +723,7 @@ async def async_setup_entry(
                             )
 
                     if (
-                        MeshCapability.GET_DEVICES
+                        Actions.GET_DEVICES.key
                         in config_entry.runtime_data.mesh.capabilities
                     ):
                         mesh_entities.extend(
@@ -792,7 +787,7 @@ async def async_setup_entry(
                         )
 
                     if (
-                        MeshCapability.GET_UPDATE_FIRMWARE_STATE
+                        Actions.GET_UPDATE_FIRMWARE_STATE.key
                         in config_entry.runtime_data.mesh.capabilities
                     ):
                         mesh_entities.append(
@@ -841,12 +836,12 @@ async def async_setup_entry(
         # region #-- remove unnecessary node entities  --#
         for node in config_entry.runtime_data.mesh.nodes:
             is_wifi_node: bool = (
-                node.backhaul is not None
+                node.backhaul.value is not None
                 and node.backhaul.connection == ConnectionType.WIRELESS
             )
 
             if (
-                MeshCapability.GET_UPDATE_FIRMWARE_STATE
+                Actions.GET_UPDATE_FIRMWARE_STATE.key
                 not in config_entry.runtime_data.mesh.capabilities
             ):
                 entities_to_remove.add(
@@ -854,7 +849,7 @@ async def async_setup_entry(
                 )
 
             if (
-                MeshCapability.GET_BACKHAUL
+                Actions.GET_BACKHAUL.key
                 not in config_entry.runtime_data.mesh.capabilities
             ) or not is_wifi_node:
                 entities_to_remove.update(
@@ -865,7 +860,7 @@ async def async_setup_entry(
                 )
 
             if (
-                MeshCapability.GET_BACKHAUL
+                Actions.GET_BACKHAUL.key
                 not in config_entry.runtime_data.mesh.capabilities
             ) or node.type != NodeType.SECONDARY:
                 entities_to_remove.update(
@@ -889,7 +884,7 @@ async def async_setup_entry(
             )
 
             if (
-                MeshCapability.GET_PARENTAL_CONTROL_INFO
+                Actions.GET_PARENTAL_CONTROL_INFO.key
                 not in config_entry.runtime_data.mesh.capabilities
             ):
                 entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::blocked_sites")
@@ -897,10 +892,7 @@ async def async_setup_entry(
         # endregion
 
         # region #-- remove unnecessary mesh entities --#
-        if (
-            MeshCapability.GET_DEVICES
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_DEVICES.key not in config_entry.runtime_data.mesh.capabilities:
             entities_to_remove.update(
                 {
                     f"{config_entry.entry_id}::{ENTITY_DOMAIN}::offline_devices",
@@ -909,7 +901,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_GUEST_NETWORK_INFO
+            Actions.GET_GUEST_NETWORK_INFO.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -917,7 +909,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_LAN_SETTINGS
+            Actions.GET_LAN_SETTINGS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -925,7 +917,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_RESULTS
+            Actions.GET_SPEEDTEST_RESULTS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.update(
@@ -939,7 +931,7 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_SPEEDTEST_STATUS
+            Actions.GET_SPEEDTEST_STATUS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
@@ -947,17 +939,14 @@ async def async_setup_entry(
             )
 
         if (
-            MeshCapability.GET_STORAGE_PARTITIONS
+            Actions.GET_STORAGE_PARTITIONS.key
             not in config_entry.runtime_data.mesh.capabilities
         ):
             entities_to_remove.add(
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::available_storage"
             )
 
-        if (
-            MeshCapability.GET_WAN_INFO
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
+        if Actions.GET_WAN_INFO.key not in config_entry.runtime_data.mesh.capabilities:
             entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wan_ip")
         # endregion
 
@@ -1040,6 +1029,8 @@ class LinksysVelopSensorMultiUseEntity(
                 self.entity_description.key,
                 None,
             )
+            if isinstance(ret, MeshAttribute):
+                ret = ret.value
 
         return ret
 

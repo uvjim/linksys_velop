@@ -10,6 +10,7 @@ from homeassistant.components.text import TextEntity, TextEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity
 
 from .const import (
@@ -192,6 +193,8 @@ class LinksysVelopTextMultiUseEntity(
                 self.entity_description.key,
                 None,
             )
+            if isinstance(ret, MeshAttribute):
+                ret = ret.value
 
         return ret
 

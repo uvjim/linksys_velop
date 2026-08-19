@@ -65,7 +65,7 @@ async def async_setup_entry(
     for tracked_device in config_entry.options.get(CONF_DEVICE_TRACKERS, []):
         if (
             device := next(
-                (d for d in mesh.devices if d.unique_id == tracked_device), None
+                (d for d in mesh.devices if d.unique_id.value == tracked_device), None
             )
         ) is not None:
             device_trackers.append(
@@ -77,7 +77,7 @@ async def async_setup_entry(
                         ),
                     ),
                     description=LinksysVelopDeviceTrackerEntityDescription(
-                        name=device.name,
+                        name=device.name.value,
                         key="",
                         target_type=EntityType.MESH,
                     ),
@@ -137,8 +137,8 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         device: DeviceEntity | None = self._get_target()
         if device is not None:
-            if device.status != self._is_connected:
-                if device.status:
+            if device.status.value != self._is_connected:
+                if device.status.value:
                     _LOGGER.debug(self.log_formatter("%s: back online"), self.name)
                     self._is_connected = True
                 else:
@@ -185,8 +185,9 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         device: DeviceEntity | None = self._get_target()
         if device is not None:
-            adapter_info: list[AdapterInfo] | None = device.adapter_info
-            ret = next(iter(adapter_info)).ip
+            adapter_info: list[AdapterInfo] = device.adapter_info.value
+            if adapter_info:
+                ret = next(iter(adapter_info)).ip
 
         return ret
 
@@ -205,8 +206,9 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         device: DeviceEntity | None = self._get_target()
         if device is not None:
-            adapter_info: list[AdapterInfo] | None = device.adapter_info
-            ret = next(iter(adapter_info)).mac
+            adapter_info: list[AdapterInfo] = device.adapter_info.value
+            if adapter_info:
+                ret = next(iter(adapter_info)).mac
 
         return ret
 
