@@ -30,13 +30,11 @@ from .coordinator import (
     LinksysVelopDataUpdateCoordinatorSpeedtest,
 )
 from .helpers import get_mesh_parent_node
-from .logger import (
-    LinksysVelopLogFormatter,
-)
+from .logger import Logger
 
 # endregion
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 class EntityType(StrEnum):
@@ -84,9 +82,6 @@ class LinksysVelopMultiUseEntity(
 
         # region #-- custom attributes --#
         self.entity_context: LinksysVelopEntityContext = entity_context
-        self.log_formatter: LinksysVelopLogFormatter = (
-            self.coordinator.config_entry.runtime_data.log_formatter
-        )
         # endregion
 
         # region #-- standard attributes --#

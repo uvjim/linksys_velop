@@ -64,19 +64,18 @@ from .exceptions import (
     IntensiveTaskRunning,
 )
 from .helpers import get_mesh_parent_node
-from .logger import LinksysVelopLogFormatter
+from .logger import Logger
 
 # endregion
 
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 @dataclass
 class LinksysVelopRuntimeData:
     """Runtime data for the ConfigEntry."""
 
-    log_formatter: LinksysVelopLogFormatter
     mesh: Mesh
     coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
         default_factory=dict
@@ -740,7 +739,8 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     )
 
         _LOGGER.debug(
-            "retrieving data for the multi use coordinator, %s", timers_running
+            "retrieving data for the multi use coordinator, %s",
+            list(map(str, timers_running)),
         )
         # endregion
 

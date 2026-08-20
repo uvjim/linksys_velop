@@ -15,11 +15,12 @@ from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import AdapterInfo, NodeEntity
 
 from .const import DOMAIN
+from .logger import Logger
 
 # endregion
 
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:

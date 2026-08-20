@@ -87,7 +87,7 @@ class Steps(StrEnum):
     USER = auto()
 
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry | None:
@@ -324,7 +324,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._errors: dict = {}
         self._finish: bool = False
         self._options: dict = {}
-        self._log_formatter: Logger = Logger()
 
     @staticmethod
     @callback
@@ -337,28 +336,28 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _set_error(self, exc: Exception | MeshException) -> None:
         """Set the error for the flow based on the exception received."""
         if isinstance(exc, MeshConnectionError):
-            _LOGGER.debug(self._log_formatter.format("connection error"))
+            _LOGGER.debug("connection error")
             self._errors["base"] = "connection_error"
         elif isinstance(exc, MeshBadResponse):
-            _LOGGER.debug(self._log_formatter.format("bad response"))
+            _LOGGER.debug("bad response")
             self._errors["base"] = "login_bad_response"
         elif isinstance(exc, MeshInvalidInput):
-            _LOGGER.debug(self._log_formatter.format("invalid input"))
+            _LOGGER.debug("invalid input")
             _LOGGER.warning("%s", exc)
             self._errors["base"] = "invalid_input"
         elif isinstance(exc, MeshNodeNotPrimary):
-            _LOGGER.debug(self._log_formatter.format("not primary"))
+            _LOGGER.debug("not primary")
             self._errors["base"] = "node_not_primary"
         elif isinstance(exc, MeshTimeoutError):
-            _LOGGER.debug(self._log_formatter.format("timeout"))
+            _LOGGER.debug("timeout")
             self._errors["base"] = "node_timeout"
         else:
-            _LOGGER.debug(self._log_formatter.format(f"{type(exc)} - {exc}"))
+            _LOGGER.debug(f"{type(exc)} - {exc}")
             self._errors["base"] = "general"
 
     async def _async_task_gather_details(self) -> None:
         """Gather the details about the Mesh."""
-        _LOGGER.debug(self._log_formatter.format("entered"))
+        _LOGGER.debug("entered")
         try:
             await self._mesh.async_initialise()
         except MeshException as exc:
@@ -366,42 +365,39 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as exc:
             self._set_error(exc)
         else:
-            _LOGGER.debug(self._log_formatter.format("no exceptions"))
+            _LOGGER.debug("no exceptions")
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug("exited")
 
     async def _async_task_login(self, details) -> None:
         """Test the credentials for the Mesh."""
-        _LOGGER.debug(
-            self._log_formatter.format("entered, details: %s"),
-            _redact_for_display(details),
-        )
+        _LOGGER.debug("entered, details: %s", _redact_for_display(details))
 
         _mesh = Mesh(**details, session=async_get_clientsession(hass=self.hass))
         try:
-            _LOGGER.debug(self._log_formatter.format("testing credentials"))
+            _LOGGER.debug("testing credentials")
             valid: bool = await _mesh.async_test_credentials()
-            _LOGGER.debug(self._log_formatter.format("credentials tested"))
+            _LOGGER.debug("credentials tested")
             if not valid:
-                _LOGGER.debug(self._log_formatter.format("credentials are not valid"))
+                _LOGGER.debug("credentials are not valid")
                 self._errors["base"] = "login_error"
             else:
-                _LOGGER.debug(self._log_formatter.format("credentials are valid"))
+                _LOGGER.debug("credentials are valid")
                 self._mesh = _mesh
         except MeshException as exc:
             self._set_error(exc)
         except Exception as exc:
             self._set_error(exc)
         else:
-            _LOGGER.debug(self._log_formatter.format("no exceptions"))
+            _LOGGER.debug("no exceptions")
 
-        _LOGGER.debug(self._log_formatter.format("exited"))
+        _LOGGER.debug("exited")
 
     async def async_step_device_trackers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Allow the user to select the device trackers for presence detection."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
         if user_input is not None:
             self._errors = {}
             self._options.update(user_input)
@@ -420,7 +416,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_finish(self) -> config_entries.ConfigFlowResult:
         """Finalise the configuration entry."""
-        _LOGGER.debug(self._log_formatter.format("entered"))
+        _LOGGER.debug("entered")
         _title = (
             self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME)
             or DEF_FLOW_NAME
@@ -431,23 +427,21 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Initiate gathering Mesh details."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if self.task_gather is None:
-            _LOGGER.debug(
-                self._log_formatter.format("creating task for gathering details")
-            )
+            _LOGGER.debug("creating task for gathering details")
             self.task_gather = self.hass.async_create_task(
                 self._async_task_gather_details()
             )
 
         if self.task_gather.done():
-            _LOGGER.debug(self._log_formatter.format("_errors: %s"), self._errors)
+            _LOGGER.debug("_errors: %s", self._errors)
             next_step: str = Steps.TIMERS
             if self._errors:
                 next_step = Steps.USER
 
-            _LOGGER.debug(self._log_formatter.format("next step: %s"), next_step)
+            _LOGGER.debug("next step: %s", next_step)
             return self.async_show_progress_done(next_step_id=next_step)
 
         return self.async_show_progress(
@@ -461,12 +455,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Initiate the credential test."""
         _LOGGER.debug(
-            self._log_formatter.format("entered, user_input: %s"),
+            "entered, user_input: %s",
             _redact_for_display(user_input) if user_input is not None else "none",
         )
 
         if self.task_login is None:
-            _LOGGER.debug(self._log_formatter.format("creating credential test task"))
+            _LOGGER.debug("creating credential test task")
             details: dict = {
                 "node": self._options.get(CONF_NODE),
                 "password": self._options.get(CONF_PASSWORD),
@@ -477,12 +471,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         if self.task_login.done():
-            _LOGGER.debug(self._log_formatter.format("_errors: %s"), self._errors)
+            _LOGGER.debug("_errors: %s", self._errors)
             next_step: str = Steps.GATHER_DETAILS
             if self._errors:
                 next_step = Steps.USER
 
-            _LOGGER.debug(self._log_formatter.format("next step: %s"), next_step)
+            _LOGGER.debug("next step: %s", next_step)
             return self.async_show_progress_done(next_step_id=next_step)
 
         return self.async_show_progress(
@@ -529,9 +523,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, discovery_info: SsdpServiceInfo
     ) -> config_entries.ConfigFlowResult:
         """Allow the Mesh primary node to be discovered via SSDP."""
-        _LOGGER.debug(
-            self._log_formatter.format("entered, discovery_info: %s"), discovery_info
-        )
+        _LOGGER.debug("entered, discovery_info: %s", discovery_info)
 
         # region #-- get the important info --#
         _host = discovery_info.ssdp_headers.get("_host", "")
@@ -543,7 +535,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- check for a valid Velop device --#
         if "velop" not in _model_description.lower():
-            _LOGGER.debug(self._log_formatter.format("not a Velop model"))
+            _LOGGER.debug("not a Velop model")
             return self.async_abort(reason="not_velop")
         # endregion
 
@@ -556,18 +548,14 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         if matching_entry is not None:
             if not matching_entry.unique_id:  # no unique_id even though the host exists
-                _LOGGER.debug(
-                    self._log_formatter.format("no unique_id in the config entry")
-                )
+                _LOGGER.debug("no unique_id in the config entry")
                 update_unique_id = True
             elif matching_entry.unique_id != _serial:  # parent node changed?
-                _LOGGER.debug(
-                    self._log_formatter.format("assuming the primary node has changed")
-                )
+                _LOGGER.debug("assuming the primary node has changed")
                 update_unique_id = True
 
             if update_unique_id:
-                _LOGGER.debug(self._log_formatter.format("updating unique_id"))
+                _LOGGER.debug("updating unique_id")
                 if self.hass.config_entries.async_update_entry(
                     entry=matching_entry, unique_id=_serial
                 ):
@@ -576,7 +564,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # endregion
 
         # region #-- set a unique_id, update details if device has changed IP --#
-        _LOGGER.debug(self._log_formatter.format("setting unique_id"))
+        _LOGGER.debug("setting unique_id")
         await self.async_set_unique_id(_serial)
         self._abort_if_unique_id_configured(updates={CONF_NODE: _host})
         # endregion
@@ -592,7 +580,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Allow the user to set the relevant timers for the integration."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
         if user_input is not None:
             self._errors = {}
             self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
@@ -601,7 +589,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- handle the unique_id now --#
         if not self.unique_id:
-            _LOGGER.debug(self._log_formatter.format("no unique_id"))
+            _LOGGER.debug("no unique_id")
             # region #-- get the unique_id --#
             unique_id: str | None = None
             if self._mesh:
@@ -618,15 +606,13 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             if matching_entry:
                 if not matching_entry.unique_id:
-                    _LOGGER.debug(
-                        self._log_formatter.format("updating config entry unique_id")
-                    )
+                    _LOGGER.debug("updating config entry unique_id")
                     self.hass.config_entries.async_update_entry(
                         entry=matching_entry, unique_id=unique_id
                     )
                 return self.async_abort(reason="already_configured")
             else:
-                _LOGGER.debug(self._log_formatter.format("setting unique_id"))
+                _LOGGER.debug("setting unique_id")
                 await self.async_set_unique_id(unique_id, raise_on_progress=False)
                 self._abort_if_unique_id_configured()
             # endregion
@@ -645,7 +631,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Rediscover the devices if the config entry is being unignored."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         # region #-- get the original unique_id --#
         if user_input is not None:
@@ -668,7 +654,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ]
 
         if not device_info:
-            _LOGGER.debug(self._log_formatter.format("device not found"))
+            _LOGGER.debug("device not found")
             return self.async_abort(reason="not_found")
         # endregion
 
@@ -679,11 +665,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Handle a flow initiated by the user."""
         _LOGGER.debug(
-            self._log_formatter.format("Using integration version: %s"),
+            "using integration version: %s",
             await async_get_integration_version(self.hass),
         )
         _LOGGER.debug(
-            self._log_formatter.format("entered, user_input: %s"),
+            "entered, user_input: %s",
             _redact_for_display(user_input) if user_input is not None else "none",
         )
 
@@ -713,13 +699,12 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self._devices: dict[str, str] | None = None
         self._errors: dict[str, str] = {}
         self._options: dict[str, Any] = {**config_entry.options}
-        self._log_formatter: Logger = Logger()
 
     async def async_step_device_trackers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage the device trackers."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             self._options.update(user_input)
@@ -753,7 +738,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage the advanced options for the configuration."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             # region #-- update options --#
@@ -782,7 +767,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Event options."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             self._options.update(user_input)
@@ -801,7 +786,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Run the final pieces of the flow."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         # region #-- set device trackers no longer required to be removed --#
         prev_trackers: set[str] = set(
@@ -858,7 +843,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """First Step."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         menu_options: list[str] = [
             Steps.TIMERS,
@@ -878,7 +863,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Display and process logging options."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             self._options.update(user_input)
@@ -897,7 +882,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage the timer options available for the integration."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             # TODO: This can be removed after a length of time but it does no harm
@@ -923,7 +908,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Manage the devices that should be created in the UI."""
-        _LOGGER.debug(self._log_formatter.format("entered, user_input: %s"), user_input)
+        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             self._options.update(user_input)

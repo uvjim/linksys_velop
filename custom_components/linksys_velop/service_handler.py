@@ -23,12 +23,12 @@ from pyvelop.mesh_entity import (
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN, EventSubTypes
 from .coordinator import LinksysVelopConfigEntry
-from .logger import LinksysVelopLogFormatter
+from .logger import Logger
 
 # endregion
 
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 def deprectated_service(solution: str):
@@ -119,7 +119,6 @@ class LinksysVelopServiceHandler:
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialise."""
         self._hass: HomeAssistant = hass
-        self._log_formatter: LinksysVelopLogFormatter
 
     def _get_device(self, mesh: Mesh, value: str) -> list[DeviceEntity] | None:
         """Get a device from the Mesh based on name or unique ID.
@@ -170,12 +169,8 @@ class LinksysVelopServiceHandler:
                     },
                 ) from None
 
-            self._log_formatter = config_entry.runtime_data.log_formatter
-            _LOGGER.debug(self._log_formatter("entered, call: %s"), call)
-
-            _LOGGER.debug(
-                self._log_formatter("using %s"), config_entry.runtime_data.mesh
-            )
+            _LOGGER.debug("entered, call: %s", call)
+            _LOGGER.debug("using %s", config_entry.runtime_data.mesh)
             if (method := getattr(self, call.service, None)) is not None:
                 try:
                     await method(**args, config_entry=config_entry)
@@ -189,9 +184,9 @@ class LinksysVelopServiceHandler:
                         },
                     ) from exc
                 except Exception as err:
-                    _LOGGER.warning(self._log_formatter("%s", False), err)
+                    _LOGGER.warning("%s", err)
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
 
     def register_services(self) -> None:
         """Register the services."""
@@ -212,7 +207,7 @@ class LinksysVelopServiceHandler:
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Remove a device from the device list on the mesh."""
-        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug("entered, kwargs: %s", kwargs)
 
         device: list[DeviceEntity] | None = None
         if (
@@ -233,13 +228,13 @@ class LinksysVelopServiceHandler:
         except Exception as exc:
             raise MeshInvalidInput(str(exc)) from exc
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
 
     async def device_internet_access(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Change state of Internet access for a device."""
-        _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
+        _LOGGER.debug("entered, %s", kwargs)
 
         device: list[DeviceEntity] | None = None
         if (
@@ -269,13 +264,13 @@ class LinksysVelopServiceHandler:
             rules_to_apply, True if kwargs.get("pause", False) else False
         )
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
 
     async def device_internet_rules(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Set Parental Control rules for the device."""
-        _LOGGER.debug(self._log_formatter("entered, %s"), kwargs)
+        _LOGGER.debug("entered, %s", kwargs)
 
         device: list[DeviceEntity] | None = None
         if (
@@ -302,11 +297,11 @@ class LinksysVelopServiceHandler:
             return ret
 
         rules_to_apply: dict[str, str | None] = _process_times()
-        _LOGGER.debug(self._log_formatter("rules_to_apply: %s"), rules_to_apply)
+        _LOGGER.debug("rules_to_apply: %s", rules_to_apply)
 
         await device[0].async_set_parental_control_rules(rules_to_apply)
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
 
     async def reboot_node(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
@@ -318,7 +313,7 @@ class LinksysVelopServiceHandler:
 
         :return:None
         """
-        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug("entered, kwargs: %s", kwargs)
 
         node: list[NodeEntity] = [
             n
@@ -332,10 +327,7 @@ class LinksysVelopServiceHandler:
 
         if node[0].type == NodeType.SECONDARY:
             _LOGGER.warning(
-                self._log_formatter(
-                    "The service %s.%s has been deprecated. %s",
-                    False,
-                ),
+                "The service %s.%s has been deprecated. %s",
                 DOMAIN,
                 "reboot_node",
                 "Use the button available on the node device.",
@@ -355,13 +347,13 @@ class LinksysVelopServiceHandler:
                 )
         # endregion
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
 
     async def rename_device(
         self, config_entry: LinksysVelopConfigEntry, **kwargs
     ) -> None:
         """Rename a device on the Mesh."""
-        _LOGGER.debug(self._log_formatter("entered, kwargs: %s"), kwargs)
+        _LOGGER.debug("entered, kwargs: %s", kwargs)
 
         device: list[DeviceEntity] | None = None
         if (
@@ -381,10 +373,7 @@ class LinksysVelopServiceHandler:
             device[0].name != kwargs.get("new_name")
             and kwargs.get("new_name") is not None
         ):
-            _LOGGER.debug(
-                self._log_formatter("renaming device: %s"),
-                device[0].unique_id,
-            )
+            _LOGGER.debug("renaming device: %s", device[0].unique_id)
             await device[0].async_rename(str(kwargs.get("new_name")))
 
-        _LOGGER.debug(self._log_formatter("exited"))
+        _LOGGER.debug("exited")
