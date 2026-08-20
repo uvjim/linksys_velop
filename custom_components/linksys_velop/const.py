@@ -1,22 +1,9 @@
 """Constants for Linksys Velop."""
 
 # region #-- imports --#
-import uuid
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from importlib.metadata import PackageNotFoundError, distribution, version
-
-from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
-from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN
-from homeassistant.components.device_tracker import (  # noqa: F401
-    DOMAIN as DEVICE_TRACKER_DOMAIN,
-)
-from homeassistant.components.event import DOMAIN as EVENT_DOMAIN  # noqa: F401
-from homeassistant.components.select import DOMAIN as SELECT_DOMAIN  # noqa: F401
-from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
-from homeassistant.components.text import DOMAIN as TEXT_DOMAIN
-from homeassistant.components.update import DOMAIN as UPDATE_DOMAIN
 
 # endregion
 
@@ -86,15 +73,6 @@ DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS: float = 1
 
 ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
-
-PLATFORMS: list[str | None] = [
-    BINARY_SENSOR_DOMAIN,
-    BUTTON_DOMAIN,
-    SENSOR_DOMAIN,
-    SWITCH_DOMAIN,
-    TEXT_DOMAIN,
-    UPDATE_DOMAIN,
-]
 
 try:
     PYVELOP_NAME: str = "pyvelop"

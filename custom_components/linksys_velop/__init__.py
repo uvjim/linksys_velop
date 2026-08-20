@@ -1,13 +1,12 @@
 """The Linksys Velop integration."""
 
 # region #-- imports --#
-import contextlib
 import logging
 import uuid
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -33,11 +32,7 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
-    DEVICE_TRACKER_DOMAIN,
     DOMAIN,
-    EVENT_DOMAIN,
-    PLATFORMS,
-    SELECT_DOMAIN,
 )
 from .coordinator import (
     CoordinatorTypes,
@@ -58,6 +53,17 @@ from .service_handler import LinksysVelopServiceHandler
 # endregion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+_PLATFORMS: tuple[Platform, ...] = (
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.DEVICE_TRACKER,
+    Platform.EVENT,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.TEXT,
+    Platform.UPDATE,
+)
 
 
 async def _async_update_listener(
@@ -202,7 +208,6 @@ async def async_setup_entry(
             session=async_get_clientsession(hass=hass),
             supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
         ),
-        platforms=list(filter(None, PLATFORMS)),
     )
     # endregion
 
@@ -276,37 +281,11 @@ async def async_setup_entry(
     # endregion
 
     # region #-- setup the platforms --#
-    if len(config_entry.options.get(CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS)) > 0:
-        config_entry.runtime_data.platforms.append(EVENT_DOMAIN)
-    else:
-        remove_velop_entity_from_registry(
-            hass,
-            config_entry.entry_id,
-            f"{config_entry.entry_id}::{EVENT_DOMAIN}::events",
-        )
-    if (
-        config_entry.options.get(CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE)
-        or Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
-        in config_entry.runtime_data.mesh.capabilities
-    ):
-        config_entry.runtime_data.platforms.append(SELECT_DOMAIN)
-    else:
-        with contextlib.suppress(ValueError):
-            config_entry.runtime_data.platforms.remove(SELECT_DOMAIN)
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
-        config_entry.runtime_data.platforms.append(DEVICE_TRACKER_DOMAIN)
-    else:
-        with contextlib.suppress(ValueError):
-            config_entry.runtime_data.platforms.remove(DEVICE_TRACKER_DOMAIN)
-
-    config_entry.runtime_data.platforms = sorted(config_entry.runtime_data.platforms)
     _LOGGER.debug(
         config_entry.runtime_data.log_formatter("setting up platforms: %s"),
-        config_entry.runtime_data.platforms,
+        _PLATFORMS,
     )
-    await hass.config_entries.async_forward_entry_setups(
-        config_entry, config_entry.runtime_data.platforms
-    )
+    await hass.config_entries.async_forward_entry_setups(config_entry, _PLATFORMS)
     # endregion
 
     # region #-- remove unnecessary ui devices --#
@@ -333,7 +312,7 @@ async def async_setup_entry(
         remove_velop_entity_from_registry(
             hass,
             config_entry.entry_id,
-            f"{config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker}",
+            f"{config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker}",
         )
         # endregion
         # region #-- remove connection from the mesh device --#
@@ -391,12 +370,9 @@ async def async_unload_entry(
 
     # region #-- clean up the platforms --#
     _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("cleaning up platforms: %s"),
-        config_entry.runtime_data.platforms,
+        config_entry.runtime_data.log_formatter("cleaning up platforms: %s"), _PLATFORMS
     )
-    ret = await hass.config_entries.async_unload_platforms(
-        config_entry, config_entry.runtime_data.platforms
-    )
+    ret = await hass.config_entries.async_unload_platforms(config_entry, _PLATFORMS)
     # endregion
 
     _LOGGER.debug(config_entry.runtime_data.log_formatter("exited"))

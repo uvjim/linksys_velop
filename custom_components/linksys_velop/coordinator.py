@@ -13,6 +13,7 @@ from enum import StrEnum, auto
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
@@ -48,7 +49,6 @@ from .const import (
     DEF_EVENTS_OPTIONS,
     DEF_EVENTS_WAIT_IP,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
-    DEVICE_TRACKER_DOMAIN,
     DOMAIN,
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
@@ -78,7 +78,6 @@ class LinksysVelopRuntimeData:
 
     log_formatter: LinksysVelopLogFormatter
     mesh: Mesh
-    platforms: list[str]
     coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
         default_factory=dict
     )
@@ -290,7 +289,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                             e
                             for e in config_entities
                             if e.unique_id
-                            == f"{self.config_entry.entry_id}::{DEVICE_TRACKER_DOMAIN}::{tracker_missing}"
+                            == f"{self.config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker_missing}"
                         ),
                         None,
                     )
