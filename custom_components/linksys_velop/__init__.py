@@ -52,7 +52,7 @@ from .service_handler import LinksysVelopServiceHandler
 
 # endregion
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 _PLATFORMS: tuple[Platform, ...] = (
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
@@ -86,11 +86,7 @@ async def async_remove_config_entry_device(
 
     mesh_id: set = {(DOMAIN, config_entry.entry_id)}
     if device_entry.identifiers.intersection(mesh_id):
-        _LOGGER.error(
-            config_entry.runtime_data.log_formatter(
-                "Attempt to remove the Mesh device rejected"
-            )
-        )
+        _LOGGER.error("Attempt to remove the Mesh device rejected")
         return False
 
     return True
@@ -187,18 +183,11 @@ async def async_setup_entry(
     all_config_entries: list[LinksysVelopConfigEntry] = (
         hass.config_entries.async_entries(domain=DOMAIN)
     )
-    log_formatter: Logger = Logger(
-        unique_id=(
-            config_entry.unique_id
-            if len(all_config_entries) != 1 and config_entry.unique_id is not None
-            else ""
-        )
-    )
-    _LOGGER.debug(log_formatter.format("entered"))
+    _LOGGER.debug("entered")
 
     # region #-- initialise runtime data --#
     config_entry.runtime_data = LinksysVelopRuntimeData(
-        log_formatter=log_formatter.format,
+        # log_formatter=log_formatter.format,
         mesh=Mesh(
             node=config_entry.options[CONF_NODE],
             password=config_entry.options[CONF_PASSWORD],
@@ -212,23 +201,19 @@ async def async_setup_entry(
     # endregion
 
     _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("using integration version: %s"),
+        "using integration version: %s",
         await async_get_integration_version(hass),
     )
 
     # region #-- setup the coordinators --#
     coordinator_name_suffix: str = ""
-    if getattr(log_formatter, "_unique_id"):
-        coordinator_name_suffix += f" ({getattr(log_formatter, '_unique_id')})"
 
     # region #--- mesh coordinator --#
     update_interval: float = config_entry.options.get(
         CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
     )
     _LOGGER.debug(
-        config_entry.runtime_data.log_formatter(
-            "setting up the mesh coordinator with interval: %s"
-        ),
+        "setting up the mesh coordinator with interval: %s",
         update_interval,
     )
     coordinator_name = f"{DOMAIN} mesh{coordinator_name_suffix}"
@@ -242,7 +227,7 @@ async def async_setup_entry(
     config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
         LinksysVelopDataUpdateCoordinatorMultiUse(
             hass,
-            _LOGGER,
+            _LOGGER.get_logger(),
             coordinator_name,
             config_entry=config_entry,
             **update_intervals,
@@ -259,16 +244,14 @@ async def async_setup_entry(
             CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
         )
         _LOGGER.debug(
-            config_entry.runtime_data.log_formatter(
-                "setting up the speedtest coordinator with interval: %s"
-            ),
+            "setting up the speedtest coordinator with interval: %s",
             update_interval,
         )
         coordinator_name = f"{DOMAIN} speedtest{coordinator_name_suffix}"
         config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
             LinksysVelopDataUpdateCoordinatorSpeedtest(
                 hass,
-                _LOGGER,
+                _LOGGER.get_logger(),
                 coordinator_name,
                 config_entry=config_entry,
                 update_interval_secs=update_interval,
@@ -282,14 +265,14 @@ async def async_setup_entry(
 
     # region #-- setup the platforms --#
     _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("setting up platforms: %s"),
-        _PLATFORMS,
+        "setting up platforms: %s",
+        list(map(str, _PLATFORMS)),
     )
     await hass.config_entries.async_forward_entry_setups(config_entry, _PLATFORMS)
     # endregion
 
     # region #-- remove unnecessary ui devices --#
-    _LOGGER.debug(config_entry.runtime_data.log_formatter("cleaning up ui devices"))
+    _LOGGER.debug("cleaning up ui devices")
     new_data: dict[str, Any] = {**config_entry.data}
     for ui_device in new_data.get(CONF_UI_DEVICES_TO_REMOVE, []):
         remove_velop_device_from_registry(hass, ui_device)
@@ -298,9 +281,7 @@ async def async_setup_entry(
     # endregion
 
     # region #-- remove unnecessary device trackers --#
-    _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("cleaning up device trackers")
-    )
+    _LOGGER.debug("cleaning up device trackers")
     connections: set[tuple[str, str]] = set()
     mesh_device: DeviceEntry | None = get_mesh_device_for_config_entry(
         hass, config_entry
@@ -343,15 +324,13 @@ async def async_setup_entry(
     # endregion
 
     # region #-- listen for config changes --#
-    _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("listening for config changes")
-    )
+    _LOGGER.debug("listening for config changes")
     config_entry.async_on_unload(
         config_entry.add_update_listener(_async_update_listener)
     )
     # endregion
 
-    _LOGGER.debug(config_entry.runtime_data.log_formatter("exited"))
+    _LOGGER.debug("exited")
 
     return True
 
@@ -360,20 +339,18 @@ async def async_unload_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
     """Cleanup when unloading a config entry."""
-    _LOGGER.debug(config_entry.runtime_data.log_formatter("entered"))
+    _LOGGER.debug("entered")
 
     # region #-- remove services but only if there are no other instances --#
     if not hass.config_entries.async_loaded_entries(DOMAIN):
-        _LOGGER.debug(config_entry.runtime_data.log_formatter("unregistering services"))
+        _LOGGER.debug("unregistering services")
         LinksysVelopServiceHandler(hass).unregister_services()
     # endregion
 
     # region #-- clean up the platforms --#
-    _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("cleaning up platforms: %s"), _PLATFORMS
-    )
+    _LOGGER.debug("cleaning up platforms: %s", _PLATFORMS)
     ret = await hass.config_entries.async_unload_platforms(config_entry, _PLATFORMS)
     # endregion
 
-    _LOGGER.debug(config_entry.runtime_data.log_formatter("exited"))
+    _LOGGER.debug("exited")
     return ret

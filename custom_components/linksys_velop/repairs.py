@@ -20,11 +20,12 @@ from .const import (
     ISSUE_MISSING_UI_DEVICE,
 )
 from .helpers import remove_velop_device_from_registry
+from .logger import Logger
 
 # endregion
 
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 async def async_create_fix_flow(

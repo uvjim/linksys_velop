@@ -46,10 +46,11 @@ from .entities import (
     LinksysVelopSpeedtestEntity,
 )
 from .helpers import remove_velop_entity_from_registry
+from .logger import Logger
 
 # endregion
 
-_LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 @dataclass(frozen=True, kw_only=True)

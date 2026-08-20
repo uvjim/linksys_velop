@@ -37,10 +37,11 @@ from .entities import (
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
 )
+from .logger import Logger
 
 # endregion
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -139,7 +140,7 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
         if device is not None:
             if device.status.value != self._is_connected:
                 if device.status.value:
-                    _LOGGER.debug(self.log_formatter("%s: back online"), self.name)
+                    _LOGGER.debug("%s: back online", self.name)
                     self._is_connected = True
                 else:
                     if device.results_time is not None:
@@ -147,9 +148,7 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
                             # TODO: change this when pyvelop returns the results_time as int
                             self._offline_first_seen = int(device.results_time)
                             _LOGGER.debug(
-                                self.log_formatter(
-                                    "%s: waiting for consider_home period %s"
-                                ),
+                                "%s: waiting for consider_home period %s",
                                 self.name,
                                 self.coordinator.config_entry.options.get(
                                     CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
@@ -162,9 +161,7 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
                                 CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
                             ):
                                 _LOGGER.debug(
-                                    self.log_formatter(
-                                        "%s: consider_home period expired"
-                                    ),
+                                    "%s: consider_home period expired",
                                     self.name,
                                 )
                                 self._is_connected = False
@@ -172,7 +169,7 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
             else:
                 if self._offline_first_seen is not None:
                     _LOGGER.debug(
-                        self.log_formatter("%s: back online in consider_home period"),
+                        "%s: back online in consider_home period",
                         self.name,
                     )
                     self._offline_first_seen = None

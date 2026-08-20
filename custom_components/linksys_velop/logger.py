@@ -1,39 +1,59 @@
-"""Logging."""
+"""Logging wrapper."""
 
 # region #-- imports --#
 import inspect
-from typing import Protocol
+import logging
+from types import FrameType
+from typing import Any, cast
 
 # endregion
 
 
-class LinksysVelopLogFormatter(Protocol):
-    """Protocol for the log formatter."""
-
-    def __call__(
-        self, message: str, include_caller: bool = True, include_lineno: bool = False, /
-    ) -> str:  # pragma: no cover - protocol
-        ...
-
-
 class Logger:
-    """Provide functions for managing log messages."""
 
-    def __init__(self, unique_id: str = "", prefix: str = ""):
+    def __init__(self, logger: logging.Logger) -> None:
         """Initialise."""
-        self._unique_id: str = unique_id
-        self._prefix: str = prefix
 
-    def format(
-        self, message: str, include_caller: bool = True, include_lineno: bool = False
-    ) -> str:
-        """Format a log message in the correct format."""
-        caller: str = ""
-        if include_caller:
-            caller_frame: inspect.FrameInfo = inspect.stack()[1]
-            caller = caller_frame.function
-        line_no: str = f" --> line: {caller_frame.lineno}" if include_lineno else ""
-        unique_id: str = f" ({self._unique_id})" if self._unique_id else ""
-        if any([self._prefix, caller, unique_id, line_no]):
-            message = f" --> {message}"
-        return f"{self._prefix}{caller}{unique_id}{line_no}{message}"
+        self._logger: logging.Logger = logger
+
+    def __getattr__(self, name):
+        """Pass through access to logging.Logger attributes."""
+
+        return getattr(self._logger, name)
+
+    def _format(self, msg: str) -> str:
+        """Format the message using as required."""
+
+        ret: str = msg
+        caller_details: dict[str, Any] | None = None
+        frame: FrameType | None = inspect.currentframe()
+        try:
+            if frame is not None:
+                caller: FrameType | None = frame.f_back
+                if caller is not None:
+                    caller_class: Any = caller.f_locals.get("self")
+                    if caller_class == self:  # go back again in the stack
+                        caller = caller.f_back
+                    if caller is not None:
+                        caller_info: inspect.Traceback = inspect.getframeinfo(caller)
+                        caller_details = {
+                            "line_no": caller_info.lineno,
+                            "func_name": caller_info.function,
+                        }
+        finally:
+            del frame
+
+        if caller_details is not None:
+            ret = f"{caller_details.get("func_name")}:{caller_details.get("line_no")}:{msg}"
+
+        return ret
+
+    def debug(self, msg: str, *args: Any) -> None:
+        """Passthrough for the debug logger."""
+
+        self._logger.debug(self._format(msg % args))
+
+    def get_logger(self) -> logging.Logger:
+        """Return the logger that was initially passed in."""
+
+        return self._logger
