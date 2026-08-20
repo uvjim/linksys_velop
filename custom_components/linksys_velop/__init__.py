@@ -2,7 +2,6 @@
 
 # region #-- imports --#
 import contextlib
-import copy
 import logging
 import uuid
 from typing import Any
@@ -13,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.typing import ConfigType
 from pyvelop.action_registry import Actions
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import DeviceEntity
@@ -155,10 +155,28 @@ async def async_migrate_entry(
     return ret
 
 
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the integration."""
+
+    # region #-- service definition --#
+    _LOGGER.debug("registering services")
+    LinksysVelopServiceHandler(hass).register_services()
+    # endregion
+
+    return True
+
+
 async def async_setup_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
     """Create a config entry."""
+
+    # region #-- register services if they haven't been registered --#
+    # this could happen if all instances were disabled (removes the services)
+    # but then one is enabled again - async_setup doesn't run again so we'll recreate here.
+    if not hass.services.async_services_for_domain(DOMAIN):
+        LinksysVelopServiceHandler(hass).register_services()
+    # endregion
 
     all_config_entries: list[LinksysVelopConfigEntry] = (
         hass.config_entries.async_entries(domain=DOMAIN)
@@ -345,11 +363,6 @@ async def async_setup_entry(
     hass.config_entries.async_update_entry(config_entry, data=new_data)
     # endregion
 
-    # region #-- service definition --#
-    _LOGGER.debug(config_entry.runtime_data.log_formatter("registering services"))
-    LinksysVelopServiceHandler(hass).register_services()
-    # endregion
-
     # region #-- listen for config changes --#
     _LOGGER.debug(
         config_entry.runtime_data.log_formatter("listening for config changes")
@@ -371,11 +384,7 @@ async def async_unload_entry(
     _LOGGER.debug(config_entry.runtime_data.log_formatter("entered"))
 
     # region #-- remove services but only if there are no other instances --#
-    all_config_entries = hass.config_entries.async_entries(domain=DOMAIN)
-    _LOGGER.debug(
-        config_entry.runtime_data.log_formatter("%i instances"), len(all_config_entries)
-    )
-    if len(all_config_entries) == 1:
+    if not hass.config_entries.async_loaded_entries(DOMAIN):
         _LOGGER.debug(config_entry.runtime_data.log_formatter("unregistering services"))
         LinksysVelopServiceHandler(hass).unregister_services()
     # endregion
