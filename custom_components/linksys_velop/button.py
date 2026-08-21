@@ -3,6 +3,7 @@
 # region #-- imports --#
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, cast, override
@@ -62,12 +63,14 @@ class LinksysVelopButtonEntityDescription(
     press_fn: Callable[..., Awaitable[None]] | str
 
 
-async def _wait_for_mesh(config_entry: LinksysVelopConfigEntry) -> None:
+async def _wait_for_mesh(mesh: Mesh, wait_for_mins: float = 5.0) -> None:
     """Wait for the mesh to become available."""
 
-    while True:
+    deadline: float = time.monotonic() + (wait_for_mins * 60)
+
+    while time.monotonic() < deadline:
         await asyncio.sleep(10)
-        available: str | None = await config_entry.runtime_data.mesh.async_ping()
+        available: str | None = await mesh.async_ping()
         if available == "pong":
             break
 
@@ -91,8 +94,11 @@ async def async_restart_primary_node(config_entry: LinksysVelopConfigEntry) -> N
     # reboot
     await config_entry.runtime_data.mesh.async_reboot_mesh()
 
-    # wait for reboot to complete
-    await _wait_for_mesh(config_entry)
+    # wait for reboot to complete.
+    # If the mesh doesn't reboot within the given timeframe then there
+    # will likely be timeout warnings raised in the system log.
+    # Don't want to wait infinitely though because that could cause issues.
+    await _wait_for_mesh(config_entry.runtime_data.mesh)
 
     # region #-- flag reboot complete and send event --#
     config_entry.runtime_data.mesh_is_rebooting = False
