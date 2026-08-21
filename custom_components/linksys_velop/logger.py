@@ -4,12 +4,13 @@
 import inspect
 import logging
 from types import FrameType
-from typing import Any, cast
+from typing import Any
 
 # endregion
 
 
 class Logger:
+    """Wrapper for logging.Logger class."""
 
     def __init__(self, logger: logging.Logger) -> None:
         """Initialise."""
