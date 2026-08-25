@@ -15,14 +15,6 @@ class DataCoordinatorFormattedData:
     connected_node: str
 
 
-@dataclass
-class ChannelScanInfo(DataCoordinatorFormattedData):
-    """Representation of Channel Scan information."""
-
-    is_running: bool
-    selected_channels: dict[str, list[dict[str, int | str]]] | None = None
-
-
 class IntensiveTask(StrEnum):
     """Representation of tasks that could cause a delay in response from the Mesh."""
 
@@ -61,7 +53,6 @@ CONF_UI_DEVICES: str = "ui_devices"
 DEF_ALLOW_MESH_REBOOT: bool = False
 DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT: int = 60
 DEF_API_REQUEST_TIMEOUT: int = 15
-DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS: float = 40
 DEF_CONSIDER_HOME: int = 180
 DEF_EVENTS_OPTIONS: list[str] = [event.value for event in EventSubTypes]
 DEF_EVENTS_WAIT_IP: bool = False

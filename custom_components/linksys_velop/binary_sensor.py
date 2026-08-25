@@ -222,7 +222,6 @@ async def async_setup_entry(
             unique_id=config_entry.entry_id
         )
         mesh_entities: list[LinksysVelopBinarySensorEntityDescription] = []
-        channelscan_entities: list[LinksysVelopBinarySensorEntityDescription] = []
         speedtest_entities: list[LinksysVelopBinarySensorEntityDescription] = []
 
         if Actions.GET_ALG_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
