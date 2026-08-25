@@ -164,7 +164,7 @@ class LinksysVelopMultiUseEntity(
                         (adi for adi in node_info.adapter_info if adi.primary),
                         None,
                     )
-                    if adapter_main is not None:
+                    if adapter_main is not None and adapter_main.ip is not None:
                         self._attr_device_info["configuration_url"] = (
                             f"http://{adapter_main.ip}/ca"
                         )
