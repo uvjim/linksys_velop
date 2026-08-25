@@ -35,7 +35,7 @@ from pyvelop.exceptions import (
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh, SpeedtestResult, SpeedtestStatus
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -45,7 +45,6 @@ from .const import (
     CONF_UI_DEVICES,
     CONF_UI_PLACEHOLDER_DEVICE_ID,
     DEF_API_REQUEST_TIMEOUT,
-    DEF_CHANNEL_SCAN_PROGRESS_INTERVAL_SECS,
     DEF_EVENTS_OPTIONS,
     DEF_EVENTS_WAIT_IP,
     DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS,
@@ -460,26 +459,34 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     for attr in attr_to_check:
                         if attr == "ip":
                             # region #-- update the configuration_url --#
+                            cur_ip: str | None = None
+                            prev_ip: str | None = None
                             if cur_node.type == NodeType.SECONDARY:
-                                cur_ip: str | None = next(
-                                    filter(
-                                        lambda adi: adi.primary,
-                                        cur_node.adapter_info,
+                                cur_adi: NodeAdapterInfo | None = next(
+                                    (
+                                        adi
+                                        for adi in cur_node.adapter_info
+                                        if adi.primary
                                     ),
-                                ).ip
+                                    None,
+                                )
+                                if cur_adi is not None:
+                                    cur_ip = cur_adi.ip
 
-                                prev_ip: str | None = next(
-                                    filter(
-                                        lambda adi: adi.primary,
-                                        prev_node.adapter_info,
+                                prev_adi: NodeAdapterInfo | None = next(
+                                    (
+                                        adi
+                                        for adi in prev_node.adapter_info
+                                        if adi.primary
                                     ),
-                                ).ip
+                                    None,
+                                )
+                                if prev_adi is not None:
+                                    prev_ip = prev_adi.ip
 
-                                if cur_ip != prev_ip:
+                                if cur_ip is not None and cur_ip != prev_ip:
                                     attr_to_update["configuration_url"] = (
                                         f"http://{cur_ip}/ca"
-                                        if cur_ip is not None
-                                        else None
                                     )
                             # endregion
                         elif attr == "name":
