@@ -51,7 +51,6 @@ from .const import (
     DOMAIN,
     ISSUE_MISSING_DEVICE_TRACKER,
     ISSUE_MISSING_UI_DEVICE,
-    ChannelScanInfo,
     DataCoordinatorFormattedData,
     EventSubTypes,
     IntensiveTask,
