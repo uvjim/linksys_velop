@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import logging
 import uuid
+from collections.abc import Callable, Mapping, Sequence
 from enum import StrEnum, auto
 from typing import Any
 
@@ -68,6 +69,7 @@ from .helpers import async_get_integration_version
 from .logger import Logger
 
 # endregion
+_LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 class Steps(StrEnum):
@@ -87,7 +89,351 @@ class Steps(StrEnum):
     USER = auto()
 
 
-_LOGGER: Logger = Logger(logging.getLogger(__name__))
+def _get_input_default(
+    user_input: Mapping[str, Any],
+    key: str,
+    default: Any,
+) -> Any:
+    """Return a value from user input, or a default if it is absent.
+
+    :param user_input: Previously submitted config-flow input.
+    :param key: Key to retrieve from the input.
+    :param default: Value to return when the key is absent.
+    :returns: The submitted value or the default value.
+    """
+    return user_input.get(key, default)
+
+
+def _build_schema_multi_select(
+    *,
+    contents: Mapping[str, str] | Sequence[str],
+    translation_key: str | None = None,
+) -> selector.SelectSelector:
+    """Build a multiple-selection dropdown selector.
+
+    :param contents: Mapping of option values to display labels.
+    :returns: A configured multiple-selection selector.
+    """
+
+    available_options: Sequence[selector.SelectOptionDict] | Sequence[str] | None = None
+    if isinstance(contents, Mapping):
+        available_options = [
+            {"label": label, "value": value} for value, label in contents.items()
+        ]
+    else:
+        available_options = contents
+
+    config = {
+        "mode": selector.SelectSelectorMode.DROPDOWN,
+        "multiple": True,
+        "options": available_options,
+    }
+    if translation_key is not None:
+        config["translation_key"] = translation_key
+
+    return selector.SelectSelector(config=selector.SelectSelectorConfig(**config))
+
+
+def _build_schema_step_device_trackers(
+    user_input: Mapping[str, Any],
+    *,
+    multi_select_contents: Mapping[str, str],
+    **_: Any,
+) -> vol.Schema:
+    """Build the device-tracker selection schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :param multi_select_contents: Available tracker values and labels.
+    :returns: The schema for the device-trackers step.
+    """
+    selected_trackers = [
+        tracker
+        for tracker in _get_input_default(user_input, CONF_DEVICE_TRACKERS, [])
+        if tracker in multi_select_contents
+    ]
+
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_DEVICE_TRACKERS,
+                default=selected_trackers,
+            ): _build_schema_multi_select(
+                contents=multi_select_contents,
+            )
+        }
+    )
+
+
+def _build_schema_step_entity_options(
+    user_input: Mapping[str, Any],
+    **_: Any,
+) -> vol.Schema:
+    """Build the initial entity options schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :returns: The schema for the entity options step.
+    """
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_NODE_IMAGES,
+                default=_get_input_default(user_input, CONF_NODE_IMAGES, ""),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_SELECT_TEMP_UI_DEVICE,
+                default=_get_input_default(
+                    user_input, CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
+                ),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_ALLOW_MESH_REBOOT,
+                default=_get_input_default(
+                    user_input, CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
+                ),
+            ): selector.BooleanSelector(),
+        }
+    )
+
+
+def _build_schema_step_events(
+    user_input: Mapping[str, Any],
+    *,
+    multi_select_contents: Mapping[str, str],
+    **_: Any,
+) -> vol.Schema:
+    """Build the event selection schema.
+
+    :param user_input: Previously submitted config flow input.
+    :param multi_select_contents: Available events values and labels.
+    :returns: The schema for the UI device step.
+    """
+
+    selected_events = [
+        event
+        for event in _get_input_default(
+            user_input, CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+        )
+        if event in multi_select_contents
+    ]
+
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_EVENTS_OPTIONS,
+                default=selected_events,
+            ): _build_schema_multi_select(
+                contents=multi_select_contents,
+                translation_key=CONF_EVENTS_OPTIONS,
+            ),
+            vol.Required(
+                CONF_EVENTS_WAIT_IP,
+                default=user_input.get(CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP),
+            ): selector.BooleanSelector(),
+        }
+    )
+
+
+def _build_schema_step_logging(
+    user_input: Mapping[str, Any],
+    **_: Any,
+) -> vol.Schema:
+    """Build the initial logging schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :returns: The schema for the user step.
+    """
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_REDACT_OPTIONS,
+                default=_get_input_default(
+                    user_input,
+                    CONF_REDACT_OPTIONS,
+                    {action.key: [] for action in Actions.values()},
+                ),
+            ): selector.ObjectSelector(config=selector.ObjectSelectorConfig())
+        }
+    )
+
+
+def _build_schema_step_reauth_confirm(
+    user_input: Mapping[str, Any],
+    **_: Any,
+) -> vol.Schema:
+    """Build the initial reauth confirmation schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :returns: The schema for the user step.
+    """
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_PASSWORD,
+                default=_get_input_default(user_input, CONF_PASSWORD, ""),
+            ): selector.TextSelector(
+                config=selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.PASSWORD
+                )
+            ),
+        }
+    )
+
+
+def _build_schema_step_timers(
+    user_input: Mapping[str, Any],
+    **_: Any,
+) -> vol.Schema:
+    """Build the initial timers schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :returns: The schema for the user step.
+    """
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SCAN_INTERVAL,
+                default=_get_input_default(
+                    user_input, CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
+                ),
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                default=_get_input_default(
+                    user_input,
+                    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
+                    DEF_SCAN_INTERVAL_DEVICE_TRACKER,
+                ),
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_CONSIDER_HOME,
+                default=_get_input_default(
+                    user_input, CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
+                ),
+            ): selector.NumberSelector(
+                config=selector.NumberSelectorConfig(
+                    min=0,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(
+                CONF_API_REQUEST_TIMEOUT,
+                default=_get_input_default(
+                    user_input, CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                ),
+            ): cv.positive_float,
+        }
+    )
+
+
+def _build_schema_step_ui_devices(
+    user_input: Mapping[str, Any],
+    *,
+    multi_select_contents: Mapping[str, str],
+    **_: Any,
+) -> vol.Schema:
+    """Build the UI device selection schema.
+
+    :param user_input: Previously submitted config flow input.
+    :param multi_select_contents: Available UI device values and labels.
+    :returns: The schema for the UI device step.
+    """
+
+    selected_devices = [
+        device
+        for device in _get_input_default(user_input, CONF_UI_DEVICES, [])
+        if device in multi_select_contents
+    ]
+
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_UI_DEVICES,
+                default=selected_devices,
+            ): _build_schema_multi_select(
+                contents=multi_select_contents,
+            )
+        }
+    )
+
+
+def _build_schema_step_user(
+    user_input: Mapping[str, Any],
+    **_: Any,
+) -> vol.Schema:
+    """Build the initial user schema.
+
+    :param user_input: Previously submitted config-flow input.
+    :returns: The schema for the user step.
+    """
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_NODE,
+                default=_get_input_default(user_input, CONF_NODE, ""),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_PASSWORD,
+                default=_get_input_default(user_input, CONF_PASSWORD, ""),
+            ): selector.TextSelector(
+                config=selector.TextSelectorConfig(
+                    type=selector.TextSelectorType.PASSWORD,
+                )
+            ),
+        }
+    )
+
+
+def _build_schema_step(
+    step: Steps,
+    user_input: Mapping[str, Any],
+    *,
+    multi_select_contents: Mapping[str, str] | Sequence[str] | None = None,
+) -> vol.Schema:
+    """Build the schema for a config-flow step.
+
+    The schema uses values from ``user_input`` as defaults and applies
+    step-specific selectors and validation rules.
+
+    :param step: Config-flow step for which to build the schema.
+    :param user_input: Previously submitted input used to populate defaults.
+    :param multi_select_contents: Available options for multi-select steps.
+    :returns: A voluptuous schema suitable for ``async_show_form``.
+    :raises ValueError: If no schema builder exists for ``step``.
+    """
+    try:
+        builder = _SCHEMA_BUILDERS[step]
+    except KeyError as err:
+        raise ValueError(f"Unsupported config-flow step: {step}") from err
+
+    return builder(
+        user_input,
+        multi_select_contents=multi_select_contents or {},
+    )
+
+
+_SCHEMA_BUILDERS: dict[
+    Steps,
+    Callable[..., vol.Schema],
+] = {
+    Steps.DEVICE_TRACKERS: _build_schema_step_device_trackers,
+    Steps.ENTITY_OPTIONS: _build_schema_step_entity_options,
+    Steps.EVENTS: _build_schema_step_events,
+    Steps.LOGGING: _build_schema_step_logging,
+    Steps.REAUTH_CONFIRM: _build_schema_step_reauth_confirm,
+    Steps.TIMERS: _build_schema_step_timers,
+    Steps.UI_DEVICE: _build_schema_step_ui_devices,
+    Steps.USER: _build_schema_step_user,
+}
 
 
 def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry | None:
@@ -109,186 +455,6 @@ def _redact_for_display(data: dict[str, Any]) -> dict:
 
     to_redact: set[str] = {"password"}
     return async_redact_data(data, to_redact)
-
-
-async def _async_build_schema_with_user_input(
-    step: str, user_input: dict, **kwargs
-) -> vol.Schema:
-    """Build the input and validation schema for the config UI.
-
-    :param step: the step we're in for a configuration or installation of the integration
-    :param user_input: the data that should be used as defaults
-    :param kwargs: additional information that might be required
-    :return: the schema including necessary restrictions, defaults, pre-selections etc.
-    """
-    schema: vol.Schema = vol.Schema({})
-    if step == Steps.ENTITY_OPTIONS:
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_NODE_IMAGES,
-                    default=user_input.get(CONF_NODE_IMAGES, ""),
-                ): selector.TextSelector(),
-                vol.Required(
-                    CONF_SELECT_TEMP_UI_DEVICE,
-                    default=user_input.get(
-                        CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
-                    ),
-                ): selector.BooleanSelector(),
-                vol.Required(
-                    CONF_ALLOW_MESH_REBOOT,
-                    default=user_input.get(
-                        CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
-                    ),
-                ): selector.BooleanSelector(),
-            }
-        )
-    elif step == Steps.DEVICE_TRACKERS:
-        valid_trackers = [
-            tracker
-            for tracker in user_input.get(CONF_DEVICE_TRACKERS, [])
-            if tracker in kwargs["multi_select_contents"]
-        ]
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_DEVICE_TRACKERS, default=valid_trackers
-                ): selector.SelectSelector(
-                    config=selector.SelectSelectorConfig(
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        multiple=True,
-                        options=[
-                            {"label": label, "value": value}
-                            for value, label in kwargs["multi_select_contents"].items()
-                        ],
-                    )
-                )
-            }
-        )
-    elif step == Steps.EVENTS:
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_EVENTS_OPTIONS,
-                    default=user_input.get(CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS),
-                ): selector.SelectSelector(
-                    config=selector.SelectSelectorConfig(
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        multiple=True,
-                        options=DEF_EVENTS_OPTIONS,
-                        translation_key=CONF_EVENTS_OPTIONS,
-                    )
-                ),
-                vol.Required(
-                    CONF_EVENTS_WAIT_IP,
-                    default=user_input.get(CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP),
-                ): selector.BooleanSelector(),
-            }
-        )
-    elif step == Steps.LOGGING:
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_REDACT_OPTIONS,
-                    default=user_input.get(
-                        CONF_REDACT_OPTIONS,
-                        {action.key: [] for action in Actions.values()},
-                    ),
-                ): selector.ObjectSelector(config=selector.ObjectSelectorConfig())
-            }
-        )
-    elif step == Steps.REAUTH_CONFIRM:
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                ): selector.TextSelector(
-                    config=selector.TextSelectorConfig(
-                        type=selector.TextSelectorType.PASSWORD
-                    )
-                ),
-            }
-        )
-    elif step == Steps.TIMERS:
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=user_input.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-                    default=user_input.get(
-                        CONF_SCAN_INTERVAL_DEVICE_TRACKER,
-                        DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-                    ),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_CONSIDER_HOME,
-                    default=user_input.get(CONF_CONSIDER_HOME, DEF_CONSIDER_HOME),
-                ): selector.NumberSelector(
-                    config=selector.NumberSelectorConfig(
-                        min=0,
-                        mode=selector.NumberSelectorMode.BOX,
-                    )
-                ),
-                vol.Required(
-                    CONF_API_REQUEST_TIMEOUT,
-                    default=user_input.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    ),
-                ): cv.positive_float,
-            }
-        )
-    elif step == Steps.UI_DEVICE:
-        valid_devices = [
-            device
-            for device in user_input.get(CONF_UI_DEVICES, [])
-            if device in kwargs["multi_select_contents"]
-        ]
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_UI_DEVICES, default=valid_devices
-                ): selector.SelectSelector(
-                    config=selector.SelectSelectorConfig(
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        multiple=True,
-                        options=[
-                            {"label": label, "value": value}
-                            for value, label in kwargs["multi_select_contents"].items()
-                        ],
-                    )
-                )
-            }
-        )
-    elif step == Steps.USER:
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_NODE, default=user_input.get(CONF_NODE, "")
-                ): selector.TextSelector(),
-                vol.Required(
-                    CONF_PASSWORD, default=user_input.get(CONF_PASSWORD, "")
-                ): selector.TextSelector(
-                    config=selector.TextSelectorConfig(
-                        type=selector.TextSelectorType.PASSWORD
-                    )
-                ),
-            }
-        )
-
-    return schema
 
 
 async def _async_get_devices(mesh: Mesh) -> dict[str, str]:
@@ -407,7 +573,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
-            data_schema=await _async_build_schema_with_user_input(
+            data_schema=_build_schema_step(
                 Steps.DEVICE_TRACKERS, self._options, multi_select_contents=devices
             ),
             errors=self._errors,
@@ -509,7 +675,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.REAUTH_CONFIRM,
-            data_schema=await _async_build_schema_with_user_input(
+            data_schema=_build_schema_step(
                 Steps.REAUTH_CONFIRM,
                 (
                     dict(self.reauth_entry.options)
@@ -620,9 +786,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.TIMERS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.TIMERS, self._options
-            ),
+            data_schema=_build_schema_step(Steps.TIMERS, self._options),
             errors=self._errors,
             last_step=False,
         )
@@ -681,9 +845,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.USER,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.USER, self._options
-            ),
+            data_schema=_build_schema_step(Steps.USER, self._options),
             errors=self._errors,
             last_step=False,
         )
@@ -725,7 +887,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
-            data_schema=await _async_build_schema_with_user_input(
+            data_schema=_build_schema_step(
                 Steps.DEVICE_TRACKERS,
                 self._options,
                 multi_select_contents=self._devices,
@@ -756,9 +918,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.ENTITY_OPTIONS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.ENTITY_OPTIONS, self._options
-            ),
+            data_schema=_build_schema_step(Steps.ENTITY_OPTIONS, self._options),
             errors=self._errors,
             last_step=False,
         )
@@ -775,8 +935,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.EVENTS, self._options
+            data_schema=_build_schema_step(
+                Steps.EVENTS, self._options, multi_select_contents=DEF_EVENTS_OPTIONS
             ),
             errors=self._errors,
             last_step=False,
@@ -871,9 +1031,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.LOGGING,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.LOGGING, self._options
-            ),
+            data_schema=_build_schema_step(Steps.LOGGING, self._options),
             errors=self._errors,
             last_step=True,
         )
@@ -897,9 +1055,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.TIMERS,
-            data_schema=await _async_build_schema_with_user_input(
-                Steps.TIMERS, self._options
-            ),
+            data_schema=_build_schema_step(Steps.TIMERS, self._options),
             errors=self._errors,
             last_step=False,
         )
@@ -929,7 +1085,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id=Steps.UI_DEVICE,
-            data_schema=await _async_build_schema_with_user_input(
+            data_schema=_build_schema_step(
                 Steps.UI_DEVICE, self._options, multi_select_contents=self._devices
             ),
             errors=self._errors,
