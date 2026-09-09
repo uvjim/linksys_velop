@@ -1,5 +1,7 @@
 """Update Coordinators."""
 
+from __future__ import annotations
+
 # region #-- imports --#
 import asyncio
 import copy
@@ -17,8 +19,6 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
-    ConfigEntryError,
-    ConfigEntryNotReady,
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -678,43 +678,6 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         return self.config_entry.runtime_data.mesh
 
-    async def _async_setup(self) -> None:
-        """Set up the coordinator."""
-
-        # region #-- carry out relevant checks --#
-        # test the credentials for the mesh.
-        # raise the appropriate error depending on what happens.
-        # if all is well there's no need to do anything.
-        try:
-            valid_auth: bool = (
-                await self.config_entry.runtime_data.mesh.async_test_credentials()
-            )
-            if not valid_auth:
-                raise ConfigEntryAuthFailed(
-                    translation_domain=DOMAIN,
-                    translation_key="failed_login",
-                )
-
-            await self.config_entry.runtime_data.mesh.async_initialise()
-        except MeshTimeoutError as exc:
-            raise ConfigEntryNotReady(
-                translation_domain=DOMAIN,
-                translation_key="init_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": str(self.config_entry.runtime_data.mesh.timeout),
-                },
-            ) from exc
-        except MeshConnectionError as exc:
-            raise ConfigEntryError(
-                translation_domain=DOMAIN,
-                translation_key="init_connection_error",
-                translation_placeholders={
-                    "exc_msg": str(exc),
-                    "primary_ip": self.config_entry.runtime_data.mesh.connected_node,
-                },
-            ) from exc
-        # endregion
-
     async def _async_update_data(self) -> dict[str, Any]:
         """Refresh the mesh data."""
 
@@ -855,9 +818,7 @@ class LinksysVelopDataUpdateCoordinatorSpeedtest(UpdateCoordinatorChangeableInte
             _LOGGER.debug("retrieving data for the Speedtest coordinator")
 
             if self.update_interval == self.progress_update_interval:
-                _result = (
-                    await self.config_entry.runtime_data.mesh.async_get_speedtest_state()
-                )
+                _result = await self.config_entry.runtime_data.mesh.async_get_speedtest_state()
             else:
                 _result = await self.config_entry.runtime_data.mesh.async_get_speedtest_results(
                     only_latest=True,

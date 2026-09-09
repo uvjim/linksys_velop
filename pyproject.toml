@@ -1,5 +1,10 @@
 # The contents of this file is based on https://github.com/home-assistant/core/blob/dev/pyproject.toml
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
 [tool.ruff.lint]
 ignore = [
     "D202", # No blank lines allowed after function docstring
