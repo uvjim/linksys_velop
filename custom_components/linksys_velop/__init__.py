@@ -14,13 +14,12 @@ from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.typing import ConfigType
 from pyvelop.action_registry import Actions
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity
+from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
     CONF_DEVICE_TRACKERS,
     CONF_DEVICE_TRACKERS_TO_REMOVE,
-    CONF_EVENTS_OPTIONS,
     CONF_NODE,
     CONF_REDACT_OPTIONS,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
@@ -28,10 +27,8 @@ from .const import (
     CONF_UI_DEVICES_TO_REMOVE,
     CONF_UI_PLACEHOLDER_DEVICE_ID,
     DEF_API_REQUEST_TIMEOUT,
-    DEF_EVENTS_OPTIONS,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
-    DEF_SELECT_TEMP_UI_DEVICE,
     DOMAIN,
 )
 from .coordinator import (
@@ -64,14 +61,6 @@ _PLATFORMS: tuple[Platform, ...] = (
     Platform.TEXT,
     Platform.UPDATE,
 )
-
-
-async def _async_update_listener(
-    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
-) -> None:
-    """Reload the config entry."""
-
-    hass.config_entries.async_schedule_reload(config_entry.entry_id)
 
 
 async def async_remove_config_entry_device(
@@ -297,15 +286,21 @@ async def async_setup_entry(
         )
         # endregion
         # region #-- remove connection from the mesh device --#
-        device: list[DeviceEntity]
-        if device := [
-            d for d in config_entry.runtime_data.mesh.devices if d.unique_id == tracker
-        ]:
-            if adapter := list(device[0].adapter_info):
+        device: DeviceEntity | None = next(
+            (
+                d
+                for d in config_entry.runtime_data.mesh.devices
+                if d.unique_id == tracker
+            ),
+            None,
+        )
+        if device is not None:
+            adi: AdapterInfo | None = next(iter(device.adapter_info), None)
+            if adi is not None:
                 connections.discard(
                     (
                         dr.CONNECTION_NETWORK_MAC,
-                        dr.format_mac(adapter[0].mac),
+                        dr.format_mac(adi.mac),
                     )
                 )
         # endregion
@@ -321,13 +316,6 @@ async def async_setup_entry(
         new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = []
 
     hass.config_entries.async_update_entry(config_entry, data=new_data)
-    # endregion
-
-    # region #-- listen for config changes --#
-    _LOGGER.debug("listening for config changes")
-    config_entry.async_on_unload(
-        config_entry.add_update_listener(_async_update_listener)
-    )
     # endregion
 
     _LOGGER.debug("exited")
