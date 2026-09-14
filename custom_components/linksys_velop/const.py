@@ -65,6 +65,8 @@ DEF_SPEEDTEST_PROGRESS_INTERVAL_SECS: float = 1
 ISSUE_MISSING_DEVICE_TRACKER: str = "missing_device_tracker"
 ISSUE_MISSING_UI_DEVICE: str = "missing_ui_device"
 
+MIN_HA_VERSION: str = "2026.1.0"
+
 try:
     PYVELOP_NAME: str = "pyvelop"
     PYVELOP_AUTHOR: str = distribution(PYVELOP_NAME).metadata.get("Author", "")

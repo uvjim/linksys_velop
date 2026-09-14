@@ -5,8 +5,10 @@ import logging
 import uuid
 from typing import Any
 
+from awesomeversion.awesomeversion import AwesomeVersion
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, Platform
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -30,6 +32,7 @@ from .const import (
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DOMAIN,
+    MIN_HA_VERSION,
 )
 from .coordinator import (
     CoordinatorTypes,
@@ -148,6 +151,15 @@ async def async_migrate_entry(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the integration."""
+
+    if AwesomeVersion(HA_VERSION) < AwesomeVersion(MIN_HA_VERSION):  # pragma: no cover
+        msg = (
+            "This integration requires at least Home Assistant version "
+            f"{MIN_HA_VERSION}, you are running version {HA_VERSION}. "
+            "Please upgrade Home Assistant to continue using this integration."
+        )
+        _LOGGER.critical(msg)
+        return False
 
     # region #-- service definition --#
     _LOGGER.debug("registering services")
