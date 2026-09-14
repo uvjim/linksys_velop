@@ -10,7 +10,7 @@
         },
         "error": {
             "connection_error": "Connection error.",
-            "general": "An error occurred.",
+            "general": "An error occurred. {exc_msg}",
             "invalid_input": "Invalid action in request.",
             "login_error": "Unable to login. Please check the username and password.",
             "login_bad_response": "Bad response on login. Check that the primary node is correct.",

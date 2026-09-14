@@ -8,6 +8,7 @@ import contextlib
 import logging
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Any
 
@@ -24,15 +25,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from pyvelop.action_registry import Actions
 from pyvelop.exceptions import (
-    MeshBadResponse,
     MeshConnectionError,
-    MeshException,
-    MeshInvalidInput,
+    MeshInvalidCredentials,
     MeshNodeNotPrimary,
-    MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
+from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from . import LinksysVelopConfigEntry
 from .const import (
@@ -70,6 +68,55 @@ from .logger import Logger
 
 # endregion
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
+
+
+@dataclass
+class ErrorDetails:
+    """Representation of error details to be shown to the user.
+
+    Consists of error and description placeholder objects.
+    """
+
+    error: dict[str, str] = field(default_factory=dict, init=False)
+    placeholders: dict[str, str] = field(default_factory=dict, init=False)
+
+    def clear(self) -> None:
+        """Clear the error and placeholder objects."""
+
+        self.error = {}
+        self.placeholders = {}
+
+    def has_error(self) -> bool:
+        """Determine if there is an error stored.
+
+        This doesn't check whether there are any placeholders set - there is no
+        requirement to do so.
+
+        :returns: `True` if there is an error; `False` otherwise.
+        """
+        return len(self.error) != 0
+
+    def set_error(
+        self,
+        key: str,
+        field_name: str | None = None,
+        msg_placeholders: Mapping[str, str] | None = None,
+    ) -> None:
+        """Set an error.
+
+        Specify an optional field name that the error belongs to. If not specified `base` is used
+        making it a generic error for display, i.e. it isn't tied to a field.
+
+        :param key: Translation key for the error to be displayed.
+        :param field_name: Optional field name that the error belongs to.
+        :param msg_placeholders: Optional mapping for when the message provided by `key` has placeholders to
+        be populated.
+        """
+
+        fname: str = field_name if field_name is not None else "base"
+        self.error = {fname: key}
+        if msg_placeholders is not None:
+            self.placeholders = dict(msg_placeholders)
 
 
 class Steps(StrEnum):
@@ -450,7 +497,7 @@ def _is_mesh_by_host(hass: HomeAssistant, host: str) -> LinksysVelopConfigEntry 
     return None
 
 
-def _redact_for_display(data: dict[str, Any]) -> dict:
+def _redact_for_display(data: Mapping[str, Any]) -> dict:
     """Redact information for display purposes."""
 
     to_redact: set[str] = {"password"}
@@ -481,15 +528,14 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
 
     reauth_entry: LinksysVelopConfigEntry | None = None
-    task_login: asyncio.Task | None = None
-    task_gather: asyncio.Task | None = None
-    _mesh: Mesh
 
     def __init__(self):
         """Initialise."""
-        self._errors: dict = {}
-        self._finish: bool = False
-        self._options: dict = {}
+        self._error_details: ErrorDetails = ErrorDetails()
+        self._mesh: Mesh | None = None
+        self._options: dict[str, Any] = {}
+        self.task_gather: asyncio.Task[None] | None = None
+        self.task_login: asyncio.Task[Mesh] | None = None
 
     @staticmethod
     @callback
@@ -497,86 +543,79 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: LinksysVelopConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
-        return LinksysOptionsFlowHandler(config_entry=config_entry)
-
-    def _set_error(self, exc: Exception | MeshException) -> None:
-        """Set the error for the flow based on the exception received."""
-        if isinstance(exc, MeshConnectionError):
-            _LOGGER.debug("connection error")
-            self._errors["base"] = "connection_error"
-        elif isinstance(exc, MeshBadResponse):
-            _LOGGER.debug("bad response")
-            self._errors["base"] = "login_bad_response"
-        elif isinstance(exc, MeshInvalidInput):
-            _LOGGER.debug("invalid input")
-            _LOGGER.warning("%s", exc)
-            self._errors["base"] = "invalid_input"
-        elif isinstance(exc, MeshNodeNotPrimary):
-            _LOGGER.debug("not primary")
-            self._errors["base"] = "node_not_primary"
-        elif isinstance(exc, MeshTimeoutError):
-            _LOGGER.debug("timeout")
-            self._errors["base"] = "node_timeout"
-        else:
-            _LOGGER.debug(f"{type(exc)} - {exc}")
-            self._errors["base"] = "general"
+        return LinksysOptionsFlowHandler()
 
     async def _async_task_gather_details(self) -> None:
         """Gather the details about the Mesh."""
-        _LOGGER.debug("entered")
-        try:
-            await self._mesh.async_initialise()
-        except MeshException as exc:
-            self._set_error(exc)
-        except Exception as exc:
-            self._set_error(exc)
-        else:
-            _LOGGER.debug("no exceptions")
 
-        _LOGGER.debug("exited")
+        if self._mesh is None:
+            raise ValueError("Mesh has not been set")
 
-    async def _async_task_login(self, details) -> None:
-        """Test the credentials for the Mesh."""
-        _LOGGER.debug("entered, details: %s", _redact_for_display(details))
+        await self._mesh.async_initialise()
+        nodes: tuple[NodeEntity, ...] = self._mesh.nodes
+        primary_node: NodeEntity | None = next(
+            (node for node in nodes if node.type == NodeType.PRIMARY), None
+        )
+        if primary_node is None:
+            raise ValueError("Primary node not found")
 
-        _mesh = Mesh(**details, session=async_get_clientsession(hass=self.hass))
-        try:
-            _LOGGER.debug("testing credentials")
-            valid: bool = await _mesh.async_test_credentials()
-            _LOGGER.debug("credentials tested")
-            if not valid:
-                _LOGGER.debug("credentials are not valid")
-                self._errors["base"] = "login_error"
-            else:
-                _LOGGER.debug("credentials are valid")
-                self._mesh = _mesh
-        except MeshException as exc:
-            self._set_error(exc)
-        except Exception as exc:
-            self._set_error(exc)
-        else:
-            _LOGGER.debug("no exceptions")
+        adapter: NodeAdapterInfo | None = next(
+            (adi for adi in primary_node.adapter_info.value if adi.primary), None
+        )
+        if adapter is None:
+            raise ValueError("Primary node adapter not found")
 
-        _LOGGER.debug("exited")
+        if adapter.ip != self._options.get(CONF_NODE):
+            raise MeshNodeNotPrimary()
+
+    async def _async_task_login(self, details: Mapping[str, Any]) -> Mesh:
+        """Test the credentials for the Mesh.
+
+        :param details: basic information for connecting to the mesh.
+        :return: a `Mesh` object that can be used for retrieving details.
+        """
+
+        mesh = Mesh(**details, session=async_get_clientsession(self.hass))
+        valid: bool = await mesh.async_test_credentials()
+        if not valid:
+            raise MeshInvalidCredentials()
+
+        return mesh
 
     async def async_step_device_trackers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Allow the user to select the device trackers for presence detection."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Allow the user to select the device trackers for presence detection.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
+
+        devices: dict[str, str] = {}
+
         if user_input is not None:
-            self._errors = {}
             self._options.update(user_input)
             return await self.async_step_finish()
 
-        devices: dict = await _async_get_devices(mesh=self._mesh)
+        if self._mesh is not None:
+            devices = await _async_get_devices(self._mesh)
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
             data_schema=_build_schema_step(
                 Steps.DEVICE_TRACKERS, self._options, multi_select_contents=devices
             ),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
@@ -590,44 +629,63 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=_title, data={}, options=self._options)
 
     async def async_step_gather_details(
-        self, user_input: dict[str, Any] | None = None
+        self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Initiate gathering Mesh details."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Initiate gathering Mesh details.
+
+        This step is only used to provide progress and to allow moving back
+        to the user step should an error occur.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if self.task_gather is None:
-            _LOGGER.debug("creating task for gathering details")
             self.task_gather = self.hass.async_create_task(
                 self._async_task_gather_details()
             )
 
-        if self.task_gather.done():
-            _LOGGER.debug("_errors: %s", self._errors)
-            next_step: str = Steps.TIMERS
-            if self._errors:
-                next_step = Steps.USER
+        if self.task_gather is not None and not self.task_gather.done():
+            return self.async_show_progress(
+                step_id=Steps.GATHER_DETAILS,
+                progress_action="task_gather_details",
+                progress_task=self.task_gather,
+            )
 
-            _LOGGER.debug("next step: %s", next_step)
-            return self.async_show_progress_done(next_step_id=next_step)
+        try:
+            self.task_gather.result()
+        except MeshNodeNotPrimary:
+            self._error_details.set_error("node_not_primary", CONF_NODE)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.error("%s", exc)
+            self._error_details.set_error(
+                "general", msg_placeholders={"exc_msg": str(exc)}
+            )
+        else:
+            self.task_gather = None
+            return self.async_show_progress_done(next_step_id=Steps.TIMERS)
 
-        return self.async_show_progress(
-            step_id=Steps.GATHER_DETAILS,
-            progress_action="task_gather_details",
-            progress_task=self.task_gather,
-        )
+        self.task_gather = None
+        return self.async_show_progress_done(next_step_id=Steps.USER)
 
     async def async_step_login(
-        self, user_input: dict[str, Any] | None = None
+        self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Initiate the credential test."""
-        _LOGGER.debug(
-            "entered, user_input: %s",
-            _redact_for_display(user_input) if user_input is not None else "none",
-        )
+        """Initiate the credential test.
 
+        This step is only used to provide progress and to allow moving back
+        to the user step should an error occur.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
+
+        # the task isn't running, so start it.
         if self.task_login is None:
-            _LOGGER.debug("creating credential test task")
-            details: dict = {
+            self._error_details.clear()
+            details: dict[str, Any] = {
                 "node": self._options.get(CONF_NODE),
                 "password": self._options.get(CONF_PASSWORD),
                 "request_timeout": DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT,
@@ -636,25 +694,45 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._async_task_login(details)
             )
 
-        if self.task_login.done():
-            _LOGGER.debug("_errors: %s", self._errors)
-            next_step: str = Steps.GATHER_DETAILS
-            if self._errors:
-                next_step = Steps.USER
+        # task is still running - tell frontend to display progress
+        if self.task_login is not None and not self.task_login.done():
+            return self.async_show_progress(
+                step_id=Steps.LOGIN,
+                progress_action="task_login",
+                progress_task=self.task_login,
+            )
 
-            _LOGGER.debug("next step: %s", next_step)
-            return self.async_show_progress_done(next_step_id=next_step)
+        # task is complete, process results or exceptions
+        try:
+            mesh: Mesh = self.task_login.result()
+        except MeshConnectionError:
+            self._error_details.set_error("connection_error", CONF_NODE)
+        except MeshInvalidCredentials:
+            self._error_details.set_error("login_error", CONF_PASSWORD)
+        except MeshNodeNotPrimary:
+            self._error_details.set_error("node_not_primary", CONF_NODE)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.error("%s", exc)
+            self._error_details.set_error(
+                "general", msg_placeholders={"exc_msg": str(exc)}
+            )
+        else:
+            self._mesh = mesh
+            self.task_login = None
+            return self.async_show_progress_done(next_step_id=Steps.GATHER_DETAILS)
 
-        return self.async_show_progress(
-            step_id=Steps.LOGIN,
-            progress_action="task_login",
-            progress_task=self.task_login,
-        )
+        self.task_login = None
+        return self.async_show_progress_done(next_step_id=Steps.USER)
 
     async def async_step_reauth(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage reauthentication."""
+        """Manage reauthentication.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
         self.reauth_entry = self.hass.config_entries.async_get_entry(
             self.context.get("entry_id", "")
         )
@@ -663,7 +741,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Store the new auth details."""
+        """Store the new auth details.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if user_input is not None and self.reauth_entry is not None:
             _options = dict(self.reauth_entry.options)
@@ -688,8 +771,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_ssdp(
         self, discovery_info: SsdpServiceInfo
     ) -> config_entries.ConfigFlowResult:
-        """Allow the Mesh primary node to be discovered via SSDP."""
-        _LOGGER.debug("entered, discovery_info: %s", discovery_info)
+        """Allow the Mesh primary node to be discovered via SSDP.
+
+        :param discovery_info: Information found as part of the discovery.
+        :returns: The next config flow result.
+        """
 
         # region #-- get the important info --#
         _host = discovery_info.ssdp_headers.get("_host", "")
@@ -730,7 +816,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # endregion
 
         # region #-- set a unique_id, update details if device has changed IP --#
-        _LOGGER.debug("setting unique_id")
         await self.async_set_unique_id(_serial)
         self._abort_if_unique_id_configured(updates={CONF_NODE: _host})
         # endregion
@@ -743,12 +828,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user()
 
     async def async_step_timers(
-        self, user_input: dict[str, Any] | None = None
+        self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Allow the user to set the relevant timers for the integration."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+
         if user_input is not None:
-            self._errors = {}
             self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
             self._options.update(user_input)
             return await self.async_step_device_trackers()
@@ -761,33 +845,28 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if self._mesh:
                 nodes: list[NodeEntity] = self._mesh.nodes
                 for node in nodes:
-                    if node.type == "primary":
+                    if node.type == NodeType.PRIMARY:
                         unique_id = node.serial.value
             # endregion
 
-            # region #-- do we have matching host? --#
-            # didn't always have unique_id so let's look for it by host and set it if we can then abort
-            matching_entry = _is_mesh_by_host(
-                hass=self.hass, host=self._options.get(CONF_NODE, "")
-            )
-            if matching_entry:
-                if not matching_entry.unique_id:
-                    _LOGGER.debug("updating config entry unique_id")
-                    self.hass.config_entries.async_update_entry(
-                        entry=matching_entry, unique_id=unique_id
-                    )
-                return self.async_abort(reason="already_configured")
-            else:
-                _LOGGER.debug("setting unique_id")
+            if unique_id is not None:
                 await self.async_set_unique_id(unique_id, raise_on_progress=False)
                 self._abort_if_unique_id_configured()
-            # endregion
         # endregion
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.TIMERS,
             data_schema=_build_schema_step(Steps.TIMERS, self._options),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
@@ -795,7 +874,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Rediscover the devices if the config entry is being unignored."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
 
         # region #-- get the original unique_id --#
         if user_input is not None:
@@ -818,60 +896,81 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ]
 
         if not device_info:
-            _LOGGER.debug("device not found")
             return self.async_abort(reason="not_found")
         # endregion
 
         return await self.async_step_ssdp(device_info[0])
 
     async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
+        self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Handle a flow initiated by the user."""
-        _LOGGER.debug(
-            "using integration version: %s",
-            await async_get_integration_version(self.hass),
-        )
-        _LOGGER.debug(
-            "entered, user_input: %s",
-            _redact_for_display(user_input) if user_input is not None else "none",
-        )
+        """Handle a flow initiated by the user.
 
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
+
+        # only show version information if it's the first time we're here
+        if not user_input and not self._error_details.has_error():
+            _LOGGER.debug(
+                "using integration version: %s",
+                await async_get_integration_version(self.hass),
+            )
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        # form has been submitted
         if user_input is not None:
-            self.task_login = None
-            self._errors = {}
             self._options.update(user_input)
             return await self.async_step_login()
+
+        # form display
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.USER,
             data_schema=_build_schema_step(Steps.USER, self._options),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
 
-class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
+class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """Handle options from the configuration of the integration."""
 
-    def __init__(self, config_entry: LinksysVelopConfigEntry) -> None:
-        """Intialise."""
-        super().__init__()
-        self._data: dict[str, Any] = {**config_entry.data}
+    config_entry: LinksysVelopConfigEntry
+
+    def __init__(self) -> None:
+        """Initialise."""
+
+        self._data: dict[str, Any] = {}
         self._devices: dict[str, str] | None = None
-        self._errors: dict[str, str] = {}
-        self._options: dict[str, Any] = {**config_entry.options}
+        self._error_details: ErrorDetails = ErrorDetails()
+        self._options: dict[str, Any] = {}
 
     async def async_step_device_trackers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage the device trackers."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Manage the device trackers.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if user_input is not None:
             self._options.update(user_input)
             return await self.async_step_ui_device()
 
+        # region #-- retrieve devices --#
+        # if the mesh hasn't been initialised then initialise it
+        # shouldn't really be in that situation but you never know...
         if self._devices is None:
             mesh: Mesh
             if (mesh := self.config_entry.runtime_data.mesh) is None:
@@ -882,8 +981,29 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                     session=async_get_clientsession(hass=self.hass),
                     supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
                 )
-                await mesh.async_initialise()
-            self._devices = await _async_get_devices(mesh=mesh)
+                try:
+                    await mesh.async_initialise()
+                except MeshConnectionError:
+                    self._error_details.set_error("connection_error", CONF_NODE)
+                except MeshInvalidCredentials:
+                    self._error_details.set_error("login_error", CONF_PASSWORD)
+                except MeshNodeNotPrimary:
+                    self._error_details.set_error("node_not_primary", CONF_NODE)
+                except Exception as exc:  # noqa: BLE001
+                    _LOGGER.error("%s", exc)
+                    self._error_details.set_error(
+                        "general", msg_placeholders={"exc_msg": str(exc)}
+                    )
+            self._devices = await _async_get_devices(mesh)
+        # endregion
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
@@ -892,15 +1012,20 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                 self._options,
                 multi_select_contents=self._devices,
             ),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
     async def async_step_entity_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage the advanced options for the configuration."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Manage the advanced options for the configuration.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if user_input is not None:
             # region #-- update options --#
@@ -916,37 +1041,63 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
             # endregion
             return await self.async_step_logging()
 
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
+
         return self.async_show_form(
             step_id=Steps.ENTITY_OPTIONS,
             data_schema=_build_schema_step(Steps.ENTITY_OPTIONS, self._options),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
     async def async_step_events(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Event options."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Event options.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if user_input is not None:
             self._options.update(user_input)
             return await self.async_step_entity_options()
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
             data_schema=_build_schema_step(
                 Steps.EVENTS, self._options, multi_select_contents=DEF_EVENTS_OPTIONS
             ),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
     async def async_step_finalise(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Run the final pieces of the flow."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Run the final pieces of the flow.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         # region #-- set device trackers no longer required to be removed --#
         prev_trackers: set[str] = set(
@@ -1002,17 +1153,27 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """First Step."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """First Step.
 
-        menu_options: list[str] = [
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
+
+        # region #-- initialise the instance vars that rely on config_entry --#
+        # we can't do this any earlier because they aren't available.
+        self._data = {**self.config_entry.data}
+        self._options = {**self.config_entry.options}
+        # endregion
+
+        menu_options: tuple[str, ...] = (
             Steps.TIMERS,
             Steps.DEVICE_TRACKERS,
             Steps.UI_DEVICE,
             Steps.EVENTS,
             Steps.ENTITY_OPTIONS,
             Steps.LOGGING,
-        ]
+        )
 
         return self.async_show_menu(
             step_id=Steps.INIT,
@@ -1023,53 +1184,75 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
         """Display and process logging options."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
 
         if user_input is not None:
             self._options.update(user_input)
             return await self.async_step_finalise()
 
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
+
         return self.async_show_form(
             step_id=Steps.LOGGING,
             data_schema=_build_schema_step(Steps.LOGGING, self._options),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=True,
         )
 
     async def async_step_timers(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage the timer options available for the integration."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Manage the timer options available for the integration.
 
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
         if user_input is not None:
-            # TODO: This can be removed after a length of time but it does no harm
-            # region #-- tidy up the config after a misconfig on setting up the integration
-            self._options.pop("CONF_API_REQUEST_TIMEOUT", None)
-            # endregion
-
             if CONF_API_REQUEST_TIMEOUT not in self._options:
                 self._options[CONF_API_REQUEST_TIMEOUT] = DEF_API_REQUEST_TIMEOUT
             self._options.update(user_input)
             return await self.async_step_device_trackers()
 
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
+
         return self.async_show_form(
             step_id=Steps.TIMERS,
             data_schema=_build_schema_step(Steps.TIMERS, self._options),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
 
     async def async_step_ui_device(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Manage the devices that should be created in the UI."""
-        _LOGGER.debug("entered, user_input: %s", user_input)
+        """Manage the devices that should be created in the UI.
+
+        :param user_input: User-provided configuration data, or `None` when
+        the form has not yet been submitted.
+        :returns: The next config flow result.
+        """
 
         if user_input is not None:
             self._options.update(user_input)
             return await self.async_step_events()
 
+        # region #-- retrieve devices --#
+        # if the mesh hasn't been initialised then initialise it
+        # shouldn't really be in that situation but you never know...
         if self._devices is None:
             mesh: Mesh
             if (mesh := self.config_entry.runtime_data.mesh) is None:
@@ -1080,14 +1263,36 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlow):
                     session=async_get_clientsession(hass=self.hass),
                     supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
                 )
-                await mesh.async_initialise()
-            self._devices = await _async_get_devices(mesh=mesh)
+                try:
+                    await mesh.async_initialise()
+                except MeshConnectionError:
+                    self._error_details.set_error("connection_error", CONF_NODE)
+                except MeshInvalidCredentials:
+                    self._error_details.set_error("login_error", CONF_PASSWORD)
+                except MeshNodeNotPrimary:
+                    self._error_details.set_error("node_not_primary", CONF_NODE)
+                except Exception as exc:  # noqa: BLE001
+                    _LOGGER.error("%s", exc)
+                    self._error_details.set_error(
+                        "general", msg_placeholders={"exc_msg": str(exc)}
+                    )
+            self._devices = await _async_get_devices(mesh)
+        # endregion
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.UI_DEVICE,
             data_schema=_build_schema_step(
                 Steps.UI_DEVICE, self._options, multi_select_contents=self._devices
             ),
-            errors=self._errors,
+            description_placeholders=placeholders,
+            errors=errors,
             last_step=False,
         )
