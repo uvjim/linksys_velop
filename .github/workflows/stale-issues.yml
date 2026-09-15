@@ -1,0 +1,25 @@
+name: Manage stale issues
+on:
+  schedule:
+    - cron: "25 7 * * *"
+
+env:
+  DAYS_BEFORE_STALE: 21
+  DAYS_BEFORE_CLOSE: 7
+
+jobs:
+  manage-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/stale@v11
+        with:
+          days-before-issue-stale: ${{ env.DAYS_BEFORE_STALE}}
+          days-before-issue-close: ${{ env.DAYS_BEFORE_CLOSE }}
+          stale-issue-label: "stale"
+          stale-issue-message: "This issue is stale because it has been open for ${{ env.DAYS_BEFORE_STALE }} days with no activity."
+          close-issue-message: "This issue was closed because it has been inactive for ${{ env.DAYS_BEFORE_CLOSE }} days since being marked as stale."
+          exempt-issue-labels: 'enhancement,bug,no-stale,upstream'
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
