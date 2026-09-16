@@ -1,0 +1,4 @@
+homeassistant==2026.9.1
+pytest-homeassistant-custom-component==0.13.364
+pyvelop==2026.8.15
+async-upnp-client==0.48.1

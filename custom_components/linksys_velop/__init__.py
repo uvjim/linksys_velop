@@ -10,11 +10,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, Platform
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ConfigEntryNotReady,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.typing import ConfigType
 from pyvelop.action_registry import Actions
+from pyvelop.exceptions import MeshConnectionError, MeshTimeoutError
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
@@ -169,6 +175,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+async def _async_initialise_mesh(mesh: Mesh) -> None:
+    """Initialize through the config-entry exception boundary on supported Core versions."""
+    try:
+        if not await mesh.async_test_credentials():
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="failed_login",
+            )
+        await mesh.async_initialise()
+    except MeshTimeoutError as exc:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="init_mesh_timeout",
+            translation_placeholders={"current_timeout": str(mesh.timeout)},
+        ) from exc
+    except MeshConnectionError as exc:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="init_connection_error",
+            translation_placeholders={
+                "exc_msg": str(exc),
+                "primary_ip": mesh.connected_node,
+            },
+        ) from exc
+    except (ConfigEntryAuthFailed, ConfigEntryError):
+        raise
+    except Exception as exc:
+        # Preserve the coordinator's retry behavior for unexpected initialization errors.
+        _LOGGER.exception("Unexpected error initializing the mesh")
+        raise ConfigEntryNotReady() from exc
+
+
 async def async_setup_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
@@ -205,6 +243,9 @@ async def async_setup_entry(
         "using integration version: %s",
         await async_get_integration_version(hass),
     )
+
+    # Coordinators schedule refreshes as soon as their listeners are registered.
+    await _async_initialise_mesh(config_entry.runtime_data.mesh)
 
     # region #-- setup the coordinators --#
     coordinator_name_suffix: str = ""
