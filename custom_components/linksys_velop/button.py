@@ -141,7 +141,12 @@ def has_capability(capabilities: tuple[Mapping[str, Any], ...], name: str) -> bo
     """
 
     found: Mapping[str, Any] | None = next(
-        (cap for cap in capabilities if cap.get("key", "") == name), None
+        (
+            cap
+            for cap in capabilities
+            if cap.get("key", "") == name and cap.get("is_valid", False) is not False
+        ),
+        None,
     )
 
     return bool(found)
