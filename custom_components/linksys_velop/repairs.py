@@ -6,10 +6,12 @@ import logging
 from typing import cast
 
 import voluptuous as vol
+from awesomeversion import AwesomeVersion
 from homeassistant import data_entry_flow
 from homeassistant.components.repairs import RepairsFlow
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
+from homeassistant.core import __version__ as HA_VERSION
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
@@ -58,12 +60,10 @@ class IssueMissingDeviceTrackerRepairFlow(RepairsFlow):
         """Handle the confirm step of a fix flow."""
         if user_input is not None:
             entity_registry: er.EntityRegistry = er.async_get(self.hass)
-            tracker_entity: er.RegistryEntry | None
-            if (
-                tracker_entity := entity_registry.async_get(
-                    str(cast(dict, self.data).get("device_id"))
-                )
-            ) is not None:
+            tracker_entity: er.RegistryEntry | None = entity_registry.async_get(
+                str(cast(dict, self.data).get("device_id"))
+            )
+            if tracker_entity is not None:
                 # region # -- cleanup the config entry --#
                 config_entry: ConfigEntry | None = (
                     self.hass.config_entries.async_get_entry(
@@ -85,18 +85,28 @@ class IssueMissingDeviceTrackerRepairFlow(RepairsFlow):
                 # endregion
 
                 # region #-- disassociate mac with mesh --#
-                if (
-                    tracker_state := self.hass.states.get(tracker_entity.entity_id)
-                ) is not None:
-                    tracker_mac: str | None
-                    if (tracker_mac := tracker_state.attributes.get("mac")) is not None:
+                tracker_state: State | None = self.hass.states.get(
+                    tracker_entity.entity_id
+                )
+                if tracker_state is not None:
+                    tracker_mac: str | None = tracker_state.attributes.get("mac")
+                    if tracker_mac is not None and tracker_entity.device_id is not None:
                         device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
-                        mesh_device: dr.DeviceEntry | None
-                        if (
-                            mesh_device := device_registry.async_get(
-                                str(tracker_entity.device_id)
+                        # region #-- TODO: remove this bound when the minimum HA version is bumped --#
+                        if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.9.0"):
+                            mesh_device: dr.DeviceEntry | None = (
+                                device_registry.async_get(
+                                    tracker_entity.device_id,
+                                    include_child_devices=False,
+                                )
                             )
-                        ) is not None:
+                        else:
+                            mesh_device: dr.DeviceEntry | None = cast(
+                                dr.DeviceEntry,
+                                device_registry.async_get(tracker_entity.device_id),
+                            )
+                        # endregion
+                        if mesh_device is not None:
                             connections: set[tuple[str, str]] = mesh_device.connections
                             connections.discard(
                                 (

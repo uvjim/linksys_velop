@@ -5,7 +5,7 @@ import logging
 import uuid
 from typing import Any
 
-from awesomeversion.awesomeversion import AwesomeVersion
+from awesomeversion import AwesomeVersion
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, Platform
 from homeassistant.const import __version__ as HA_VERSION
@@ -149,7 +149,7 @@ async def async_migrate_entry(
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the integration."""
 
-    if AwesomeVersion(HA_VERSION) < AwesomeVersion(MIN_HA_VERSION):  # pragma: no cover
+    if AwesomeVersion(HA_VERSION) < AwesomeVersion(MIN_HA_VERSION):
         msg = (
             "This integration requires at least Home Assistant version "
             f"{MIN_HA_VERSION}, you are running version {HA_VERSION}. "

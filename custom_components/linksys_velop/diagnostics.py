@@ -9,7 +9,6 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from pyvelop.action_registry import Actions
-from pyvelop.mesh import Mesh
 
 from .const import CONF_REDACT_OPTIONS
 from .coordinator import LinksysVelopConfigEntry
@@ -21,8 +20,11 @@ _LOGGER = logging.getLogger(__name__)
 DEF_REDACTED: str = "**REDACTED**"
 
 
-def redact(data: dict[str, Any], to_redact: set[str] = set()) -> dict[str, Any]:
+def redact(data: dict[str, Any], to_redact: set[str] | None = None) -> dict[str, Any]:
     """Redact sensitive data in a dict. Dotted paths may traverse dicts and lists."""
+
+    if to_redact is None:
+        to_redact = set()
     ret: dict[str, Any] = copy.copy(data)
 
     def apply_redaction(obj: Any, parts: list[str]) -> None:
@@ -63,8 +65,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> dict[str, Any]:
     """Diagnostics for the config entry."""
-    mesh: Mesh = config_entry.runtime_data.mesh
-    mesh_attributes: dict = getattr(mesh, "_mesh_attributes")
+    mesh_attributes: dict = config_entry.runtime_data.mesh._mesh_attributes
 
     # region #-- unwanted attributes --#
     exclude_props: list[str] = ["processed_devices"]
