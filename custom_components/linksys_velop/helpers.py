@@ -2,7 +2,6 @@
 
 # region #-- imports --#
 import logging
-from typing import Any
 
 from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
