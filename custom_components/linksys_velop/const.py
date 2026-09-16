@@ -15,13 +15,6 @@ class DataCoordinatorFormattedData:
     connected_node: str
 
 
-class IntensiveTask(StrEnum):
-    """Representation of tasks that could cause a delay in response from the Mesh."""
-
-    CHANNEL_SCAN = "Channel Scan"
-    REBOOT = "Reboot"
-
-
 class EventSubTypes(StrEnum):
     """Available event types."""
 

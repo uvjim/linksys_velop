@@ -27,14 +27,14 @@ from .const import (
 from .coordinator import (
     CoordinatorTimers,
     LinksysVelopDataUpdateCoordinatorMultiUse,
-    LinksysVelopDataUpdateCoordinatorSpeedtest,
 )
-from .helpers import get_mesh_parent_node
 from .logger import Logger
 
 # endregion
 
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
+
+TargetEntityType = Mesh | DeviceEntity | NodeEntity | None
 
 
 class EntityType(StrEnum):
@@ -47,7 +47,7 @@ class EntityType(StrEnum):
 
 @dataclass(frozen=True, kw_only=True)
 class LinksysVelopEntityContext:
-    """"""
+    """Representation of details for the context of the entity type."""
 
     data: dict[str, Any] = field(default_factory=dict)
     unique_id: str
@@ -96,36 +96,31 @@ class LinksysVelopMultiUseEntity(
         # endregion
 
         # region #-- setup device info --#
-        if self.entity_description.target_type == EntityType.DEVICE:
-            device_info: DeviceEntity | None = self._get_target()
-            if (
-                device_info is not None
-                or self.entity_context.unique_id
-                == self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-            ):
+        target_type: EntityType = self.entity_description.target_type
+        if target_type in (EntityType.DEVICE, EntityType.NODE):
+            target: TargetEntityType = self._get_target()
+            if isinstance(target, DeviceEntity) or target is None:
+                is_placeholder_device: bool = (
+                    self.entity_context.unique_id
+                    == self.coordinator.config_entry.data.get(
+                        CONF_UI_PLACEHOLDER_DEVICE_ID
+                    )
+                )
                 self._attr_device_info = DeviceInfo(
                     identifiers={(DOMAIN, str(self.entity_context.unique_id))},
                     manufacturer=(
-                        str(device_info.manufacturer)
-                        if device_info is not None
-                        and self.entity_context.unique_id
-                        != self.coordinator.config_entry.data.get(
-                            CONF_UI_PLACEHOLDER_DEVICE_ID
-                        )
+                        str(target.manufacturer)
+                        if target is not None and not is_placeholder_device
                         else ""
                     ),
                     model=(
-                        str(device_info.model)
-                        if device_info is not None
-                        and self.entity_context.unique_id
-                        != self.coordinator.config_entry.data.get(
-                            CONF_UI_PLACEHOLDER_DEVICE_ID
-                        )
+                        str(target.model)
+                        if target is not None and not is_placeholder_device
                         else ""
                     ),
                     name=(
-                        str(device_info.name)
-                        if device_info is not None
+                        str(target.name)
+                        if target is not None
                         and self.entity_context.unique_id
                         != self.coordinator.config_entry.data.get(
                             CONF_UI_PLACEHOLDER_DEVICE_ID
@@ -133,6 +128,30 @@ class LinksysVelopMultiUseEntity(
                         else "Placeholder Device"
                     ),
                 )
+            elif isinstance(target, NodeEntity) and target.serial is not None:
+                self._attr_device_info = DeviceInfo(
+                    hw_version=str(target.hardware_version),
+                    identifiers={(DOMAIN, str(target.serial))},
+                    model=str(target.model),
+                    name=str(target.name),
+                    manufacturer=str(target.manufacturer),
+                    serial_number=str(target.serial),
+                    sw_version=target.firmware.get("version", ""),
+                )
+
+                if target.type == NodeType.SECONDARY and target.adapter_info:
+                    adapter_main: NodeAdapterInfo | None = next(
+                        (adi for adi in target.adapter_info if adi.primary),
+                        None,
+                    )
+                    if adapter_main is not None and adapter_main.ip is not None:
+                        self._attr_device_info["configuration_url"] = (
+                            f"http://{adapter_main.ip}/ca"
+                        )
+                elif target.type == NodeType.PRIMARY:
+                    self._attr_device_info["configuration_url"] = (
+                        f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
+                    )
         elif self.entity_description.target_type == EntityType.MESH:
             self._attr_device_info = DeviceInfo(
                 configuration_url=f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}",
@@ -143,99 +162,74 @@ class LinksysVelopMultiUseEntity(
                 name="Mesh",
                 sw_version="",
             )
-        elif self.entity_description.target_type in EntityType.NODE:
-            node_info: NodeEntity | None = self._get_target()
-            if node_info is not None and node_info.serial is not None:
-                self._attr_device_info = DeviceInfo(
-                    hw_version=str(node_info.hardware_version),
-                    identifiers={(DOMAIN, str(node_info.serial))},
-                    model=str(node_info.model),
-                    name=str(node_info.name),
-                    manufacturer=str(node_info.manufacturer),
-                    serial_number=str(node_info.serial),
-                    sw_version=node_info.firmware.get("version", ""),
-                )
-
-                # region #-- calculate additional attributes --#
-                # additional device attributes that are conditional or need more calculation.
-                # region #-- calculate the configuration url --#
-                if node_info.type == NodeType.SECONDARY and node_info.adapter_info:
-                    adapter_main: NodeAdapterInfo | None = next(
-                        (adi for adi in node_info.adapter_info if adi.primary),
-                        None,
-                    )
-                    if adapter_main is not None and adapter_main.ip is not None:
-                        self._attr_device_info["configuration_url"] = (
-                            f"http://{adapter_main.ip}/ca"
-                        )
-                elif node_info.type == NodeType.PRIMARY:
-                    self._attr_device_info["configuration_url"] = (
-                        f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
-                    )
-                # endregion
-                # endregion
-
         # endregion
 
     def __repr__(self) -> str:
 
         return f"{self.__class__.__name__}: {self.entity_context.unique_id} : { self.entity_description.name }"
 
-    def _get_target(self) -> Any:
-        """Retrieve the target mesh entity for the current entity."""
+    def _get_target(self) -> TargetEntityType:
+        """Retrieve the target mesh entity for the current entity.
 
-        ret: Any = None
+        :returns:
+        """
 
-        if self.entity_description.target_type == EntityType.DEVICE:
-            unique_id: str | None = (
+        mesh: Mesh | None = self.coordinator.data.get(CoordinatorTimers.MESH)
+        if mesh is None:
+            return None
+
+        target_type = self.entity_description.target_type
+        context_data = self.entity_context.data
+        velop_id = context_data.get("velop", {}).get("id")
+
+        if target_type in (EntityType.DEVICE, EntityType.NODE):
+            placeholder_id = self.coordinator.config_entry.data.get(
+                CONF_UI_PLACEHOLDER_DEVICE_ID
+            )
+            unique_id = (
                 self.entity_context.unique_id
-                if self.entity_context.unique_id
-                != self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-                else self.entity_context.data.get("velop", {}).get("id")
+                if self.entity_context.unique_id != placeholder_id
+                else velop_id
             )
 
-            if unique_id is not None:
-                ret = next(
-                    (
-                        d
-                        for d in cast(
-                            Mesh, self.coordinator.data.get(CoordinatorTimers.MESH)
-                        ).devices
-                        if d.unique_id.value == unique_id
-                    ),
-                    None,
-                )
-        elif self.entity_description.target_type == EntityType.MESH:
-            if self.entity_context.data.get("velop", {}).get("id") is not None:
-                ret = next(
-                    (
-                        d
-                        for d in cast(
-                            list[DeviceEntity],
-                            self.coordinator.data.get(
-                                CoordinatorTimers.DEVICE_TRACKER, []
-                            ),
-                        )
-                        if d.unique_id.value
-                        == self.entity_context.data.get("velop", {}).get("id")
-                    ),
-                    None,
-                )
-            else:
-                ret = self.coordinator.data.get(CoordinatorTimers.MESH)
-        elif self.entity_description.target_type == EntityType.NODE:
-            ret = next(
+            if unique_id is None:
+                return None
+
+            target = next(
                 (
-                    n
-                    for n in cast(
-                        Mesh, self.coordinator.data.get(CoordinatorTimers.MESH)
-                    ).nodes
-                    if n.unique_id.value == self.entity_context.unique_id
+                    device
+                    for device in mesh.devices
+                    if device.unique_id.value == unique_id
                 ),
                 None,
             )
 
-        return ret
+            if target is not None:
+                return target
+
+            return next(
+                (node for node in mesh.nodes if node.unique_id.value == unique_id),
+                None,
+            )
+
+        if target_type == EntityType.MESH:
+            if velop_id is None:
+                return mesh
+
+            devices = cast(
+                list[DeviceEntity],
+                self.coordinator.data.get(
+                    CoordinatorTimers.DEVICE_TRACKER,
+                    [],
+                ),
+            )
+
+            return next(
+                (device for device in devices if device.unique_id.value == velop_id),
+                None,
+            )
+
+        return None
 
     @override
     async def async_added_to_hass(self) -> None:
@@ -256,54 +250,9 @@ class LinksysVelopMultiUseEntity(
         # endregion
 
     def _handle_placeholder_device_update(self, velop_id: str | None) -> None:
-        """"""
+        """Update the placeholder device context data.
+
+        :param velop_id: unique ID of the device as provided by the mesh.
+        """
 
         self.entity_context.data.update({"velop": {"id": velop_id}})
-
-
-class LinksysVelopSpeedtestEntity(
-    CoordinatorEntity[LinksysVelopDataUpdateCoordinatorSpeedtest]
-):
-    """Representation of and entity that uses the Speedtest DataUpdatCoordinator."""
-
-    entity_description: LinksysVelopEntityDescription
-    _attr_has_entity_name: bool = True
-    _entity_domain: str
-
-    def __init__(
-        self,
-        *,
-        coordinator: LinksysVelopDataUpdateCoordinatorSpeedtest,
-        description: LinksysVelopEntityDescription,
-        entity_context: LinksysVelopEntityContext,
-    ) -> None:
-        """Initialise entity."""
-
-        super().__init__(coordinator)
-
-        # region #-- custom attributes --#
-        self.entity_context: LinksysVelopEntityContext = entity_context
-        # endregion
-
-        # region #-- standard attributes --#
-        if description is not None:
-            self.entity_description = description
-
-        self._attr_unique_id = (
-            f"{self.entity_context.unique_id}::"
-            f"{self._entity_domain.lower()}::"
-            f"{slugify(str(self.entity_description.name))}"
-        )
-        # endregion
-
-        # region #-- setup device info --#
-        self._attr_device_info = DeviceInfo(
-            configuration_url=f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}",
-            entry_type=DeviceEntryType.SERVICE,
-            identifiers={(DOMAIN, self.entity_context.unique_id)},
-            manufacturer=PYVELOP_AUTHOR,
-            model=f"{PYVELOP_NAME} ({PYVELOP_VERSION})",
-            name="Mesh",
-            sw_version="",
-        )
-        # endregion

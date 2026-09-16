@@ -2,9 +2,10 @@
 
 # region #-- imports --#
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import cast, override
+from types import MappingProxyType
+from typing import Any, cast, override
 
 from homeassistant.components.update import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.update import (
@@ -14,7 +15,6 @@ from homeassistant.components.update import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.action_registry import Actions
 from pyvelop.mesh import FirmwareUpdatePolicy, Mesh
 from pyvelop.mesh_entity import NodeEntity
 
@@ -48,6 +48,25 @@ class LinksysVelopUpdateEntityDescription(
     pic_fn: Callable[..., str | None] | None = None
 
 
+def has_capability(capabilities: tuple[Mapping[str, Any], ...], name: str) -> bool:
+    """Determine of the mesh has a spevcified capability.
+
+    :param capabilities: Capabilities as returned from the mesh.
+    :returns: `True` if the capability is available, `False` otherwise.
+    """
+
+    found: Mapping[str, Any] | None = next(
+        (cap for cap in capabilities if cap.get("key", "") == name), None
+    )
+
+    return bool(found)
+
+
+ENTITIES: Mapping[str, tuple[LinksysVelopUpdateEntityDescription, ...]] = (
+    MappingProxyType({})
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: LinksysVelopConfigEntry,
@@ -64,7 +83,7 @@ async def async_setup_entry(
             _init_device_entities() + _init_mesh_entities()
         )
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     def _init_device_entities() -> tuple[LinksysVelopUpdateCoordinatorEntity, ...]:
@@ -81,86 +100,74 @@ async def async_setup_entry(
 
     def _init_node_entities() -> tuple[LinksysVelopUpdateCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
-        ret: tuple[LinksysVelopUpdateCoordinatorEntity, ...] = ()
-        ret_temp: list[LinksysVelopUpdateCoordinatorEntity] = []
-        current_nodes: set[str] = {
-            str(cast(NodeEntity, n).unique_id)
-            for n in config_entry.runtime_data.mesh.nodes
-            if cast(NodeEntity, n).unique_id.value is not None
+
+        current_node_ids = {
+            str(node.unique_id)
+            for node in config_entry.runtime_data.mesh.nodes
+            if node.unique_id.value is not None
         }
-        new_nodes: set[str] = current_nodes - known_nodes
+        new_node_ids = current_node_ids - known_nodes
+        known_nodes.update(new_node_ids)
 
-        if new_nodes:
-            known_nodes.update(new_nodes)
-            for node in new_nodes:
-                context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-                    unique_id=node
-                )
-                mesh_entities: list[LinksysVelopUpdateEntityDescription] = []
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(NodeEntity, attr)
+            for entity in entities
+            if entity.target_type is EntityType.NODE
+        )
 
-                if (
-                    Actions.GET_UPDATE_FIRMWARE_STATE.key
-                    in config_entry.runtime_data.mesh.capabilities
-                ):
-                    mesh_entities.append(
-                        LinksysVelopUpdateEntityDescription(
-                            device_class=UpdateDeviceClass.FIRMWARE,
-                            key="",
-                            name="Update",
-                            pic_fn=lambda n: (
-                                f"{prefix.rstrip('/').strip()}/{cast(NodeEntity, n).model.value}.png"
-                                if (
-                                    prefix := config_entry.options.get(CONF_NODE_IMAGES)
-                                )
-                                not in (None, "")
-                                else None
-                            ),
-                            target_type=EntityType.NODE,
-                            translation_key="update",
-                        ),
-                    )
+        # Handle this here so that we have access to config_entry.
+        if hasattr(NodeEntity, "firmware"):
+            descriptions += (
+                LinksysVelopUpdateEntityDescription(
+                    device_class=UpdateDeviceClass.FIRMWARE,
+                    key="",
+                    name="Update",
+                    pic_fn=lambda node: (
+                        f"{prefix.rstrip('/').strip()}/"
+                        f"{cast(NodeEntity, node).model.value}.png"
+                        if (prefix := config_entry.options.get(CONF_NODE_IMAGES))
+                        not in (None, "")
+                        else None
+                    ),
+                    target_type=EntityType.NODE,
+                    translation_key="update",
+                ),
+            )
 
-                ret_temp.extend(
-                    [
-                        LinksysVelopUpdateMultiUseEntity(
-                            entity_context=context,
-                            coordinator=cast(
-                                LinksysVelopDataUpdateCoordinatorMultiUse,
-                                config_entry.runtime_data.coordinators.get(
-                                    CoordinatorTypes.MESH
-                                ),
-                            ),
-                            description=desc,
-                        )
-                        for desc in mesh_entities
-                    ]
-                )
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
 
-        ret = tuple(ret_temp)
-
-        return ret
+        return tuple(
+            LinksysVelopUpdateMultiUseEntity(
+                entity_context=LinksysVelopEntityContext(unique_id=node_id),
+                coordinator=coordinator,
+                description=description,
+            )
+            for node_id in new_node_ids
+            for description in descriptions
+        )
 
     def _remove_stale_entities() -> None:
-        """Remove entities is they are no longer required."""
+        """Remove entities that are no longer required."""
 
-        entities_to_remove: set[str] = set()
+        if hasattr(NodeEntity, "firmware"):
+            return
 
-        # region #-- remove unnecessary node entities --#
-        for node in config_entry.runtime_data.mesh.nodes:
-            if (
-                Actions.GET_UPDATE_FIRMWARE_STATE.key
-                not in config_entry.runtime_data.mesh.capabilities
-            ):
-                entities_to_remove.add(f"{node.unique_id}::{ENTITY_DOMAIN}::update")
-        # endregion
+        entities_to_remove = {
+            f"{node.unique_id}::{ENTITY_DOMAIN}::update"
+            for node in config_entry.runtime_data.mesh.nodes
+        }
 
-        if len(entities_to_remove) > 0:
-            for entity_unique_id in entities_to_remove:
-                remove_velop_entity_from_registry(
-                    hass,
-                    config_entry.entry_id,
-                    entity_unique_id,
-                )
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
     def create_node_entities() -> None:
         """Create the node entities.
@@ -170,7 +177,7 @@ async def async_setup_entry(
 
         entities_to_add = _init_node_entities()
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     _remove_stale_entities()

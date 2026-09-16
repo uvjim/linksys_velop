@@ -2,7 +2,9 @@
 
 # region #-- imports --#
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import cast, override
 
 from homeassistant.components.text import DOMAIN as ENTITY_DOMAIN
@@ -29,6 +31,7 @@ from .entities import (
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
+    TargetEntityType,
 )
 from .helpers import remove_velop_entity_from_registry
 from .logger import Logger
@@ -45,14 +48,29 @@ class LinksysVelopTextEntityDescription(
     """Describes Velop text entity."""
 
 
+ENTITIES: Mapping[str, tuple[LinksysVelopTextEntityDescription, ...]] = (
+    MappingProxyType(
+        {
+            "name": (
+                LinksysVelopTextEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="name",
+                    name="Name",
+                    target_type=EntityType.DEVICE,
+                    translation_key="name",
+                ),
+            )
+        }
+    )
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: LinksysVelopConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Initialise a text entity."""
-
-    known_nodes: set[str] = set()
 
     def _create_entities() -> None:
         """Create the mesh and device entities."""
@@ -61,49 +79,34 @@ async def async_setup_entry(
             _init_device_entities() + _init_mesh_entities()
         )
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     def _init_device_entities() -> tuple[LinksysVelopTextCoordinatorEntity, ...]:
         """Describe the entities that target devices."""
-        ret: tuple[LinksysVelopTextCoordinatorEntity, ...] = ()
-        ret_temp: list[LinksysVelopTextCoordinatorEntity] = []
 
-        for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
-            context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-                unique_id=ui_device
-            )
-            mesh_entities: list[LinksysVelopTextEntityDescription] = []
-            mesh_entities.extend(
-                [
-                    LinksysVelopTextEntityDescription(
-                        entity_category=EntityCategory.CONFIG,
-                        key="name",
-                        name="Name",
-                        target_type=EntityType.DEVICE,
-                        translation_key="name",
-                    ),
-                ]
-            )
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(DeviceEntity, attr)
+            for entity in entities
+            if entity.target_type is EntityType.DEVICE
+        )
 
-            ret_temp.extend(
-                [
-                    LinksysVelopTextMultiUseEntity(
-                        entity_context=context,
-                        coordinator=cast(
-                            LinksysVelopDataUpdateCoordinatorMultiUse,
-                            config_entry.runtime_data.coordinators.get(
-                                CoordinatorTypes.MESH
-                            ),
-                        ),
-                        description=desc,
-                    )
-                    for desc in mesh_entities
-                ]
-            )
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
 
-        ret = tuple(ret_temp)
-        return ret
+        return tuple(
+            LinksysVelopTextMultiUseEntity(
+                entity_context=LinksysVelopEntityContext(unique_id=device_id),
+                coordinator=coordinator,
+                description=description,
+            )
+            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+            for description in descriptions
+        )
 
     def _init_mesh_entities() -> tuple[LinksysVelopTextCoordinatorEntity, ...]:
         """Describe the entities that target the mesh."""
@@ -127,13 +130,12 @@ async def async_setup_entry(
 
         # endregion
 
-        if len(entities_to_remove) > 0:
-            for entity_unique_id in entities_to_remove:
-                remove_velop_entity_from_registry(
-                    hass,
-                    config_entry.entry_id,
-                    entity_unique_id,
-                )
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
     def create_node_entities() -> None:
         """Create the node entities.
@@ -145,7 +147,7 @@ async def async_setup_entry(
             _init_node_entities()
         )
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     _remove_stale_entities()
@@ -177,8 +179,8 @@ class LinksysVelopTextMultiUseEntity(
     @override
     async def async_set_value(self, value: str) -> None:
 
-        device: DeviceEntity | None = self._get_target()
-        if device is not None:
+        device: TargetEntityType = self._get_target()
+        if isinstance(device, DeviceEntity):
             await device.async_rename(value)
             await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
 

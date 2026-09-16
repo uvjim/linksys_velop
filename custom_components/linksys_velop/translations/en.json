@@ -9,18 +9,19 @@
             "single_instance_allowed": "Integration already configured."
         },
         "error": {
-            "connection_error": "Connection error.",
+            "connection_error": "Connection error. Please check the host provided.",
             "general": "An error occurred. {exc_msg}",
-            "invalid_input": "Invalid action in request.",
             "login_error": "Unable to login. Please check the username and password.",
-            "login_bad_response": "Bad response on login. Check that the primary node is correct.",
+            "login_error_delay": "Unable to login. You have {attempts_remaining} attempts remaining.",
+            "login_error_delayed": "Unable to login. Mesh authentication is still in a cool down period.",
+            "login_error_no_retry": "Unable to login. The lower bound of retry attempts has been reached. Please attempt to login using official Linksys interfaces.",
             "node_not_primary": "The primary node in the Velop mesh should be specified.",
             "node_timeout": "Timeout whilst contacting the node."
         },
         "flow_title": "{name}",
         "progress": {
-            "task_gather_details": "Gathering Mesh details",
-            "task_login": "Checking credentials"
+            "task_delay": "Unable to login. Mesh authentication is currently in a cooldown period. Waiting for {wait_for} seconds before allowing another attempt.",
+            "task_init": "Initialising connection with the mesh"
         },
         "step": {
             "device_trackers": {
@@ -440,9 +441,10 @@
             "speedtest_result": {
                 "name": "Speedtest Result",
                 "state": {
-                    "speedtestexecutionerror": "SpeedTestExecutionError",
+                    "aboredbyuser": "Aborted by user",
+                    "speedtestexecutionerror": "Execution error",
                     "success": "Success",
-                    "unavailable": "Unavailable"
+                    "notavailable": "Not available"
                 }
             },
             "upload_bandwidth": {
@@ -476,12 +478,6 @@
         }
     },
     "exceptions": {
-        "init_connection_error": {
-            "message": "Unable to reach the primary node on {primary_ip}, msg: {exc_msg}."
-        },
-        "init_mesh_timeout": {
-            "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the API timeout in the configuration."
-        },
         "coordinator_mesh_timeout": {
             "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
         },
@@ -494,11 +490,23 @@
         "general": {
             "message": "A currently uncaught exception was encountered, type: {exc_type}, msg: {exc_msg}."
         },
+        "init_connection_error": {
+            "message": "Unable to reach the primary node on {primary_ip}, msg: {exc_msg}."
+        },
+        "init_mesh_timeout": {
+            "message": "Timeout initialising the mesh (current timeout: {current_timeout}s), consider increasing the API timeout in the configuration."
+        },
         "intensive_task": {
             "message": "{coordinator_name}, the following intensive tasks are currently running: {tasks}, ignoring errors."
         },
         "invalid_input": {
             "message": "The {action} action has failed. ({original_msg})"
+        },
+        "node_not_primary": {
+            "message": "The primary node in the Velop mesh should be specified."
+        },
+        "not_unique": {
+            "message": "Cannot identify {device} uniquely, {num_found} matching devices found."
         }
     },
     "issues": {

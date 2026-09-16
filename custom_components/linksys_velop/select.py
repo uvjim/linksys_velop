@@ -2,8 +2,9 @@
 
 # region #-- imports --#
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, cast, override
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
@@ -12,7 +13,7 @@ from homeassistant.core import HomeAssistant, async_get_hass
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.action_registry import Actions
+from homeassistant.util import slugify
 from pyvelop.mesh import Mesh, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
@@ -60,7 +61,7 @@ def get_current_reboot_schedule(mesh: Mesh, *args) -> str | None:
     if mesh.scheduled_reboot_enabled:
         ret = (
             mesh.scheduled_reboot_interval.value.lower()
-            if mesh.scheduled_reboot_interval is not None
+            if mesh.scheduled_reboot_interval.value is not None
             else None
         )
     else:
@@ -142,114 +143,10 @@ async def async_update_placeholder_device_icon(
     await device.async_set_icon(ui_type)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise select entities."""
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopSelectEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if len(entities_to_add) > 0:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> tuple[LinksysVelopSelectEntity, ...]:
-        """Describe the entities that target devices."""
-        ret: tuple[LinksysVelopSelectEntity, ...] = ()
-        ret_temp: list[LinksysVelopSelectEntity] = []
-
-        for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
-            context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-                unique_id=ui_device
-            )
-            mesh_entities: list[LinksysVelopSelectEntityDescription] = []
-
-            mesh_entities.append(
-                LinksysVelopSelectEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="ui_type",
-                    name="Icon",
-                    options_fn=lambda _: sorted(
-                        list(
-                            map(
-                                str.lower,
-                                UiType,
-                            )
-                        )
-                    ),
-                    pic_fn=lambda d: (
-                        f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, d).ui_type}.png"
-                        if d is not None
-                        and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
-                        not in (None, "")
-                        else None
-                    ),
-                    set_fn=async_update_placeholder_device_icon,
-                    target_type=EntityType.DEVICE,
-                    translation_key="ui_type",
-                )
-            )
-
-            if context.unique_id == config_entry.data.get(
-                CONF_UI_PLACEHOLDER_DEVICE_ID
-            ):
-                mesh_entities.append(
-                    LinksysVelopSelectEntityDescription(
-                        entity_category=EntityCategory.CONFIG,
-                        key="",
-                        name="Devices",
-                        options_fn=lambda m: list(
-                            get_placeholder_device_options(m).values()
-                        ),
-                        set_fn=async_update_placeholder_device,
-                        target_type=EntityType.DEVICE,
-                        translation_key="mesh_devices",
-                        value_fn=lambda m, uid: get_placeholder_device_options(m).get(
-                            uid
-                        ),
-                    )
-                )
-
-            ret_temp.extend(
-                [
-                    LinksysVelopSelectEntity(
-                        entity_context=context,
-                        coordinator=cast(
-                            LinksysVelopDataUpdateCoordinatorMultiUse,
-                            config_entry.runtime_data.coordinators.get(
-                                CoordinatorTypes.MESH
-                            ),
-                        ),
-                        description=desc,
-                    )
-                    for desc in mesh_entities
-                ]
-            )
-
-        ret = tuple(ret_temp)
-        return ret
-
-    def _init_mesh_entities() -> tuple[LinksysVelopSelectEntity, ...]:
-        """Describe the entities that target the mesh."""
-        ret: tuple[LinksysVelopSelectEntity, ...] = ()
-
-        context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-            unique_id=config_entry.entry_id
-        )
-
-        mesh_entities: list[LinksysVelopSelectEntityDescription] = []
-
-        if (
-            Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
-            in config_entry.runtime_data.mesh.capabilities
-        ):
-            mesh_entities.append(
+ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
+    MappingProxyType(
+        {
+            "scheduled_reboot_interval": (
                 LinksysVelopSelectEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     key="",
@@ -265,25 +162,129 @@ async def async_setup_entry(
                     translation_key="mesh_scheduled_reboot",
                     value_fn=get_current_reboot_schedule,
                 ),
-            )
+            ),
+        }
+    )
+)
 
-        ret = tuple(
-            [
-                LinksysVelopSelectEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorMultiUse,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.MESH
-                        ),
-                    ),
-                    description=desc,
-                )
-                for desc in mesh_entities
-            ]
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise select entities."""
+
+    def _create_entities() -> None:
+        """Create the mesh and device entities."""
+
+        entities_to_add: tuple[LinksysVelopSelectEntity, ...] = (
+            _init_device_entities() + _init_mesh_entities()
         )
 
-        return ret
+        if entities_to_add:
+            async_add_entities(entities_to_add)
+
+    def _init_device_entities() -> tuple[LinksysVelopSelectEntity, ...]:
+        """Describe the entities that target devices."""
+
+        mesh = config_entry.runtime_data.mesh
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
+
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(mesh, attr)
+            for entity in entities
+            if entity.target_type is EntityType.DEVICE
+        ) + (
+            LinksysVelopSelectEntityDescription(
+                entity_category=EntityCategory.CONFIG,
+                key="ui_type",
+                name="Icon",
+                options_fn=lambda _: sorted(map(str.lower, UiType)),
+                pic_fn=lambda device: (
+                    f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, device).ui_type}.png"
+                    if device is not None
+                    and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
+                    not in (None, "")
+                    else None
+                ),
+                set_fn=async_update_placeholder_device_icon,
+                target_type=EntityType.DEVICE,
+                translation_key="ui_type",
+            ),
+        )
+
+        entities: list[LinksysVelopSelectEntity] = []
+
+        placeholder_device_id = config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
+
+        for device_id in config_entry.options.get(CONF_UI_DEVICES, []):
+            device_descriptions = descriptions
+
+            if device_id == placeholder_device_id:
+                device_descriptions += (
+                    LinksysVelopSelectEntityDescription(
+                        entity_category=EntityCategory.CONFIG,
+                        key="",
+                        name="Devices",
+                        options_fn=lambda mesh: list(
+                            get_placeholder_device_options(mesh).values()
+                        ),
+                        set_fn=async_update_placeholder_device,
+                        target_type=EntityType.DEVICE,
+                        translation_key="mesh_devices",
+                        value_fn=lambda mesh, uid: get_placeholder_device_options(
+                            mesh
+                        ).get(uid),
+                    ),
+                )
+
+            context = LinksysVelopEntityContext(unique_id=device_id)
+
+            entities.extend(
+                LinksysVelopSelectEntity(
+                    entity_context=context,
+                    coordinator=coordinator,
+                    description=description,
+                )
+                for description in device_descriptions
+            )
+
+        return tuple(entities)
+
+    def _init_mesh_entities() -> tuple[LinksysVelopSelectEntity, ...]:
+        """Describe the entities that target the mesh."""
+
+        mesh = config_entry.runtime_data.mesh
+
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(mesh, attr)
+            for entity in entities
+            if entity.target_type is EntityType.MESH
+        )
+
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
+
+        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+
+        return tuple(
+            LinksysVelopSelectEntity(
+                entity_context=context,
+                coordinator=coordinator,
+                description=description,
+            )
+            for description in descriptions
+        )
 
     def _init_node_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target nodes."""
@@ -296,21 +297,24 @@ async def async_setup_entry(
 
         entities_to_remove: set[str] = set()
 
-        if (
-            Actions.GET_SCHEDULED_REBOOT_SETTINGS.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::scheduled_reboot"
-            )
+        # region #-- add mesh entities if they no longer exist --#
+        mesh_entities: tuple[str, ...] = tuple(
+            attr if len(entities) == 1 else slugify(str(entity.name))
+            for attr, entities in ENTITIES.items()
+            if not hasattr(config_entry.runtime_data.mesh, attr)
+            for entity in entities
+            if entity.target_type == EntityType.MESH
+        )
+        for me in mesh_entities:
+            entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{me}")
+        # endregion
 
-        if len(entities_to_remove) > 0:
-            for entity_unique_id in entities_to_remove:
-                remove_velop_entity_from_registry(
-                    hass,
-                    config_entry.entry_id,
-                    entity_unique_id,
-                )
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
     def create_node_entities() -> None:
         """Create the node entities.
@@ -320,7 +324,7 @@ async def async_setup_entry(
 
         entities_to_add: tuple[LinksysVelopSelectEntity, ...] = _init_node_entities()
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     _remove_stale_entities()

@@ -2,8 +2,9 @@
 
 # region #-- imports --#
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, cast, override
 
 from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
@@ -11,7 +12,7 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.action_registry import Actions
+from homeassistant.util import slugify
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
@@ -83,7 +84,7 @@ async def async_set_device_internet_access_state(
         for weekday in Weekdays:
             rules_to_apply[weekday.name.lower()] = str(
                 ParentalControl.binary_to_human_readable(
-                    ParentalControl.ALL_PAUSED_SCHEDULE().get(weekday.name.lower(), "")
+                    ParentalControl.all_paused_schedule().get(weekday.name.lower(), "")
                 )
             )
 
@@ -126,80 +127,10 @@ async def async_set_mesh_wps_state(mesh: Mesh, state: bool) -> None:
     await mesh.async_set_wps_state(state)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise a switch."""
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopSwitchCoordinatorEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if len(entities_to_add) > 0:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
-        """Describe the entities that target devices."""
-        ret: tuple[LinksysVelopSwitchCoordinatorEntity, ...] = ()
-        ret_temp: list[LinksysVelopSwitchCoordinatorEntity] = []
-
-        for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
-            context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-                unique_id=ui_device
-            )
-            mesh_entities: list[LinksysVelopSwitchEntityDescription] = []
-
-            mesh_entities.append(
-                LinksysVelopSwitchEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="",
-                    name="Internet Access",
-                    translation_key="internet_access",
-                    target_type=EntityType.DEVICE,
-                    off_fn=async_set_device_internet_access_state,
-                    on_fn=async_set_device_internet_access_state,
-                    value_fn=get_device_internet_access_state,
-                ),
-            )
-
-            ret_temp.extend(
-                [
-                    LinksysVelopSwitchMultiUseEntity(
-                        entity_context=context,
-                        coordinator=cast(
-                            LinksysVelopDataUpdateCoordinatorMultiUse,
-                            config_entry.runtime_data.coordinators.get(
-                                CoordinatorTypes.MESH
-                            ),
-                        ),
-                        description=desc,
-                    )
-                    for desc in mesh_entities
-                ]
-            )
-
-        ret = tuple(ret_temp)
-        return ret
-
-    def _init_mesh_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
-        """Describe the entities that target the mesh."""
-        ret: tuple[LinksysVelopSwitchCoordinatorEntity, ...] = ()
-        mesh_entities: list[LinksysVelopSwitchEntityDescription] = []
-
-        context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-            unique_id=config_entry.entry_id
-        )
-
-        if (
-            Actions.GET_GUEST_NETWORK_INFO.key
-            in config_entry.runtime_data.mesh.capabilities
-        ):
-            mesh_entities.append(
+ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
+    MappingProxyType(
+        {
+            "guest_wifi_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     esa_fn=lambda m: {
@@ -212,14 +143,9 @@ async def async_setup_entry(
                     on_fn=async_set_mesh_guest_wifi_state,
                     target_type=EntityType.MESH,
                     translation_key="guest_wifi",
-                )
-            )
-
-        if (
-            Actions.GET_HOMEKIT_SETTINGS.key
-            in config_entry.runtime_data.mesh.capabilities
-        ):
-            mesh_entities.append(
+                ),
+            ),
+            "homekit_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     key="homekit_enabled",
@@ -229,13 +155,8 @@ async def async_setup_entry(
                     target_type=EntityType.MESH,
                     translation_key="homekit",
                 ),
-            )
-
-        if (
-            Actions.GET_PARENTAL_CONTROL_INFO.key
-            in config_entry.runtime_data.mesh.capabilities
-        ):
-            mesh_entities.append(
+            ),
+            "parental_control_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     esa_fn=lambda m: (
@@ -256,10 +177,20 @@ async def async_setup_entry(
                     target_type=EntityType.MESH,
                     translation_key="parental_control",
                 ),
-            )
-
-        if Actions.GET_UPNP_SETTINGS.key in config_entry.runtime_data.mesh.capabilities:
-            mesh_entities.append(
+            ),
+            "parental_control_schedule": (
+                LinksysVelopSwitchEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="",
+                    name="Internet Access",
+                    translation_key="internet_access",
+                    target_type=EntityType.DEVICE,
+                    off_fn=async_set_device_internet_access_state,
+                    on_fn=async_set_device_internet_access_state,
+                    value_fn=get_device_internet_access_state,
+                ),
+            ),
+            "upnp_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     key="upnp_enabled",
@@ -269,13 +200,8 @@ async def async_setup_entry(
                     target_type=EntityType.MESH,
                     translation_key="upnp",
                 ),
-            )
-
-        if (
-            Actions.GET_WPS_SERVER_SETTINGS.key
-            in config_entry.runtime_data.mesh.capabilities
-        ):
-            mesh_entities.append(
+            ),
+            "wps_state": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
                     key="wps_state",
@@ -284,26 +210,82 @@ async def async_setup_entry(
                     on_fn=async_set_mesh_wps_state,
                     target_type=EntityType.MESH,
                     translation_key="wps",
-                )
-            )
+                ),
+            ),
+        }
+    )
+)
 
-        ret = tuple(
-            [
-                LinksysVelopSwitchMultiUseEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorMultiUse,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.MESH
-                        ),
-                    ),
-                    description=desc,
-                )
-                for desc in mesh_entities
-            ]
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise a switch."""
+
+    def _create_entities() -> None:
+        """Create the mesh and device entities."""
+
+        entities_to_add: tuple[LinksysVelopSwitchCoordinatorEntity, ...] = (
+            _init_device_entities() + _init_mesh_entities()
         )
 
-        return ret
+        if entities_to_add:
+            async_add_entities(entities_to_add)
+
+    def _init_device_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
+        """Describe the entities that target devices."""
+
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(DeviceEntity, attr)
+            for entity in entities
+            if entity.target_type is EntityType.DEVICE
+        )
+
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
+
+        return tuple(
+            LinksysVelopSwitchMultiUseEntity(
+                entity_context=LinksysVelopEntityContext(unique_id=device_id),
+                coordinator=coordinator,
+                description=description,
+            )
+            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+            for description in descriptions
+        )
+
+    def _init_mesh_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
+        """Describe the entities that target the mesh."""
+
+        mesh = config_entry.runtime_data.mesh
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
+        )
+        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+
+        descriptions = tuple(
+            entity
+            for attr, entities in ENTITIES.items()
+            if hasattr(mesh, attr)
+            for entity in entities
+            if entity.target_type is EntityType.MESH
+        )
+
+        return tuple(
+            LinksysVelopSwitchMultiUseEntity(
+                entity_context=context,
+                coordinator=coordinator,
+                description=description,
+            )
+            for description in descriptions
+        )
 
     def _init_node_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
@@ -312,55 +294,43 @@ async def async_setup_entry(
         return ret
 
     def _remove_stale_entities() -> None:
-        """Remove entities is they are no longer required."""
+        """Remove entities that are no longer required."""
 
-        entities_to_remove: set[str] = set()
+        mesh = config_entry.runtime_data.mesh
 
-        if (
-            Actions.GET_GUEST_NETWORK_INFO.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::guest_wi_fi"
+        stale_mesh_descriptions = {
+            slugify(str(entity.name))
+            for attr, entities in ENTITIES.items()
+            if not hasattr(mesh, attr)
+            for entity in entities
+            if entity.target_type == EntityType.MESH
+        }
+
+        stale_device_descriptions = {
+            slugify(str(entity.name))
+            for attr, entities in ENTITIES.items()
+            if not hasattr(DeviceEntity, attr)
+            for entity in entities
+            if entity.target_type == EntityType.DEVICE
+        }
+
+        entities_to_remove = {
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{description}"
+            for description in stale_mesh_descriptions
+        }
+
+        entities_to_remove.update(
+            f"{ui_device}::{ENTITY_DOMAIN}::{description}"
+            for ui_device in config_entry.options.get(CONF_UI_DEVICES, [])
+            for description in stale_device_descriptions
+        )
+
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
             )
-
-        if (
-            Actions.GET_HOMEKIT_SETTINGS.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::homekit_integration"
-            )
-
-        if (
-            Actions.GET_PARENTAL_CONTROL_INFO.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::parental_control"
-            )
-            for ui_device in config_entry.options.get(CONF_UI_DEVICES, []):
-                entities_to_remove.add(f"{ui_device}::{ENTITY_DOMAIN}::internet_access")
-
-        if (
-            Actions.GET_UPNP_SETTINGS.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp")
-
-        if (
-            Actions.GET_WPS_SERVER_SETTINGS.key
-            not in config_entry.runtime_data.mesh.capabilities
-        ):
-            entities_to_remove.add(f"{config_entry.entry_id}::{ENTITY_DOMAIN}::wps")
-
-        if len(entities_to_remove) > 0:
-            for entity_unique_id in entities_to_remove:
-                remove_velop_entity_from_registry(
-                    hass,
-                    config_entry.entry_id,
-                    entity_unique_id,
-                )
 
     def create_node_entities() -> None:
         """Create the node entities.

@@ -14,7 +14,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.typing import ConfigType
-from pyvelop.action_registry import Actions
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
@@ -38,7 +37,6 @@ from .coordinator import (
     CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
-    LinksysVelopDataUpdateCoordinatorSpeedtest,
     LinksysVelopRuntimeData,
     get_mesh_device_for_config_entry,
 )
@@ -67,7 +65,7 @@ _PLATFORMS: tuple[Platform, ...] = (
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant,  # pylint: disable=unused-argument
+    hass: HomeAssistant,
     config_entry: ConfigEntry,
     device_entry: DeviceEntry,
 ) -> bool:
@@ -181,11 +179,6 @@ async def async_setup_entry(
         LinksysVelopServiceHandler(hass).register_services()
     # endregion
 
-    all_config_entries: list[LinksysVelopConfigEntry] = (
-        hass.config_entries.async_entries(domain=DOMAIN)
-    )
-    _LOGGER.debug("entered")
-
     # region #-- initialise runtime data --#
     config_entry.runtime_data = LinksysVelopRuntimeData(
         # log_formatter=log_formatter.format,
@@ -206,10 +199,8 @@ async def async_setup_entry(
         await async_get_integration_version(hass),
     )
 
-    # region #-- setup the coordinators --#
-    coordinator_name_suffix: str = ""
-
     # region #--- mesh coordinator --#
+    coordinator_name_suffix: str = ""
     update_interval: float = config_entry.options.get(
         CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
     )
@@ -237,31 +228,6 @@ async def async_setup_entry(
     await config_entry.runtime_data.coordinators[
         CoordinatorTypes.MESH
     ].async_config_entry_first_refresh()
-    # endregion
-
-    # region #-- speedtest coordinator --#
-    if Actions.GET_SPEEDTEST_RESULTS.key in config_entry.runtime_data.mesh.capabilities:
-        update_interval: float = config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-        )
-        _LOGGER.debug(
-            "setting up the speedtest coordinator with interval: %s",
-            update_interval,
-        )
-        coordinator_name = f"{DOMAIN} speedtest{coordinator_name_suffix}"
-        config_entry.runtime_data.coordinators[CoordinatorTypes.SPEEDTEST] = (
-            LinksysVelopDataUpdateCoordinatorSpeedtest(
-                hass,
-                _LOGGER.get_logger(),
-                coordinator_name,
-                config_entry=config_entry,
-                update_interval_secs=update_interval,
-            )
-        )
-        await config_entry.runtime_data.coordinators[
-            CoordinatorTypes.SPEEDTEST
-        ].async_config_entry_first_refresh()
-    # endregion
     # endregion
 
     # region #-- setup the platforms --#
@@ -329,8 +295,6 @@ async def async_setup_entry(
 
     hass.config_entries.async_update_entry(config_entry, data=new_data)
     # endregion
-
-    _LOGGER.debug("exited")
 
     return True
 

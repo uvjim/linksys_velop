@@ -26,11 +26,14 @@ from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from pyvelop.action_registry import Actions
 from pyvelop.exceptions import (
     MeshConnectionError,
+    MeshCredentialCheckDelayed,
     MeshInvalidCredentials,
+    MeshInvalidCredentialsNoRetry,
+    MeshInvalidCredentialsWithDelay,
     MeshNodeNotPrimary,
 )
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from . import LinksysVelopConfigEntry
 from .const import (
@@ -129,7 +132,8 @@ class Steps(StrEnum):
     GATHER_DETAILS = auto()
     INIT = auto()
     LOGGING = auto()
-    LOGIN = auto()
+    MESH_DELAY = auto()
+    MESH_INITIALISE = auto()
     REAUTH_CONFIRM = auto()
     TIMERS = auto()
     UI_DEVICE = auto()
@@ -514,7 +518,7 @@ async def _async_get_devices(mesh: Mesh) -> dict[str, str]:
     """
     ret: dict = {}
 
-    devices: list[DeviceEntity] = await mesh.async_get_devices()
+    devices: tuple[DeviceEntity, ...] = await mesh.async_get_devices()
     for device in devices:
         for adapter in device.adapter_info:
             ret[device.unique_id.value] = f"{device.name} --> {adapter.mac}"
@@ -534,8 +538,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._error_details: ErrorDetails = ErrorDetails()
         self._mesh: Mesh | None = None
         self._options: dict[str, Any] = {}
-        self.task_gather: asyncio.Task[None] | None = None
-        self.task_login: asyncio.Task[Mesh] | None = None
+        self.task_delay: asyncio.Task[None] | None = None
+        self.task_init: asyncio.Task[Mesh] | None = None
 
     @staticmethod
     @callback
@@ -545,40 +549,15 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return LinksysOptionsFlowHandler()
 
-    async def _async_task_gather_details(self) -> None:
-        """Gather the details about the Mesh."""
+    async def _async_task_mesh_initialise(self, details: Mapping[str, Any]) -> Mesh:
+        """Authenticate and refresh the data available in the Mesh.
 
-        if self._mesh is None:
-            raise ValueError("Mesh has not been set")
-
-        await self._mesh.async_initialise()
-        nodes: tuple[NodeEntity, ...] = self._mesh.nodes
-        primary_node: NodeEntity | None = next(
-            (node for node in nodes if node.type == NodeType.PRIMARY), None
-        )
-        if primary_node is None:
-            raise ValueError("Primary node not found")
-
-        adapter: NodeAdapterInfo | None = next(
-            (adi for adi in primary_node.adapter_info.value if adi.primary), None
-        )
-        if adapter is None:
-            raise ValueError("Primary node adapter not found")
-
-        if adapter.ip != self._options.get(CONF_NODE):
-            raise MeshNodeNotPrimary()
-
-    async def _async_task_login(self, details: Mapping[str, Any]) -> Mesh:
-        """Test the credentials for the Mesh.
-
-        :param details: basic information for connecting to the mesh.
-        :return: a `Mesh` object that can be used for retrieving details.
+        :param details: basic details for connecting to the mesh.
+        :return: Mesh object to be used for subsequent data retrieval.
         """
 
         mesh = Mesh(**details, session=async_get_clientsession(self.hass))
-        valid: bool = await mesh.async_test_credentials()
-        if not valid:
-            raise MeshInvalidCredentials()
+        await mesh.async_authenticate_and_refresh()
 
         return mesh
 
@@ -628,51 +607,40 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_create_entry(title=_title, data={}, options=self._options)
 
-    async def async_step_gather_details(
+    async def async_step_mesh_delay(
         self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Initiate gathering Mesh details.
-
-        This step is only used to provide progress and to allow moving back
-        to the user step should an error occur.
+        """Show a delay when mesh authentication is in a cooldown period.
 
         :param user_input: User-provided configuration data, or `None` when
         the form has not yet been submitted.
         :returns: The next config flow result.
         """
 
-        if self.task_gather is None:
-            self.task_gather = self.hass.async_create_task(
-                self._async_task_gather_details()
+        if self.task_delay is None and self._error_details.has_error():
+            delay: float = float(
+                self._error_details.placeholders.pop("wait_for", "10.0")
             )
+            self.task_delay = self.hass.async_create_task(asyncio.sleep(delay))
 
-        if self.task_gather is not None and not self.task_gather.done():
+        # task is still running - tell frontend to display progress
+        if self.task_delay is not None and not self.task_delay.done():
             return self.async_show_progress(
-                step_id=Steps.GATHER_DETAILS,
-                progress_action="task_gather_details",
-                progress_task=self.task_gather,
+                description_placeholders={
+                    "wait_for": str(int(delay)),
+                },
+                step_id=Steps.MESH_DELAY,
+                progress_action="task_delay",
+                progress_task=self.task_delay,
             )
 
-        try:
-            self.task_gather.result()
-        except MeshNodeNotPrimary:
-            self._error_details.set_error("node_not_primary", CONF_NODE)
-        except Exception as exc:  # noqa: BLE001
-            _LOGGER.error("%s", exc)
-            self._error_details.set_error(
-                "general", msg_placeholders={"exc_msg": str(exc)}
-            )
-        else:
-            self.task_gather = None
-            return self.async_show_progress_done(next_step_id=Steps.TIMERS)
-
-        self.task_gather = None
+        self.task_delay = None
         return self.async_show_progress_done(next_step_id=Steps.USER)
 
-    async def async_step_login(
+    async def async_step_mesh_initialise(
         self, user_input: Mapping[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """Initiate the credential test.
+        """Initialise the mesh.
 
         This step is only used to provide progress and to allow moving back
         to the user step should an error occur.
@@ -683,30 +651,54 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
 
         # the task isn't running, so start it.
-        if self.task_login is None:
+        if self.task_init is None:
             self._error_details.clear()
             details: dict[str, Any] = {
                 "node": self._options.get(CONF_NODE),
                 "password": self._options.get(CONF_PASSWORD),
                 "request_timeout": DEF_API_CONFIG_FLOW_REQUEST_TIMEOUT,
             }
-            self.task_login = self.hass.async_create_task(
-                self._async_task_login(details)
+            self.task_init = self.hass.async_create_task(
+                self._async_task_mesh_initialise(details)
             )
 
         # task is still running - tell frontend to display progress
-        if self.task_login is not None and not self.task_login.done():
+        if self.task_init is not None and not self.task_init.done():
             return self.async_show_progress(
-                step_id=Steps.LOGIN,
-                progress_action="task_login",
-                progress_task=self.task_login,
+                step_id=Steps.MESH_INITIALISE,
+                progress_action="task_init",
+                progress_task=self.task_init,
             )
 
         # task is complete, process results or exceptions
         try:
-            mesh: Mesh = self.task_login.result()
+            mesh: Mesh = self.task_init.result()
         except MeshConnectionError:
             self._error_details.set_error("connection_error", CONF_NODE)
+        except MeshCredentialCheckDelayed as exc:
+            self._error_details.set_error(
+                "login_error_delayed",
+                CONF_PASSWORD,
+                {
+                    "attempts_remaining": exc.details.get("attempts_remaining", ""),
+                    "wait_for": exc.details.get("delay_time_remaining_secs", ""),
+                },
+            )
+            self.task_init = None
+            return self.async_show_progress_done(next_step_id=Steps.MESH_DELAY)
+        except MeshInvalidCredentialsWithDelay as exc:
+            self._error_details.set_error(
+                "login_error_delay",
+                CONF_PASSWORD,
+                {
+                    "attempts_remaining": exc.details.get("attempts_remaining", ""),
+                    "wait_for": exc.details.get("delay_time_remaining_secs", ""),
+                },
+            )
+            self.task_init = None
+            return self.async_show_progress_done(next_step_id=Steps.MESH_DELAY)
+        except MeshInvalidCredentialsNoRetry:
+            self._error_details.set_error("login_error_no_retry", CONF_PASSWORD)
         except MeshInvalidCredentials:
             self._error_details.set_error("login_error", CONF_PASSWORD)
         except MeshNodeNotPrimary:
@@ -718,10 +710,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         else:
             self._mesh = mesh
-            self.task_login = None
-            return self.async_show_progress_done(next_step_id=Steps.GATHER_DETAILS)
+            self.task_init = None
+            return self.async_show_progress_done(next_step_id=Steps.TIMERS)
 
-        self.task_login = None
+        self.task_init = None
         return self.async_show_progress_done(next_step_id=Steps.USER)
 
     async def async_step_reauth(
@@ -839,11 +831,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # region #-- handle the unique_id now --#
         if not self.unique_id:
-            _LOGGER.debug("no unique_id")
             # region #-- get the unique_id --#
             unique_id: str | None = None
             if self._mesh:
-                nodes: list[NodeEntity] = self._mesh.nodes
+                nodes: tuple[NodeEntity, ...] = self._mesh.nodes
                 for node in nodes:
                     if node.type == NodeType.PRIMARY:
                         unique_id = node.serial.value
@@ -924,7 +915,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # form has been submitted
         if user_input is not None:
             self._options.update(user_input)
-            return await self.async_step_login()
+            return await self.async_step_mesh_initialise()
 
         # form display
         if self._error_details.has_error():
