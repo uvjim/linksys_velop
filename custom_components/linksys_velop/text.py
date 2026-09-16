@@ -5,7 +5,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import cast, override
+from typing import override
 
 from homeassistant.components.text import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.text import TextEntity, TextEntityDescription
@@ -22,9 +22,7 @@ from .const import (
 )
 from .coordinator import (
     CoordinatorTimers,
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
@@ -93,10 +91,7 @@ async def async_setup_entry(
             if entity.target_type is EntityType.DEVICE
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopTextMultiUseEntity(
@@ -156,10 +151,9 @@ async def async_setup_entry(
         create_node_entities()
 
         config_entry.async_on_unload(
-            cast(
-                LinksysVelopDataUpdateCoordinatorMultiUse,
-                config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-            ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+            config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+                CoordinatorTimers.MESH, create_node_entities
+            )
         )
 
 

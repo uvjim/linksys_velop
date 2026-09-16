@@ -71,14 +71,22 @@ _LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
 @dataclass
+class DataUpdateCoordinatorData:
+    """Representation of the data available to the update coordinator."""
+
+    mesh: Mesh = field(kw_only=True)
+    device_tracker: tuple[DeviceEntity, ...] = field(
+        default_factory=tuple, kw_only=True
+    )
+
+
+@dataclass
 class LinksysVelopRuntimeData:
     """Runtime data for the ConfigEntry."""
 
     mesh: Mesh
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse
     blocking_tasks: set[str] = field(default_factory=set)
-    coordinators: dict[CoordinatorTypes, DataUpdateCoordinator[Any]] = field(
-        default_factory=dict
-    )
     speedtest_data: SpeedtestResult | None = None
 
 
@@ -100,23 +108,7 @@ class CoordinatorTimers(StrEnum):
     MESH = auto()
 
 
-class CoordinatorTypes(StrEnum):
-    """The type of coordinator."""
-
-    DEVICE_TRACKER = "coordinator_device_tracker"
-    MESH = "coordinator_mesh"
-
-
-class DataItems(StrEnum):
-    """The data items available to a DataCoordinator."""
-
-    CHANNEL_SCAN = auto()
-    DEVICE_TRACKER = auto()
-    MESH = auto()
-    SPEEDTEST = auto()
-
-
-class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
+class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
     """Base class for the update coordinators."""
 
     config_entry: LinksysVelopConfigEntry
@@ -127,6 +119,7 @@ class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
         logger: logging.Logger,
         *,
         config_entry: LinksysVelopConfigEntry,
+        mesh: Mesh,
         name: str,
         update_interval_secs: float,
     ) -> None:
@@ -160,13 +153,17 @@ class LinksyVelopDataUpdateCoordinator(DataUpdateCoordinator):
         return False
 
 
-class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator):
+class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinator):
     """Retrieve the data from the Velop mesh."""
+
+    data: DataUpdateCoordinatorData
 
     def __init__(
         self,
         hass: HomeAssistant,
         logger: logging.Logger,
+        *,
+        mesh: Mesh,
         name: str,
         config_entry: LinksysVelopConfigEntry,
         update_interval_secs: float,
@@ -189,13 +186,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         super().__init__(
             hass,
             logger,
+            mesh=mesh,
             name=name,
             config_entry=config_entry,
             update_interval_secs=base_update_interval_secs,
         )
 
-        self.data: dict[str, Any] = {}
-        self.data.update({CoordinatorTimers.MESH: config_entry.runtime_data.mesh})
+        self.data = DataUpdateCoordinatorData(mesh=mesh)
 
         # region #-- custom instance variables --#
         self._configured_events: list[str] = self.config_entry.options.get(
@@ -258,14 +255,14 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         """Get the device tracker information from the mesh."""
 
         if await self._delay_run():
-            return self.data.get(CoordinatorTimers.DEVICE_TRACKER, [])
+            return self.data.device_tracker
 
         devices: tuple[DeviceEntity, ...] = ()
         try:
             tracked_devices: tuple[str] = self.config_entry.options.get(
                 CONF_DEVICE_TRACKERS, []
             )
-            devices = await self.config_entry.runtime_data.mesh.async_get_devices(
+            devices = await self.data.mesh.async_get_devices(
                 tracked_devices,
                 force_refresh=True,
             )
@@ -363,12 +360,12 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         # region #-- should we run? --#
         if await self._delay_run():
-            return self.config_entry.runtime_data.mesh
+            return self.data.mesh
         # endregion
 
         # region #-- set the previous details before getting mesh details --#
-        if self.config_entry.runtime_data.mesh.has_initialised:
-            previous_nodes = self.config_entry.runtime_data.mesh.nodes
+        if self.data.mesh.has_initialised:
+            previous_nodes = self.data.mesh.nodes
             previous_nodes_serials = {
                 node.serial.value
                 for node in previous_nodes
@@ -377,14 +374,14 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
                 previous_devices = {
                     device.unique_id.value
-                    for device in self.config_entry.runtime_data.mesh.devices
+                    for device in self.data.mesh.devices
                     if device.unique_id.value is not None
                 }
         # endregion
 
         # region #-- get the details from the mesh --#
         try:
-            await self.config_entry.runtime_data.mesh.async_refresh()
+            await self.data.mesh.async_refresh()
         except (MeshConnectionError, MeshTimeoutError) as err:
             exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                 translation_domain=DOMAIN,
@@ -420,13 +417,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         # region #-- get the current details for comparison --#
         current_nodes_serials = {
             node.serial.value
-            for node in self.config_entry.runtime_data.mesh.nodes
+            for node in self.data.mesh.nodes
             if node.serial.value is not None
         }
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             current_devices = {
                 device.unique_id.value
-                for device in self.config_entry.runtime_data.mesh.devices
+                for device in self.data.mesh.devices
                 if device.unique_id.value is not None
             }
         # endregion
@@ -447,11 +444,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                 continue
 
             cur_node = next(
-                (
-                    node
-                    for node in self.config_entry.runtime_data.mesh.nodes
-                    if node.serial.value == serial
-                ),
+                (node for node in self.data.mesh.nodes if node.serial.value == serial),
                 None,
             )
             if cur_node is None:
@@ -492,7 +485,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                     # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
                     if cur_node.type.value == NodeType.SECONDARY:
                         parent_node: NodeEntity | None = get_mesh_parent_node(
-                            cur_node, self.config_entry.runtime_data.mesh
+                            cur_node, self.data.mesh
                         )
                         if (
                             parent_node is not None
@@ -531,7 +524,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                 cur_ui_device: DeviceEntity | None = next(
                     (
                         device
-                        for device in self.config_entry.runtime_data.mesh.devices
+                        for device in self.data.mesh.devices
                         if device.unique_id.value == ui_device
                     ),
                     None,
@@ -612,11 +605,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             for node in new_nodes_serials:
                 if (
                     node_info := next(
-                        (
-                            n
-                            for n in self.config_entry.runtime_data.mesh.nodes
-                            if n.serial.value == node
-                        ),
+                        (n for n in self.data.mesh.nodes if n.serial.value == node),
                         None,
                     )
                 ) is not None:
@@ -634,11 +623,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
             device_info: DeviceEntity | None
             for device in all_new_devices:
                 if device_info := next(
-                    (
-                        d
-                        for d in self.config_entry.runtime_data.mesh.devices
-                        if d.unique_id.value == device
-                    ),
+                    (d for d in self.data.mesh.devices if d.unique_id.value == device),
                     None,
                 ):
                     dev_ip = next(
@@ -665,13 +650,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                         )
         # endregion
 
-        return self.config_entry.runtime_data.mesh
+        return self.data.mesh
 
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
 
         try:
-            await self.config_entry.runtime_data.mesh.async_authenticate_and_refresh()
+            await self.data.mesh.async_authenticate_and_refresh()
         except MeshInvalidCredentials as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
@@ -687,7 +672,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                 translation_domain=DOMAIN,
                 translation_key="init_mesh_timeout",
                 translation_placeholders={
-                    "current_timeout": str(self.config_entry.runtime_data.mesh.timeout),
+                    "current_timeout": str(self.data.mesh.timeout),
                 },
             ) from exc
         except MeshConnectionError as exc:
@@ -696,16 +681,16 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
                 translation_key="init_connection_error",
                 translation_placeholders={
                     "exc_msg": str(exc),
-                    "primary_ip": self.config_entry.runtime_data.mesh.connected_node,
+                    "primary_ip": self.data.mesh.connected_node,
                 },
             ) from exc
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> DataUpdateCoordinatorData:
         """Refresh the mesh data."""
 
         # set when we're running for later comparison
         now: float = time.monotonic()
-        _data: dict[str, Any] = copy.copy(self.data)
+        _data: DataUpdateCoordinatorData = copy.copy(self.data)
 
         # region #-- establish the functions that need to run--#
         timers_running: list[CoordinatorTimers] = []
@@ -740,7 +725,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
 
         # region #-- set the results and appropriate attributes --#
         for idx, timer in enumerate(timers_running):
-            _data.update({timer.value: res[idx]})
+            setattr(_data, timer.value, res[idx])
             self._timers.get(timer, {}).update({"last_success": now})
         # endregion
 
@@ -770,35 +755,6 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksyVelopDataUpdateCoordinator
         for t in timer_cache:
             self._timers.get(t, {}).update({"last_success": timer_cache.get(t)})
         # endregion
-
-
-class UpdateCoordinatorChangeableInterval(LinksyVelopDataUpdateCoordinator):
-    """DataUpdateCoordinator that allows for the interval being changed."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        logger: logging.Logger,
-        name: str,
-        *,
-        config_entry: LinksysVelopConfigEntry,
-        update_interval_secs: float,
-        progress_update_interval_secs: float,
-    ) -> None:
-        """Initialise."""
-
-        self.normal_update_interval: timedelta = timedelta(seconds=update_interval_secs)
-        self.progress_update_interval: timedelta = timedelta(
-            seconds=progress_update_interval_secs
-        )
-
-        super().__init__(
-            hass,
-            logger,
-            name=name,
-            config_entry=config_entry,
-            update_interval_secs=update_interval_secs,
-        )
 
 
 def get_mesh_device_for_config_entry(

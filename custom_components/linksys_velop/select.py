@@ -25,9 +25,7 @@ from .const import (
 )
 from .coordinator import (
     CoordinatorTimers,
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
@@ -189,10 +187,7 @@ async def async_setup_entry(
         """Describe the entities that target devices."""
 
         mesh = config_entry.runtime_data.mesh
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         descriptions = tuple(
             entity
@@ -270,10 +265,7 @@ async def async_setup_entry(
             if entity.target_type is EntityType.MESH
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
@@ -332,10 +324,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 
@@ -349,12 +340,10 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     @override
     def current_option(self) -> str | None:
 
-        if (
-            self.entity_description.value_fn is not None
-            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
-        ):
+        if self.entity_description.value_fn is not None:
             return self.entity_description.value_fn(
-                mesh, self.entity_context.data.get("velop", {}).get("id")
+                self.coordinator.data.mesh,
+                self.entity_context.data.get("velop", {}).get("id"),
             )
         elif self.entity_description.key:
             ret: Any | None = getattr(
@@ -382,11 +371,8 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     def options(self) -> list[str]:
 
         ret: list[str] = []
-        if (
-            self.entity_description.options_fn is not None
-            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
-        ):
-            ret = self.entity_description.options_fn(mesh)
+        if self.entity_description.options_fn is not None:
+            ret = self.entity_description.options_fn(self.coordinator.data.mesh)
         elif self.entity_description.options is not None:
             ret = self.entity_description.options
 
@@ -400,10 +386,7 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
         # endregion
 
         # region #-- call the appropriate function or the default if none provided --#
-        if (
-            self.entity_description.set_fn is not None
-            and (mesh := self.coordinator.data.get(CoordinatorTimers.MESH)) is not None
-        ):
+        if self.entity_description.set_fn is not None:
             if (
                 self.entity_context.unique_id
                 == self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
@@ -415,7 +398,7 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
                 )
             else:
                 await self.entity_description.set_fn(
-                    mesh,
+                    self.coordinator.data.mesh,
                     option,
                 )
             # refresh the data

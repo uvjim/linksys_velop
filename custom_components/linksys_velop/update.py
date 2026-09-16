@@ -15,16 +15,12 @@ from homeassistant.components.update import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import FirmwareUpdatePolicy, Mesh
+from pyvelop.mesh import FirmwareUpdatePolicy
 from pyvelop.mesh_entity import NodeEntity
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_NODE_IMAGES
-from .coordinator import (
-    CoordinatorTimers,
-    CoordinatorTypes,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
-)
+from .coordinator import CoordinatorTimers
 from .entities import (
     EntityType,
     LinksysVelopEntityContext,
@@ -141,10 +137,7 @@ async def async_setup_entry(
                 ),
             )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopUpdateMultiUseEntity(
@@ -190,10 +183,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 
@@ -207,10 +199,11 @@ class LinksysVelopUpdateMultiUseEntity(LinksysVelopMultiUseEntity, UpdateEntity)
     @override
     def auto_update(self) -> bool:
 
-        _mesh: Mesh | None = self.coordinator.data.get(CoordinatorTimers.MESH)
         ret: bool = False
-        if _mesh is not None:
-            ret = _mesh.firmware_update_setting != FirmwareUpdatePolicy.MANUAL
+        ret = (
+            self.coordinator.data.mesh.firmware_update_setting
+            != FirmwareUpdatePolicy.MANUAL
+        )
 
         return ret
 

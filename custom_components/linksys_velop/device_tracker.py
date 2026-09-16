@@ -4,7 +4,7 @@
 import logging
 from dataclasses import dataclass
 from functools import cached_property
-from typing import cast, override
+from typing import override
 
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
@@ -24,9 +24,7 @@ from .const import (
     DEF_CONSIDER_HOME,
 )
 from .coordinator import (
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
     get_mesh_device_for_config_entry,
 )
 from .entities import (
@@ -70,12 +68,7 @@ async def async_setup_entry(
         ) is not None:
             device_trackers.append(
                 LinksysVelopDeviceTrackerMultiUseEntity(
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorMultiUse,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.MESH
-                        ),
-                    ),
+                    coordinator=config_entry.runtime_data.coordinator,
                     description=LinksysVelopDeviceTrackerEntityDescription(
                         name=device.name.value,
                         key="",

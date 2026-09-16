@@ -41,7 +41,6 @@ from pyvelop.mesh_entity import (
 from .const import CONF_NODE_IMAGES, CONF_UI_DEVICES
 from .coordinator import (
     CoordinatorTimers,
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
 )
@@ -159,9 +158,7 @@ def get_speedtest_data(
         coordinator.config_entry.runtime_data.speedtest_data
     )
     if speedtest_results is None:
-        mesh: Mesh | None = coordinator.data.get(CoordinatorTimers.MESH)
-        if mesh is not None:
-            speedtest_results = mesh.speedtest_latest_complete.value
+        speedtest_results = coordinator.data.mesh.speedtest_latest_complete.value
 
     if speedtest_results is None or not hasattr(speedtest_results, name):
         return None
@@ -654,10 +651,7 @@ async def async_setup_entry(
             if entity.target_type is EntityType.DEVICE
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopSensorMultiUseEntity(
@@ -680,10 +674,7 @@ async def async_setup_entry(
             if entity.target_type is EntityType.MESH
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
         return tuple(
@@ -722,10 +713,7 @@ async def async_setup_entry(
             if entity.target_type == EntityType.NODE
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         entities: list[LinksysVelopSensorCoordinatorEntity] = []
 
@@ -978,10 +966,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 

@@ -34,7 +34,6 @@ from .const import (
     MIN_HA_VERSION,
 )
 from .coordinator import (
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
     LinksysVelopRuntimeData,
@@ -179,28 +178,13 @@ async def async_setup_entry(
         LinksysVelopServiceHandler(hass).register_services()
     # endregion
 
-    # region #-- initialise runtime data --#
-    config_entry.runtime_data = LinksysVelopRuntimeData(
-        # log_formatter=log_formatter.format,
-        mesh=Mesh(
-            node=config_entry.options[CONF_NODE],
-            password=config_entry.options[CONF_PASSWORD],
-            request_timeout=config_entry.options.get(
-                CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-            ),
-            session=async_get_clientsession(hass=hass),
-            supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
-        ),
-    )
-    # endregion
-
     _LOGGER.debug(
         "using integration version: %s",
         await async_get_integration_version(hass),
     )
 
     # region #--- mesh coordinator --#
-    coordinator_name_suffix: str = ""
+    coordinator_name_suffix: str = f" ({config_entry.title})"
     update_interval: float = config_entry.options.get(
         CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
     )
@@ -216,18 +200,32 @@ async def async_setup_entry(
         update_intervals["tracker_update_interval_secs"] = config_entry.options.get(
             CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
         )
-    config_entry.runtime_data.coordinators[CoordinatorTypes.MESH] = (
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
         LinksysVelopDataUpdateCoordinatorMultiUse(
             hass,
             _LOGGER.get_logger(),
-            coordinator_name,
             config_entry=config_entry,
+            name=coordinator_name,
+            mesh=Mesh(
+                node=config_entry.options[CONF_NODE],
+                password=config_entry.options[CONF_PASSWORD],
+                request_timeout=config_entry.options.get(
+                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                ),
+                session=async_get_clientsession(hass=hass),
+                supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
+            ),
             **update_intervals,
         )
     )
-    await config_entry.runtime_data.coordinators[
-        CoordinatorTypes.MESH
-    ].async_config_entry_first_refresh()
+    # endregion
+
+    # region #-- initialise runtime data --#
+    config_entry.runtime_data = LinksysVelopRuntimeData(
+        coordinator=coordinator,
+        mesh=coordinator.data.mesh,
+    )
+    await coordinator.async_config_entry_first_refresh()
     # endregion
 
     # region #-- setup the platforms --#
@@ -267,7 +265,7 @@ async def async_setup_entry(
         device: DeviceEntity | None = next(
             (
                 d
-                for d in config_entry.runtime_data.mesh.devices
+                for d in config_entry.runtime_data.coordinator.data.mesh.devices
                 if d.unique_id == tracker
             ),
             None,

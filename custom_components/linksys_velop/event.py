@@ -3,7 +3,7 @@
 # region #-- imports --#
 import logging
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from homeassistant.components.event import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.event import EventEntity, EventEntityDescription
@@ -17,9 +17,7 @@ from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 from .const import DOMAIN, EventSubTypes
 from .coordinator import (
     CoordinatorTimers,
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
@@ -80,10 +78,7 @@ async def async_setup_entry(
             ),
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
         return tuple(
@@ -131,10 +126,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 
