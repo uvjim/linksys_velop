@@ -56,7 +56,7 @@ async def async_setup_entry(
             _init_device_entities() + _init_mesh_entities()
         )
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     def _init_device_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
@@ -67,16 +67,11 @@ async def async_setup_entry(
 
     def _init_mesh_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
         """Describe the entities that target the mesh."""
-        ret: tuple[LinksysVelopEventMultiUseEntity, ...] = ()
-        context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-            unique_id=config_entry.entry_id
-        )
-        mesh_entities: list[LinksysVelopEventEntityDescription] = []
 
-        mesh_entities.append(
+        descriptions = (
             LinksysVelopEventEntityDescription(
                 entity_category=EntityCategory.DIAGNOSTIC,
-                event_types=[ev.value for ev in EventSubTypes],
+                event_types=[event.value for event in EventSubTypes],
                 has_entity_name=True,
                 key="",
                 name="Events",
@@ -85,23 +80,20 @@ async def async_setup_entry(
             ),
         )
 
-        ret = tuple(
-            [
-                LinksysVelopEventMultiUseEntity(
-                    entity_context=context,
-                    coordinator=cast(
-                        LinksysVelopDataUpdateCoordinatorMultiUse,
-                        config_entry.runtime_data.coordinators.get(
-                            CoordinatorTypes.MESH
-                        ),
-                    ),
-                    description=desc,
-                )
-                for desc in mesh_entities
-            ]
+        coordinator = cast(
+            LinksysVelopDataUpdateCoordinatorMultiUse,
+            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
         )
+        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
-        return ret
+        return tuple(
+            LinksysVelopEventMultiUseEntity(
+                entity_context=context,
+                coordinator=coordinator,
+                description=description,
+            )
+            for description in descriptions
+        )
 
     def _init_node_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
         """Describe the entities that target nodes."""
@@ -114,13 +106,12 @@ async def async_setup_entry(
 
         entities_to_remove: set[str] = set()
 
-        if len(entities_to_remove) > 0:
-            for entity_unique_id in entities_to_remove:
-                remove_velop_entity_from_registry(
-                    hass,
-                    config_entry.entry_id,
-                    entity_unique_id,
-                )
+        for entity_unique_id in entities_to_remove:
+            remove_velop_entity_from_registry(
+                hass,
+                config_entry.entry_id,
+                entity_unique_id,
+            )
 
     def create_node_entities() -> None:
         """Create the node entities.
@@ -132,7 +123,7 @@ async def async_setup_entry(
             _init_node_entities()
         )
 
-        if len(entities_to_add) > 0:
+        if entities_to_add:
             async_add_entities(entities_to_add)
 
     _remove_stale_entities()

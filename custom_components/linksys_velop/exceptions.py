@@ -3,6 +3,10 @@
 from homeassistant.exceptions import HomeAssistantError
 
 
+class BlockingTaskRunning(HomeAssistantError):
+    """Blocking task running whilst checking for state."""
+
+
 class CoordinatorMeshException(HomeAssistantError):
     """MeshException raised."""
 
@@ -17,10 +21,6 @@ class DeviceTrackerMeshTimeout(HomeAssistantError):
 
 class GeneralException(HomeAssistantError):
     """A currently untracked exception was encountered."""
-
-
-class IntensiveTaskRunning(HomeAssistantError):
-    """Intensive task running whilst checking for state."""
 
 
 class InvalidInput(HomeAssistantError):

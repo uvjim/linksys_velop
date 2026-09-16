@@ -6,12 +6,13 @@ from __future__ import annotations
 import functools
 import logging
 import uuid
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from pyvelop.exceptions import MeshInvalidInput, MeshTooManyMatches
+from pyvelop.exceptions import MeshInvalidInput
 from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import (
     DeviceEntity,
@@ -29,6 +30,60 @@ from .logger import Logger
 
 
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
+
+
+SERVICES: dict[str, Any] = {
+    "delete_device": {
+        "schema": vol.Schema(
+            {
+                vol.Required("mesh"): str,
+                vol.Required("device"): str,
+            }
+        )
+    },
+    "device_internet_access": {
+        "schema": vol.Schema(
+            {
+                vol.Required("mesh"): str,
+                vol.Required("device"): str,
+                vol.Required("pause"): bool,
+            }
+        )
+    },
+    "device_internet_rules": {
+        "schema": vol.Schema(
+            {
+                vol.Required("mesh"): str,
+                vol.Required("device"): str,
+                vol.Optional("sunday"): list,
+                vol.Optional("monday"): list,
+                vol.Optional("tuesday"): list,
+                vol.Optional("wednesday"): list,
+                vol.Optional("thursday"): list,
+                vol.Optional("friday"): list,
+                vol.Optional("saturday"): list,
+            }
+        )
+    },
+    "reboot_node": {
+        "schema": vol.Schema(
+            {
+                vol.Required("mesh"): str,
+                vol.Required("node_name"): str,
+                vol.Optional("is_primary"): bool,
+            }
+        )
+    },
+    "rename_device": {
+        "schema": vol.Schema(
+            {
+                vol.Required("mesh"): str,
+                vol.Required("device"): str,
+                vol.Required("new_name"): str,
+            }
+        )
+    },
+}
 
 
 def deprectated_service(solution: str):
@@ -62,59 +117,6 @@ def deprectated_service(solution: str):
 
 class LinksysVelopServiceHandler:
     """Define and action serice calls."""
-
-    SERVICES = {
-        "delete_device": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                }
-            )
-        },
-        "device_internet_access": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                    vol.Required("pause"): bool,
-                }
-            )
-        },
-        "device_internet_rules": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                    vol.Optional("sunday"): list,
-                    vol.Optional("monday"): list,
-                    vol.Optional("tuesday"): list,
-                    vol.Optional("wednesday"): list,
-                    vol.Optional("thursday"): list,
-                    vol.Optional("friday"): list,
-                    vol.Optional("saturday"): list,
-                }
-            )
-        },
-        "reboot_node": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("node_name"): str,
-                    vol.Optional("is_primary"): bool,
-                }
-            )
-        },
-        "rename_device": {
-            "schema": vol.Schema(
-                {
-                    vol.Required("mesh"): str,
-                    vol.Required("device"): str,
-                    vol.Required("new_name"): str,
-                }
-            )
-        },
-    }
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialise."""
@@ -183,14 +185,14 @@ class LinksysVelopServiceHandler:
                             "original_msg": str(exc),
                         },
                     ) from exc
-                except Exception as err:
+                except Exception as err:  # noqa: BLE001
                     _LOGGER.warning("%s", err)
 
         _LOGGER.debug("exited")
 
     def register_services(self) -> None:
         """Register the services."""
-        for service_name, service_details in self.SERVICES.items():
+        for service_name, service_details in SERVICES.items():
             self._hass.services.async_register(
                 domain=DOMAIN,
                 service=service_name,
@@ -200,7 +202,7 @@ class LinksysVelopServiceHandler:
 
     def unregister_services(self) -> None:
         """Unregister the services."""
-        for service_name in self.SERVICES:
+        for service_name in SERVICES:
             self._hass.services.async_remove(domain=DOMAIN, service=service_name)
 
     async def delete_device(
@@ -221,7 +223,14 @@ class LinksysVelopServiceHandler:
 
         # only make the request to rename if they are different
         if len(device) > 1:
-            raise MeshTooManyMatches from None
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="not_unique",
+                translation_placeholders={
+                    "device": kwargs.get("device", ""),
+                    "num_found": str(len(device)),
+                },
+            )
 
         try:
             await device[0].async_delete()
@@ -253,7 +262,7 @@ class LinksysVelopServiceHandler:
                 if not kwargs.get("pause", False)
                 else str(
                     ParentalControl.binary_to_human_readable(
-                        ParentalControl.ALL_PAUSED_SCHEDULE().get(
+                        ParentalControl.all_paused_schedule().get(
                             weekday.name.lower(), ""
                         )
                     )
@@ -261,7 +270,7 @@ class LinksysVelopServiceHandler:
             )
 
         await device[0].async_set_parental_control_rules(
-            rules_to_apply, True if kwargs.get("pause", False) else False
+            rules_to_apply, bool(kwargs.get("pause", False))
         )
 
         _LOGGER.debug("exited")
@@ -333,7 +342,7 @@ class LinksysVelopServiceHandler:
                 "Use the button available on the node device.",
             )
 
-        await node[0].async_reboot(kwargs.get("is_primary", False))
+        await node[0].async_reboot(force=kwargs.get("is_primary", False))
 
         # region #-- flag the reboot --#
         if kwargs.get("is_primary", False):
@@ -367,7 +376,14 @@ class LinksysVelopServiceHandler:
 
         # only make the request to rename if they are different
         if len(device) > 1:
-            raise MeshTooManyMatches from None
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="not_unique",
+                translation_placeholders={
+                    "device": kwargs.get("device", ""),
+                    "num_found": str(len(device)),
+                },
+            )
 
         if (
             device[0].name != kwargs.get("new_name")

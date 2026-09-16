@@ -4,16 +4,14 @@
 import logging
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, cast, override
+from typing import cast, override
 
 from homeassistant.components.device_tracker import (
     CONF_CONSIDER_HOME,
-)
-from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
-from homeassistant.components.device_tracker import (
     ScannerEntity,
     ScannerEntityDescription,
 )
+from homeassistant.components.device_tracker import DOMAIN as ENTITY_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
@@ -36,6 +34,7 @@ from .entities import (
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
+    TargetEntityType,
 )
 from .logger import Logger
 
@@ -136,43 +135,45 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
     def _process_device_update(self) -> None:
         """Establish device state or attribute changes."""
 
-        device: DeviceEntity | None = self._get_target()
-        if device is not None:
-            if device.status.value != self._is_connected:
-                if device.status.value:
-                    _LOGGER.debug("%s: back online", self.name)
-                    self._is_connected = True
-                else:
-                    if device.results_time is not None:
-                        if self._offline_first_seen is None:
-                            # TODO: change this when pyvelop returns the results_time as int
-                            self._offline_first_seen = int(device.results_time)
-                            _LOGGER.debug(
-                                "%s: waiting for consider_home period %s",
-                                self.name,
-                                self.coordinator.config_entry.options.get(
-                                    CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
-                                ),
-                            )
-                        else:
-                            if int(
-                                device.results_time
-                            ) - self._offline_first_seen >= self.coordinator.config_entry.options.get(
-                                CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
-                            ):
-                                _LOGGER.debug(
-                                    "%s: consider_home period expired",
-                                    self.name,
-                                )
-                                self._is_connected = False
-                                self._offline_first_seen = None
+        device: TargetEntityType = self._get_target()
+        if not isinstance(device, DeviceEntity):
+            return
+
+        if device.status.value != self._is_connected:
+            if device.status.value:
+                _LOGGER.debug("%s: back online", self.name)
+                self._is_connected = True
             else:
-                if self._offline_first_seen is not None:
-                    _LOGGER.debug(
-                        "%s: back online in consider_home period",
-                        self.name,
-                    )
-                    self._offline_first_seen = None
+                if device.results_time is not None:
+                    if self._offline_first_seen is None:
+                        # TODO: change this when pyvelop returns the results_time as int
+                        self._offline_first_seen = int(device.results_time)
+                        _LOGGER.debug(
+                            "%s: waiting for consider_home period %s",
+                            self.name,
+                            self.coordinator.config_entry.options.get(
+                                CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
+                            ),
+                        )
+                    else:
+                        if int(
+                            device.results_time
+                        ) - self._offline_first_seen >= self.coordinator.config_entry.options.get(
+                            CONF_CONSIDER_HOME, DEF_CONSIDER_HOME
+                        ):
+                            _LOGGER.debug(
+                                "%s: consider_home period expired",
+                                self.name,
+                            )
+                            self._is_connected = False
+                            self._offline_first_seen = None
+        else:
+            if self._offline_first_seen is not None:
+                _LOGGER.debug(
+                    "%s: back online in consider_home period",
+                    self.name,
+                )
+                self._offline_first_seen = None
 
     @property
     @override
@@ -180,13 +181,15 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
 
         ret: str | None = None
 
-        device: DeviceEntity | None = self._get_target()
-        if device is not None:
-            adapter_info: list[AdapterInfo] = device.adapter_info.value
-            if adapter_info:
-                adi: AdapterInfo | None = next(iter(adapter_info), None)
-                if adi is not None:
-                    ret = adi.ip
+        device: TargetEntityType = self._get_target()
+        if not isinstance(device, DeviceEntity):
+            return
+
+        adapter_info: list[AdapterInfo] = device.adapter_info.value
+        if adapter_info:
+            adi: AdapterInfo | None = next(iter(adapter_info), None)
+            if adi is not None:
+                ret = adi.ip
 
         return ret
 
@@ -202,14 +205,16 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
     def mac_address(self) -> str | None:
 
         ret: str | None = None
+        device: TargetEntityType = self._get_target()
 
-        device: DeviceEntity | None = self._get_target()
-        if device is not None:
-            adapter_info: list[AdapterInfo] = device.adapter_info.value
-            if adapter_info:
-                adi: AdapterInfo | None = next(iter(adapter_info), None)
-                if adi is not None:
-                    ret = adi.mac
+        if not isinstance(device, DeviceEntity):
+            return
+
+        adapter_info: list[AdapterInfo] = device.adapter_info.value
+        if adapter_info:
+            adi: AdapterInfo | None = next(iter(adapter_info), None)
+            if adi is not None:
+                ret = adi.mac
 
         return ret
 
@@ -220,7 +225,7 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
         return (
             f"{self.entity_context.unique_id}::"
             f"{self._entity_domain.lower()}::"
-            f"{str(self.entity_context.data.get("velop", {}).get("id"))}"
+            f"{self.entity_context.data.get("velop", {}).get("id")}"
         )
 
 
