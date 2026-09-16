@@ -23,7 +23,7 @@ from pyvelop.mesh_entity import (
 )
 
 from .const import CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS, DOMAIN, EventSubTypes
-from .coordinator import LinksysVelopConfigEntry
+from .coordinator import BlockingTasks, LinksysVelopConfigEntry
 from .logger import Logger
 
 # endregion
@@ -319,22 +319,23 @@ class LinksysVelopServiceHandler:
 
         N.B. Rebooting the primary node will cause all nodes to reboot. To reboot the primary node you should also
         turn the is_primary toggle on.
-
-        :return:None
         """
         _LOGGER.debug("entered, kwargs: %s", kwargs)
 
-        node: list[NodeEntity] = [
-            n
-            for n in config_entry.runtime_data.mesh.nodes
-            if n.name == kwargs.get("node_name", "")
-        ]
-        if len(node) == 0:
+        node_selected: NodeEntity | None = next(
+            (
+                node
+                for node in config_entry.runtime_data.mesh.nodes
+                if node.name == kwargs.get("node_name", "")
+            ),
+            None,
+        )
+        if node_selected is None:
             raise MeshInvalidInput(
                 f"Unknown node: {kwargs.get('node_name', '')}"
             ) from None
 
-        if node[0].type == NodeType.SECONDARY:
+        if node_selected.type == NodeType.SECONDARY:
             _LOGGER.warning(
                 "The service %s.%s has been deprecated. %s",
                 DOMAIN,
@@ -342,17 +343,31 @@ class LinksysVelopServiceHandler:
                 "Use the button available on the node device.",
             )
 
-        await node[0].async_reboot(force=kwargs.get("is_primary", False))
-
         # region #-- flag the reboot --#
         if kwargs.get("is_primary", False):
-            config_entry.runtime_data.mesh_is_rebooting = True
+            config_entry.runtime_data.blocking_tasks.add(BlockingTasks.REBOOT)
             if EventSubTypes.MESH_REBOOTING.value in config_entry.options.get(
                 CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
             ):
                 async_dispatcher_send(
                     self._hass,
                     f"{DOMAIN}_{EventSubTypes.MESH_REBOOTING.value}",
+                )
+        # endregion
+
+        await node_selected.async_reboot(
+            force=kwargs.get("is_primary", False), wait=True
+        )
+
+        # region #-- flag reboot complete and send event --#
+        if kwargs.get("is_primary", False):
+            config_entry.runtime_data.blocking_tasks.remove(BlockingTasks.REBOOT)
+            if EventSubTypes.MESH_REBOOTED.value in config_entry.options.get(
+                CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
+            ):
+                async_dispatcher_send(
+                    self._hass,
+                    f"{DOMAIN}_{EventSubTypes.MESH_REBOOTED.value}",
                 )
         # endregion
 
