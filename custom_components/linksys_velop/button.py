@@ -6,7 +6,7 @@ import logging
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, cast, override
+from typing import Any, override
 
 from homeassistant.components.button import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.button import (
@@ -34,7 +34,6 @@ from .const import (
 from .coordinator import (
     BlockingTasks,
     CoordinatorTimers,
-    CoordinatorTypes,
     LinksysVelopConfigEntry,
     LinksysVelopDataUpdateCoordinatorMultiUse,
 )
@@ -229,10 +228,7 @@ async def async_setup_entry(
             if entity.target_type == EntityType.DEVICE
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopButtonMultiUseEntity(
@@ -276,10 +272,7 @@ async def async_setup_entry(
                 ),
             )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopButtonMultiUseEntity(
@@ -307,10 +300,7 @@ async def async_setup_entry(
 
         known_nodes.update(new_nodes)
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         nodes_by_id = {
             node.unique_id.value: node
@@ -407,10 +397,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 

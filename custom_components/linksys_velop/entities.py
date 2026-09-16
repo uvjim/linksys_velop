@@ -4,7 +4,7 @@
 import logging
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any, cast, override
+from typing import Any, override
 
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -25,7 +25,6 @@ from .const import (
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
 from .coordinator import (
-    CoordinatorTimers,
     LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .logger import Logger
@@ -174,9 +173,7 @@ class LinksysVelopMultiUseEntity(
         :returns:
         """
 
-        mesh: Mesh | None = self.coordinator.data.get(CoordinatorTimers.MESH)
-        if mesh is None:
-            return None
+        mesh: Mesh = self.coordinator.data.mesh
 
         target_type = self.entity_description.target_type
         context_data = self.entity_context.data
@@ -216,16 +213,12 @@ class LinksysVelopMultiUseEntity(
             if velop_id is None:
                 return mesh
 
-            devices = cast(
-                list[DeviceEntity],
-                self.coordinator.data.get(
-                    CoordinatorTimers.DEVICE_TRACKER,
-                    [],
-                ),
-            )
-
             return next(
-                (device for device in devices if device.unique_id.value == velop_id),
+                (
+                    device
+                    for device in self.coordinator.data.device_tracker
+                    if device.unique_id.value == velop_id
+                ),
                 None,
             )
 

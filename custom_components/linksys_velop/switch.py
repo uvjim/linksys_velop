@@ -19,11 +19,7 @@ from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
 
 from . import LinksysVelopConfigEntry
 from .const import CONF_UI_DEVICES
-from .coordinator import (
-    CoordinatorTimers,
-    CoordinatorTypes,
-    LinksysVelopDataUpdateCoordinatorMultiUse,
-)
+from .coordinator import CoordinatorTimers
 from .entities import (
     EntityType,
     LinksysVelopEntityContext,
@@ -245,10 +241,7 @@ async def async_setup_entry(
             if entity.target_type is EntityType.DEVICE
         )
 
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
 
         return tuple(
             LinksysVelopSwitchMultiUseEntity(
@@ -264,10 +257,7 @@ async def async_setup_entry(
         """Describe the entities that target the mesh."""
 
         mesh = config_entry.runtime_data.mesh
-        coordinator = cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        )
+        coordinator = config_entry.runtime_data.coordinator
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
         descriptions = tuple(
@@ -350,10 +340,9 @@ async def async_setup_entry(
     create_node_entities()
 
     config_entry.async_on_unload(
-        cast(
-            LinksysVelopDataUpdateCoordinatorMultiUse,
-            config_entry.runtime_data.coordinators.get(CoordinatorTypes.MESH),
-        ).add_listener_for_timer_type(CoordinatorTimers.MESH, create_node_entities)
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH, create_node_entities
+        )
     )
 
 
