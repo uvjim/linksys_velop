@@ -1,7 +1,8 @@
 name: Manage stale issues
 on:
+  workflow_dispatch: 
   schedule:
-    - cron: "25 7 * * *"
+    - cron: "25 3 * * *"
 
 env:
   DAYS_BEFORE_STALE: 21
@@ -15,7 +16,7 @@ jobs:
     steps:
       - uses: actions/stale@v11
         with:
-          days-before-issue-stale: ${{ env.DAYS_BEFORE_STALE}}
+          days-before-issue-stale: ${{ env.DAYS_BEFORE_STALE }}
           days-before-issue-close: ${{ env.DAYS_BEFORE_CLOSE }}
           stale-issue-label: "stale"
           stale-issue-message: "This issue is stale because it has been open for ${{ env.DAYS_BEFORE_STALE }} days with no activity."
