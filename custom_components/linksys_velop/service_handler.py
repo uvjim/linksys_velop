@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from pyvelop.exceptions import MeshInvalidInput
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_entity import (
     DeviceEntity,
     NodeEntity,
@@ -122,7 +122,7 @@ class LinksysVelopServiceHandler:
         """Initialise."""
         self._hass: HomeAssistant = hass
 
-    def _get_device(self, mesh: Mesh, value: str) -> list[DeviceEntity] | None:
+    def _get_device(self, mesh: MeshSnapshot, value: str) -> list[DeviceEntity] | None:
         """Get a device from the Mesh based on name or unique ID.
 
         N.B. this uses the devices from the last poll to retrieve
@@ -172,7 +172,7 @@ class LinksysVelopServiceHandler:
                 ) from None
 
             _LOGGER.debug("entered, call: %s", call)
-            _LOGGER.debug("using %s", config_entry.runtime_data.mesh)
+            _LOGGER.debug("using %s", config_entry.runtime_data.api)
             if (method := getattr(self, call.service, None)) is not None:
                 try:
                     await method(**args, config_entry=config_entry)
@@ -211,12 +211,15 @@ class LinksysVelopServiceHandler:
         """Remove a device from the device list on the mesh."""
         _LOGGER.debug("entered, kwargs: %s", kwargs)
 
-        device: list[DeviceEntity] | None = None
-        if (
-            device := self._get_device(
-                config_entry.runtime_data.mesh, kwargs.get("device", "")
-            )
-        ) is None:
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is None:
+            return
+
+        device: list[DeviceEntity] | None = self._get_device(
+            mesh_data,
+            kwargs.get("device", ""),
+        )
+        if device is None:
             raise MeshInvalidInput(
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None
@@ -245,12 +248,13 @@ class LinksysVelopServiceHandler:
         """Change state of Internet access for a device."""
         _LOGGER.debug("entered, %s", kwargs)
 
-        device: list[DeviceEntity] | None = None
-        if (
-            device := self._get_device(
-                config_entry.runtime_data.mesh, kwargs.get("device", "")
-            )
-        ) is None:
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is None:
+            return
+        device: list[DeviceEntity] | None = self._get_device(
+            mesh_data, kwargs.get("device", "")
+        )
+        if device is None:
             raise MeshInvalidInput(
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None
@@ -281,12 +285,14 @@ class LinksysVelopServiceHandler:
         """Set Parental Control rules for the device."""
         _LOGGER.debug("entered, %s", kwargs)
 
-        device: list[DeviceEntity] | None = None
-        if (
-            device := self._get_device(
-                config_entry.runtime_data.mesh, kwargs.get("device", "")
-            )
-        ) is None:
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is None:
+            return
+
+        device: list[DeviceEntity] | None = self._get_device(
+            mesh_data, kwargs.get("device", "")
+        )
+        if device is None:
             raise MeshInvalidInput(
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None
@@ -322,10 +328,14 @@ class LinksysVelopServiceHandler:
         """
         _LOGGER.debug("entered, kwargs: %s", kwargs)
 
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is None:
+            return
+
         node_selected: NodeEntity | None = next(
             (
                 node
-                for node in config_entry.runtime_data.mesh.nodes
+                for node in mesh_data.nodes
                 if node.name == kwargs.get("node_name", "")
             ),
             None,
@@ -379,12 +389,14 @@ class LinksysVelopServiceHandler:
         """Rename a device on the Mesh."""
         _LOGGER.debug("entered, kwargs: %s", kwargs)
 
-        device: list[DeviceEntity] | None = None
-        if (
-            device := self._get_device(
-                config_entry.runtime_data.mesh, kwargs.get("device", "")
-            )
-        ) is None:
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is None:
+            return
+
+        device: list[DeviceEntity] | None = self._get_device(
+            mesh_data, kwargs.get("device", "")
+        )
+        if device is None:
             raise MeshInvalidInput(
                 f"Unknown device: {kwargs.get('device', '')}"
             ) from None

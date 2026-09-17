@@ -81,7 +81,7 @@ async def async_restart_primary_node(
         )
     # endregion
 
-    await config_entry.runtime_data.mesh.async_reboot_mesh(True)
+    await coordinator.api.async_reboot_mesh(True)
 
     # region #-- flag reboot complete and send event --#
     config_entry.runtime_data.blocking_tasks.remove(BlockingTasks.REBOOT)
@@ -100,7 +100,7 @@ async def async_start_check_for_updates(
 ) -> None:
     """Start checking for updates."""
 
-    await coordinator.config_entry.runtime_data.mesh.async_check_for_updates()
+    await coordinator.api.async_check_for_updates()
 
 
 async def async_start_speedtest(
@@ -114,14 +114,12 @@ async def async_start_speedtest(
         coordinator.config_entry.runtime_data.speedtest_data = progress
         coordinator.async_update_listeners()
 
-    await coordinator.config_entry.runtime_data.mesh.async_start_speedtest(
+    await coordinator.api.async_start_speedtest(
         wait=True, callback_func=_handle_updates
     )
 
     results: tuple[SpeedtestResult, ...] = (
-        await coordinator.config_entry.runtime_data.mesh.async_get_speedtest_results(
-            only_completed=True
-        )
+        await coordinator.api.async_get_speedtest_results(only_completed=True)
     )
     coordinator.config_entry.runtime_data.speedtest_data = max(
         results,
@@ -244,12 +242,16 @@ async def async_setup_entry(
         """Describe the entities that target the mesh."""
 
         ret: tuple[LinksysVelopButtonCoordinatorEntity, ...] = ()
+
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ret
+
         context: LinksysVelopEntityContext = LinksysVelopEntityContext(
             unique_id=config_entry.entry_id
         )
-        mesh_capabilities: tuple[Mapping[str, Any], ...] = (
-            config_entry.runtime_data.mesh.capabilities
-        )
+        mesh_capabilities: tuple[Mapping[str, Any], ...] = mesh_data.capabilities
         descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = tuple(
             entity
             for cap, entities in ENTITIES.items()
@@ -288,9 +290,14 @@ async def async_setup_entry(
     def _init_node_entities() -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
+
         current_nodes = {
             node.unique_id.value
-            for node in config_entry.runtime_data.mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
         new_nodes = current_nodes - known_nodes
@@ -304,7 +311,7 @@ async def async_setup_entry(
 
         nodes_by_id = {
             node.unique_id.value: node
-            for node in config_entry.runtime_data.mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
 
@@ -317,7 +324,7 @@ async def async_setup_entry(
             descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = ()
 
             if node.type.value == NodeType.SECONDARY and has_capability(
-                config_entry.runtime_data.mesh.capabilities, CAP_REBOOT
+                mesh_data.capabilities, CAP_REBOOT
             ):
                 descriptions = (
                     LinksysVelopButtonEntityDescription(
@@ -344,21 +351,25 @@ async def async_setup_entry(
     def _remove_stale_entities() -> None:
         """Remove entities that are no longer required."""
 
-        mesh = config_entry.runtime_data.mesh
-        capabilities = mesh.capabilities
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
+
+        capabilities = mesh_data.capabilities
         can_reboot = has_capability(capabilities, CAP_REBOOT)
 
         entities_to_remove = {
             f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{slugify(str(entity.name))}"
             for cap, entities in ENTITIES.items()
-            if not has_capability(mesh.capabilities, cap)
+            if not has_capability(capabilities, cap)
             for entity in entities
             if entity.target_type == EntityType.MESH
         }
 
         entities_to_remove.update(
             f"{node.unique_id.value}::{ENTITY_DOMAIN}::reboot"
-            for node in mesh.nodes
+            for node in mesh_data.nodes
             if node.type != NodeType.SECONDARY or not can_reboot
         )
 
@@ -445,8 +456,8 @@ class LinksysVelopButtonMultiUseEntity(
         # region #-- wait for the channel scan to finish --#
         while True:
             await asyncio.sleep(2)  # sleep first to let the scan start
-            csi: dict[str, Any] | None = (
-                await self.coordinator.config_entry.runtime_data.mesh.async_get_channel_scan_info()
+            csi: MappingProxyType[str, Any] | None = (
+                await self.coordinator.api.async_get_channel_scan_info()
             )
             if (
                 csi is not None

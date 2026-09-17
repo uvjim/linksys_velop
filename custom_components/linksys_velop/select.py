@@ -14,7 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh, ScheduledRebootInterval
+from pyvelop.mesh import Mesh, MeshSnapshot, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
 from .const import (
@@ -47,13 +47,13 @@ class LinksysVelopSelectEntityDescription(
 ):
     """Describes Velop select entity."""
 
-    options_fn: Callable[[Mesh], list[str]] | None = None
+    options_fn: Callable[[MeshSnapshot], list[str]] | None = None
     pic_fn: Callable[..., str | None] | None = None
     set_fn: Callable[[Any, str], Awaitable[None]] | None = None
-    value_fn: Callable[[Mesh, str], str | None] | None = None
+    value_fn: Callable[[MeshSnapshot, str], str | None] | None = None
 
 
-def get_current_reboot_schedule(mesh: Mesh, *args) -> str | None:
+def get_current_reboot_schedule(mesh: MeshSnapshot, *args) -> str | None:
     """Retrieve the current reboot schedule for display in the select entity."""
 
     if mesh.scheduled_reboot_enabled:
@@ -68,7 +68,7 @@ def get_current_reboot_schedule(mesh: Mesh, *args) -> str | None:
     return ret
 
 
-def get_placeholder_device_options(mesh: Mesh) -> dict[str, str]:
+def get_placeholder_device_options(mesh: MeshSnapshot) -> dict[str, str]:
     """Retrieve the list of device options available for the placeholder device."""
 
     ret: dict[str, str] = {}
@@ -98,7 +98,7 @@ async def async_update_reboot_schedule(mesh: Mesh, option: str) -> None:
         )
 
 
-async def async_update_placeholder_device(mesh: Mesh, option: str) -> None:
+async def async_update_placeholder_device(mesh: MeshSnapshot, option: str) -> None:
     """Calculate the new placeholder device ID and send the signal."""
 
     velop_id: str | None = None
@@ -186,13 +186,15 @@ async def async_setup_entry(
     def _init_device_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target devices."""
 
-        mesh = config_entry.runtime_data.mesh
         coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
 
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
-            if hasattr(mesh, attr)
+            if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.DEVICE
         ) + (
@@ -228,13 +230,13 @@ async def async_setup_entry(
                         key="",
                         name="Devices",
                         options_fn=lambda mesh: list(
-                            get_placeholder_device_options(mesh).values()
+                            get_placeholder_device_options(mesh_data).values()
                         ),
                         set_fn=async_update_placeholder_device,
                         target_type=EntityType.DEVICE,
                         translation_key="mesh_devices",
                         value_fn=lambda mesh, uid: get_placeholder_device_options(
-                            mesh
+                            mesh_data
                         ).get(uid),
                     ),
                 )
@@ -255,12 +257,15 @@ async def async_setup_entry(
     def _init_mesh_entities() -> tuple[LinksysVelopSelectEntity, ...]:
         """Describe the entities that target the mesh."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
 
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
-            if hasattr(mesh, attr)
+            if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.MESH
         )
@@ -287,13 +292,18 @@ async def async_setup_entry(
     def _remove_stale_entities() -> None:
         """Remove entities is they are no longer required."""
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
+
         entities_to_remove: set[str] = set()
 
         # region #-- add mesh entities if they no longer exist --#
         mesh_entities: tuple[str, ...] = tuple(
             attr if len(entities) == 1 else slugify(str(entity.name))
             for attr, entities in ENTITIES.items()
-            if not hasattr(config_entry.runtime_data.mesh, attr)
+            if not hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type == EntityType.MESH
         )
@@ -340,9 +350,13 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     @override
     def current_option(self) -> str | None:
 
+        mesh_data = self.coordinator.data.mesh
+        if mesh_data is None:
+            return
+
         if self.entity_description.value_fn is not None:
             return self.entity_description.value_fn(
-                self.coordinator.data.mesh,
+                mesh_data,
                 self.entity_context.data.get("velop", {}).get("id"),
             )
         elif self.entity_description.key:
@@ -371,8 +385,12 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     def options(self) -> list[str]:
 
         ret: list[str] = []
+        mesh_data = self.coordinator.data.mesh
+        if mesh_data is None:
+            return ret
+
         if self.entity_description.options_fn is not None:
-            ret = self.entity_description.options_fn(self.coordinator.data.mesh)
+            ret = self.entity_description.options_fn(mesh_data)
         elif self.entity_description.options is not None:
             ret = self.entity_description.options
 

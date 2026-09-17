@@ -23,7 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import slugify
 from pyvelop.mesh import (
-    Mesh,
+    MeshSnapshot,
     SpeedtestExitCode,
     SpeedtestResult,
     SpeedtestStatus,
@@ -69,20 +69,25 @@ class LinksysVelopSensorEntityDescription(
     pic_fn: Callable[..., str | None] | None = None
     value_fn: (
         Callable[
-            [TargetEntityType, LinksysVelopDataUpdateCoordinatorMultiUse],
+            [
+                TargetEntityType,
+                LinksysVelopDataUpdateCoordinatorMultiUse,
+            ],
             StateType | dt.date | dt.datetime | Decimal,
         ]
         | None
     ) = None
 
 
-def get_devices(mesh: Mesh, state: bool = True) -> list[dict[str, Any]]:
+def get_devices(mesh: TargetEntityType, state: bool = True) -> list[dict[str, Any]]:
     """Get the matching devices from the Mesh."""
     ret: list[dict[str, Any]] = []
 
-    device: DeviceEntity
+    if not isinstance(mesh, MeshSnapshot):
+        return ret
+
     for device in mesh.devices:
-        if bool(device.status) == state:
+        if device.status.value == state:
             props: dict[str, Any] = {
                 "name": device.name.value,
                 "id": device.unique_id.value,
@@ -157,7 +162,7 @@ def get_speedtest_data(
     speedtest_results: SpeedtestResult | None = (
         coordinator.config_entry.runtime_data.speedtest_data
     )
-    if speedtest_results is None:
+    if speedtest_results is None and coordinator.data.mesh is not None:
         speedtest_results = coordinator.data.mesh.speedtest_latest_complete.value
 
     if speedtest_results is None or not hasattr(speedtest_results, name):
@@ -230,7 +235,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     entity_category=EntityCategory.DIAGNOSTIC,
                     esa_fn=lambda node: (
                         {"devices": get_node_devices(node)}
-                        if isinstance(node, NodeEntity) and node.connected_devices
+                        if isinstance(node, NodeEntity) and len(node.connected_devices)
                         else {}
                     ),
                     key="",
@@ -269,7 +274,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     translation_key="offline_devices",
                     value_fn=lambda mesh, _: (
                         len(get_devices(mesh, False))
-                        if isinstance(mesh, Mesh)
+                        if isinstance(mesh, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -284,7 +289,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="online_devices",
                     value_fn=lambda mesh, _: (
-                        len(get_devices(mesh)) if isinstance(mesh, Mesh) else None
+                        len(get_devices(mesh))
+                        if isinstance(mesh, MeshSnapshot)
+                        else None
                     ),
                 ),
                 LinksysVelopSensorEntityDescription(
@@ -319,7 +326,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                                 if device.get("guest_network")
                             ]
                         )
-                        if isinstance(mesh, Mesh)
+                        if isinstance(mesh, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -340,7 +347,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="dhcp_reservations",
-                    value_fn=lambda mesh, _: (len(cast(Mesh, mesh).dhcp_reservations)),
+                    value_fn=lambda mesh, _: (
+                        len(cast(MeshSnapshot, mesh).dhcp_reservations)
+                    ),
                 ),
             ),
             "last_update_check": (
@@ -569,7 +578,8 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     entity_registry_enabled_default=False,
                     esa_fn=lambda mesh: (
                         {"partitions": (mesh.storage_available.value)}
-                        if isinstance(mesh, Mesh) and mesh.storage_available.value
+                        if isinstance(mesh, MeshSnapshot)
+                        and mesh.storage_available.value
                         else {}
                     ),
                     key="",
@@ -579,7 +589,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     translation_key="available_storage",
                     value_fn=lambda mesh, _: (
                         len(mesh.storage_available.value)
-                        if isinstance(mesh, Mesh)
+                        if isinstance(mesh, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -666,10 +676,13 @@ async def async_setup_entry(
     def _init_mesh_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
         """Describe the entities that target the mesh."""
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
-            if hasattr(config_entry.runtime_data.mesh, attr)
+            if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.MESH
         )
@@ -689,11 +702,14 @@ async def async_setup_entry(
     def _init_node_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
 
         current_node_ids = {
             node.unique_id.value
-            for node in mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
         new_node_ids = current_node_ids - known_nodes
@@ -701,7 +717,7 @@ async def async_setup_entry(
 
         nodes_by_id = {
             node.unique_id.value: node
-            for node in mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
 
@@ -872,14 +888,18 @@ async def async_setup_entry(
     def _remove_stale_entities() -> None:
         """Remove entities that are no longer required."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
+
         entities_to_remove: set[str] = set()
 
         # Remove stale mesh entities.
         mesh_entities = {
             slugify(str(entity.name))
             for attr, entities in ENTITIES.items()
-            if not hasattr(mesh, attr)
+            if not hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type == EntityType.MESH
         }
@@ -915,12 +935,12 @@ async def async_setup_entry(
 
         entities_to_remove.update(
             f"{node.unique_id.value}::{ENTITY_DOMAIN}::{entity}"
-            for node in mesh.nodes
+            for node in mesh_data.nodes
             for entity in node_entities
         )
 
         # Remove node entities when backhaul is unavailable.
-        for node in mesh.nodes:
+        for node in mesh_data.nodes:
             node_id = node.unique_id.value
 
             if not hasattr(node, "backhaul"):
@@ -1010,14 +1030,11 @@ class LinksysVelopSensorMultiUseEntity(
     def native_value(self) -> StateType | dt.date | dt.datetime | Decimal:
 
         ret: StateType | dt.date | dt.datetime | Decimal = None
+        target: TargetEntityType = self._get_target()
         if self.entity_description.value_fn is not None:
-            ret = self.entity_description.value_fn(self._get_target(), self.coordinator)
+            ret = self.entity_description.value_fn(target, self.coordinator)
         elif self.entity_description.key:
-            ret = getattr(
-                self._get_target(),
-                self.entity_description.key,
-                None,
-            )
+            ret = getattr(target, self.entity_description.key, None)
             if isinstance(ret, MeshAttribute):
                 ret = ret.value
 
