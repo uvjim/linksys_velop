@@ -105,8 +105,10 @@ async def async_setup_entry(
         hass, config_entry
     )
     if mesh_device is not None:
+        current_connections: set[tuple[str, str]] = mesh_device.connections
+        new_connections: set[tuple[str, str]] = current_connections | connections
         device_registry.async_update_device(
-            mesh_device.id, merge_connections=connections
+            mesh_device.id, new_connections=new_connections
         )
     # endregion
 
