@@ -37,7 +37,7 @@ from pyvelop.exceptions import (
     MeshNodeNotPrimary,
     MeshTimeoutError,
 )
-from pyvelop.mesh import Mesh, SpeedtestResult
+from pyvelop.mesh import Mesh, MeshSnapshot, SpeedtestResult
 from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from .const import (
@@ -74,7 +74,7 @@ _LOGGER: Logger = Logger(logging.getLogger(__name__))
 class DataUpdateCoordinatorData:
     """Representation of the data available to the update coordinator."""
 
-    mesh: Mesh = field(kw_only=True)
+    mesh: MeshSnapshot | None = field(kw_only=True, default=None)
     device_tracker: tuple[DeviceEntity, ...] = field(
         default_factory=tuple, kw_only=True
     )
@@ -84,7 +84,7 @@ class DataUpdateCoordinatorData:
 class LinksysVelopRuntimeData:
     """Runtime data for the ConfigEntry."""
 
-    mesh: Mesh
+    api: Mesh
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse
     blocking_tasks: set[str] = field(default_factory=set)
     speedtest_data: SpeedtestResult | None = None
@@ -125,6 +125,8 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialise."""
 
+        self.api: Mesh = mesh
+
         super().__init__(
             hass,
             logger,
@@ -163,7 +165,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         hass: HomeAssistant,
         logger: logging.Logger,
         *,
-        mesh: Mesh,
+        api: Mesh,
         name: str,
         config_entry: LinksysVelopConfigEntry,
         update_interval_secs: float,
@@ -186,13 +188,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         super().__init__(
             hass,
             logger,
-            mesh=mesh,
+            mesh=api,
             name=name,
             config_entry=config_entry,
             update_interval_secs=base_update_interval_secs,
         )
 
-        self.data = DataUpdateCoordinatorData(mesh=mesh)
+        self.data = DataUpdateCoordinatorData(mesh=api.latest_snapshot)
 
         # region #-- custom instance variables --#
         self._configured_events: list[str] = self.config_entry.options.get(
@@ -262,10 +264,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             tracked_devices: tuple[str] = self.config_entry.options.get(
                 CONF_DEVICE_TRACKERS, []
             )
-            devices = await self.data.mesh.async_get_devices(
-                tracked_devices,
-                force_refresh=True,
-            )
+            devices = await self.api.async_get_devices(tracked_devices)
         except MeshDeviceNotFoundResponse as err:
             for tracker_missing in err.devices:
                 entity_registry: er.EntityRegistry = er.async_get(self.hass)
@@ -347,7 +346,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         return devices
 
-    async def _async_get_mesh_data(self) -> Mesh:
+    async def _async_get_mesh_data(self) -> MeshSnapshot | None:
         """Get all data from the mesh."""
 
         current_devices: set[str] = set()
@@ -364,7 +363,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         # endregion
 
         # region #-- set the previous details before getting mesh details --#
-        if self.data.mesh.has_initialised:
+        if isinstance(self.data.mesh, MeshSnapshot):
             previous_nodes = self.data.mesh.nodes
             previous_nodes_serials = {
                 node.serial.value
@@ -381,7 +380,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         # region #-- get the details from the mesh --#
         try:
-            await self.data.mesh.async_refresh()
+            mesh_data = await self.api.async_refresh()
         except (MeshConnectionError, MeshTimeoutError) as err:
             exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
                 translation_domain=DOMAIN,
@@ -417,13 +416,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         # region #-- get the current details for comparison --#
         current_nodes_serials = {
             node.serial.value
-            for node in self.data.mesh.nodes
+            for node in mesh_data.nodes
             if node.serial.value is not None
         }
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
             current_devices = {
                 device.unique_id.value
-                for device in self.data.mesh.devices
+                for device in mesh_data.devices
                 if device.unique_id.value is not None
             }
         # endregion
@@ -444,7 +443,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 continue
 
             cur_node = next(
-                (node for node in self.data.mesh.nodes if node.serial.value == serial),
+                (node for node in mesh_data.nodes if node.serial.value == serial),
                 None,
             )
             if cur_node is None:
@@ -485,7 +484,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
                     if cur_node.type.value == NodeType.SECONDARY:
                         parent_node: NodeEntity | None = get_mesh_parent_node(
-                            cur_node, self.data.mesh
+                            cur_node, mesh_data
                         )
                         if (
                             parent_node is not None
@@ -524,7 +523,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 cur_ui_device: DeviceEntity | None = next(
                     (
                         device
-                        for device in self.data.mesh.devices
+                        for device in mesh_data.devices
                         if device.unique_id.value == ui_device
                     ),
                     None,
@@ -605,7 +604,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             for node in new_nodes_serials:
                 if (
                     node_info := next(
-                        (n for n in self.data.mesh.nodes if n.serial.value == node),
+                        (n for n in mesh_data.nodes if n.serial.value == node),
                         None,
                     )
                 ) is not None:
@@ -623,7 +622,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             device_info: DeviceEntity | None
             for device in all_new_devices:
                 if device_info := next(
-                    (d for d in self.data.mesh.devices if d.unique_id.value == device),
+                    (d for d in mesh_data.devices if d.unique_id.value == device),
                     None,
                 ):
                     dev_ip = next(
@@ -650,13 +649,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                         )
         # endregion
 
-        return self.data.mesh
+        return mesh_data
 
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
 
         try:
-            await self.data.mesh.async_authenticate_and_refresh()
+            await self.api.async_authenticate_and_refresh()
         except MeshInvalidCredentials as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
@@ -672,7 +671,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 translation_domain=DOMAIN,
                 translation_key="init_mesh_timeout",
                 translation_placeholders={
-                    "current_timeout": str(self.data.mesh.timeout),
+                    "current_timeout": str(self.api.timeout),
                 },
             ) from exc
         except MeshConnectionError as exc:
@@ -681,7 +680,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 translation_key="init_connection_error",
                 translation_placeholders={
                     "exc_msg": str(exc),
-                    "primary_ip": self.data.mesh.connected_node,
+                    "primary_ip": self.api.connected_node,
                 },
             ) from exc
 

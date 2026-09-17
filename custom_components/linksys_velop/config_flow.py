@@ -833,8 +833,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not self.unique_id:
             # region #-- get the unique_id --#
             unique_id: str | None = None
-            if self._mesh:
-                nodes: tuple[NodeEntity, ...] = self._mesh.nodes
+            if self._mesh is not None and self._mesh.latest_snapshot is not None:
+                nodes: tuple[NodeEntity, ...] = self._mesh.latest_snapshot.nodes
                 for node in nodes:
                     if node.type == NodeType.PRIMARY:
                         unique_id = node.serial.value
@@ -960,32 +960,9 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             return await self.async_step_ui_device()
 
         # region #-- retrieve devices --#
-        # if the mesh hasn't been initialised then initialise it
-        # shouldn't really be in that situation but you never know...
         if self._devices is None:
-            mesh: Mesh
-            if (mesh := self.config_entry.runtime_data.mesh) is None:
-                mesh = Mesh(
-                    node=self._options.get(CONF_NODE),
-                    password=self._options.get(CONF_PASSWORD),
-                    request_timeout=self._options.get(CONF_API_REQUEST_TIMEOUT),
-                    session=async_get_clientsession(hass=self.hass),
-                    supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
-                )
-                try:
-                    await mesh.async_initialise()
-                except MeshConnectionError:
-                    self._error_details.set_error("connection_error", CONF_NODE)
-                except MeshInvalidCredentials:
-                    self._error_details.set_error("login_error", CONF_PASSWORD)
-                except MeshNodeNotPrimary:
-                    self._error_details.set_error("node_not_primary", CONF_NODE)
-                except Exception as exc:  # noqa: BLE001
-                    _LOGGER.error("%s", exc)
-                    self._error_details.set_error(
-                        "general", msg_placeholders={"exc_msg": str(exc)}
-                    )
-            self._devices = await _async_get_devices(mesh)
+            mesh_api: Mesh = self.config_entry.runtime_data.api
+            self._devices = await _async_get_devices(mesh_api)
         # endregion
 
         errors: dict[str, str] | None = None
@@ -1245,29 +1222,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         # if the mesh hasn't been initialised then initialise it
         # shouldn't really be in that situation but you never know...
         if self._devices is None:
-            mesh: Mesh
-            if (mesh := self.config_entry.runtime_data.mesh) is None:
-                mesh = Mesh(
-                    node=self._options.get(CONF_NODE),
-                    password=self._options.get(CONF_PASSWORD),
-                    request_timeout=self._options.get(CONF_API_REQUEST_TIMEOUT),
-                    session=async_get_clientsession(hass=self.hass),
-                    supplementary_redactions=self._options.get(CONF_REDACT_OPTIONS),
-                )
-                try:
-                    await mesh.async_initialise()
-                except MeshConnectionError:
-                    self._error_details.set_error("connection_error", CONF_NODE)
-                except MeshInvalidCredentials:
-                    self._error_details.set_error("login_error", CONF_PASSWORD)
-                except MeshNodeNotPrimary:
-                    self._error_details.set_error("node_not_primary", CONF_NODE)
-                except Exception as exc:  # noqa: BLE001
-                    _LOGGER.error("%s", exc)
-                    self._error_details.set_error(
-                        "general", msg_placeholders={"exc_msg": str(exc)}
-                    )
-            self._devices = await _async_get_devices(mesh)
+            mesh_api: Mesh = self.config_entry.runtime_data.api
+            self._devices = await _async_get_devices(mesh_api)
         # endregion
 
         errors: dict[str, str] | None = None

@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity, NodeAdapterInfo, NodeEntity
 
@@ -107,9 +107,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
                     name="Guest Network",
                     target_type=EntityType.DEVICE,
                     translation_key="guest_network",
-                    value_fn=lambda d: (
-                        get_device_adapter_info(d, "guest_network")
-                        if d is not None
+                    value_fn=lambda device: (
+                        get_device_adapter_info(device, "guest_network")
+                        if device is not None
                         else None
                     ),
                 ),
@@ -119,9 +119,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
                     name="Reserved IP",
                     target_type=EntityType.DEVICE,
                     translation_key="reserved_ip",
-                    value_fn=lambda d: (
-                        get_device_adapter_info(d, "reservation")
-                        if d is not None
+                    value_fn=lambda device: (
+                        get_device_adapter_info(device, "reservation")
+                        if device is not None
                         else None
                     ),
                 ),
@@ -170,12 +170,14 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
                 LinksysVelopBinarySensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
-                    esa_fn=lambda m: (
+                    esa_fn=lambda mesh: (
                         {
-                            "mode": str(cast(Mesh, m).mac_filtering_mode),
-                            "addresses": cast(Mesh, m).mac_filtering_addresses.value,
+                            "mode": str(cast(MeshSnapshot, mesh).mac_filtering_mode),
+                            "addresses": cast(
+                                MeshSnapshot, mesh
+                            ).mac_filtering_addresses.value,
                         }
-                        if m is not None
+                        if mesh is not None
                         else None
                     ),
                     key="mac_filtering_enabled",
@@ -207,29 +209,29 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
             "parental_control_schedule": (
                 LinksysVelopBinarySensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda d: (
-                        d.parental_control_schedule.get("blocked_internet_access")
-                        if d is not None
+                    esa_fn=lambda device: (
+                        device.parental_control_schedule.get("blocked_internet_access")
+                        if device is not None
                         else None
                     ),
                     key="",
                     name="Blocked Times",
                     target_type=EntityType.DEVICE,
                     translation_key="blocked_times",
-                    value_fn=lambda d: (
+                    value_fn=lambda device: (
                         (
-                            d.parental_control_schedule is not None
-                            and d.parental_control_schedule.get(
+                            device.parental_control_schedule is not None
+                            and device.parental_control_schedule.get(
                                 "blocked_internet_access"
                             )
                             is not None
                             and any(
-                                d.parental_control_schedule.get(
+                                device.parental_control_schedule.get(
                                     "blocked_internet_access"
                                 ).values()
                             )
                         )
-                        if d is not None
+                        if device is not None
                         else None
                     ),
                 ),
@@ -287,13 +289,13 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
                 LinksysVelopBinarySensorEntityDescription(
                     device_class=BinarySensorDeviceClass.CONNECTIVITY,
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda m: (
+                    esa_fn=lambda mesh: (
                         {
-                            "ip": cast(Mesh, m).wan_ip.value,
-                            "dns": cast(Mesh, m).wan_dns.value or None,
-                            "mac": cast(Mesh, m).wan_mac.value,
+                            "ip": cast(MeshSnapshot, mesh).wan_ip.value,
+                            "dns": cast(MeshSnapshot, mesh).wan_dns.value or None,
+                            "mac": cast(MeshSnapshot, mesh).wan_mac.value,
                         }
-                        if m is not None
+                        if mesh is not None
                         else None
                     ),
                     key="wan_status",
@@ -354,7 +356,11 @@ async def async_setup_entry(
     def _init_mesh_entities() -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
         """Describe the entities that target the mesh."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh = coordinator.data.mesh
+        if mesh is None:
+            return ()
+
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
@@ -415,9 +421,14 @@ async def async_setup_entry(
     def _init_node_entities() -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
+
         current_node_ids = {
             node.unique_id.value
-            for node in config_entry.runtime_data.mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
         new_node_ids = current_node_ids - known_node_ids
@@ -446,7 +457,10 @@ async def async_setup_entry(
     def _remove_stale_entities() -> None:
         """Remove entities that are no longer required."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
 
         entities_to_remove = {
             # Removed in 2024.11.1b4; replaced by a switch.
@@ -457,7 +471,7 @@ async def async_setup_entry(
         mesh_entities = {
             slugify(str(entity.name))
             for attr, entities in ENTITIES.items()
-            if not hasattr(mesh, attr)
+            if not hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type == EntityType.MESH
         }
@@ -467,12 +481,12 @@ async def async_setup_entry(
             for entity in mesh_entities
         )
 
-        if not has_capability(mesh.capabilities, CAP_CHANNEL_SCAN):
+        if not has_capability(mesh_data.capabilities, CAP_CHANNEL_SCAN):
             entities_to_remove.add(
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::channel_scanning"
             )
 
-        if not hasattr(mesh, "speedtest_results"):
+        if not hasattr(mesh_data, "speedtest_results"):
             entities_to_remove.add(
                 f"{config_entry.entry_id}::{ENTITY_DOMAIN}::speedtest_status"
             )

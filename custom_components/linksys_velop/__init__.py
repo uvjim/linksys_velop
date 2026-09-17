@@ -200,21 +200,22 @@ async def async_setup_entry(
         update_intervals["tracker_update_interval_secs"] = config_entry.options.get(
             CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
         )
+    mesh_api: Mesh = Mesh(
+        node=config_entry.options[CONF_NODE],
+        password=config_entry.options[CONF_PASSWORD],
+        request_timeout=config_entry.options.get(
+            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+        ),
+        session=async_get_clientsession(hass=hass),
+        supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
+    )
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
         LinksysVelopDataUpdateCoordinatorMultiUse(
             hass,
             _LOGGER.get_logger(),
             config_entry=config_entry,
             name=coordinator_name,
-            mesh=Mesh(
-                node=config_entry.options[CONF_NODE],
-                password=config_entry.options[CONF_PASSWORD],
-                request_timeout=config_entry.options.get(
-                    CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                ),
-                session=async_get_clientsession(hass=hass),
-                supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
-            ),
+            api=mesh_api,
             **update_intervals,
         )
     )
@@ -222,8 +223,8 @@ async def async_setup_entry(
 
     # region #-- initialise runtime data --#
     config_entry.runtime_data = LinksysVelopRuntimeData(
+        api=mesh_api,
         coordinator=coordinator,
-        mesh=coordinator.data.mesh,
     )
     await coordinator.async_config_entry_first_refresh()
     # endregion
@@ -262,23 +263,21 @@ async def async_setup_entry(
         )
         # endregion
         # region #-- remove connection from the mesh device --#
-        device: DeviceEntity | None = next(
-            (
-                d
-                for d in config_entry.runtime_data.coordinator.data.mesh.devices
-                if d.unique_id == tracker
-            ),
-            None,
-        )
-        if device is not None:
-            adi: AdapterInfo | None = next(iter(device.adapter_info), None)
-            if adi is not None:
-                connections.discard(
-                    (
-                        dr.CONNECTION_NETWORK_MAC,
-                        dr.format_mac(adi.mac),
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data is not None:
+            device: DeviceEntity | None = next(
+                (d for d in mesh_data.devices if d.unique_id.value == tracker),
+                None,
+            )
+            if device is not None:
+                adi: AdapterInfo | None = next(iter(device.adapter_info), None)
+                if adi is not None:
+                    connections.discard(
+                        (
+                            dr.CONNECTION_NETWORK_MAC,
+                            dr.format_mac(adi.mac),
+                        )
                     )
-                )
         # endregion
 
     # region #-- update the mesh device --#

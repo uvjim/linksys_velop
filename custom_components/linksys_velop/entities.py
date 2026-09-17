@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
 
 from .const import (
@@ -33,7 +33,7 @@ from .logger import Logger
 
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
 
-TargetEntityType = Mesh | DeviceEntity | NodeEntity | None
+TargetEntityType = MeshSnapshot | DeviceEntity | NodeEntity | None
 
 
 class EntityType(StrEnum):
@@ -149,11 +149,11 @@ class LinksysVelopMultiUseEntity(
                         )
                 elif target.type == NodeType.PRIMARY:
                     self._attr_device_info["configuration_url"] = (
-                        f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}"
+                        f"http://{self.coordinator.api.connected_node}"
                     )
         elif self.entity_description.target_type == EntityType.MESH:
             self._attr_device_info = DeviceInfo(
-                configuration_url=f"http://{self.coordinator.config_entry.runtime_data.mesh.connected_node}",
+                configuration_url=f"http://{self.coordinator.api.connected_node}",
                 entry_type=DeviceEntryType.SERVICE,
                 identifiers={(DOMAIN, self.entity_context.unique_id)},
                 manufacturer=PYVELOP_AUTHOR,
@@ -173,7 +173,9 @@ class LinksysVelopMultiUseEntity(
         :returns:
         """
 
-        mesh: Mesh = self.coordinator.data.mesh
+        mesh: MeshSnapshot | None = self.coordinator.data.mesh
+        if mesh is None:
+            return None
 
         target_type = self.entity_description.target_type
         context_data = self.entity_context.data

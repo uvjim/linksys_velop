@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from pyvelop.mesh import Mesh
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
 from .const import (
@@ -59,11 +58,15 @@ async def async_setup_entry(
     device: DeviceEntity | None
     device_trackers: list[LinksysVelopDeviceTrackerCoordinatorEntity] = []
     connections: set[tuple[str, str]] = set()
-    mesh: Mesh = config_entry.runtime_data.mesh
+    mesh_data = config_entry.runtime_data.coordinator.data.mesh
+    if mesh_data is None:
+        return
+
     for tracked_device in config_entry.options.get(CONF_DEVICE_TRACKERS, []):
         if (
             device := next(
-                (d for d in mesh.devices if d.unique_id.value == tracked_device), None
+                (d for d in mesh_data.devices if d.unique_id.value == tracked_device),
+                None,
             )
         ) is not None:
             device_trackers.append(

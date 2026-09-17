@@ -102,9 +102,14 @@ async def async_setup_entry(
     def _init_node_entities() -> tuple[LinksysVelopUpdateCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
+
         current_node_ids = {
             str(node.unique_id)
-            for node in config_entry.runtime_data.mesh.nodes
+            for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
         new_node_ids = current_node_ids - known_nodes
@@ -155,9 +160,13 @@ async def async_setup_entry(
         if hasattr(NodeEntity, "firmware"):
             return
 
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
+
         entities_to_remove = {
-            f"{node.unique_id}::{ENTITY_DOMAIN}::update"
-            for node in config_entry.runtime_data.mesh.nodes
+            f"{node.unique_id}::{ENTITY_DOMAIN}::update" for node in mesh_data.nodes
         }
 
         for entity_unique_id in entities_to_remove:
@@ -199,11 +208,12 @@ class LinksysVelopUpdateMultiUseEntity(LinksysVelopMultiUseEntity, UpdateEntity)
     @override
     def auto_update(self) -> bool:
 
+        mesh_data = self.coordinator.data.mesh
+        if mesh_data is None:
+            return False
+
         ret: bool = False
-        ret = (
-            self.coordinator.data.mesh.firmware_update_setting
-            != FirmwareUpdatePolicy.MANUAL
-        )
+        ret = mesh_data.firmware_update_setting != FirmwareUpdatePolicy.MANUAL
 
         return ret
 

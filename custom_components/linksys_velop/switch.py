@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import Mesh, MeshSnapshot
 from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
 
@@ -25,6 +25,7 @@ from .entities import (
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
+    TargetEntityType,
 )
 from .helpers import remove_velop_entity_from_registry
 from .logger import Logger
@@ -108,7 +109,7 @@ async def async_set_mesh_parental_control_state(mesh: Mesh, state: bool) -> None
 async def async_set_mesh_upnp_state(mesh: Mesh, state: bool) -> None:
     """Set the  UPnP state for the Mesh."""
 
-    cur_settings: dict[str, bool] = await mesh.async_get_upnp_state()
+    cur_settings: MappingProxyType[str, bool] = await mesh.async_get_upnp_state()
     new_settings: dict[str, bool] = {
         "enabled": state,
         "allow_change_settings": cur_settings.get("canUsersConfigure", False),
@@ -129,9 +130,11 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
             "guest_wifi_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
-                    esa_fn=lambda m: {
+                    esa_fn=lambda mesh: {
                         f"network {idx}": network
-                        for idx, network in enumerate(cast(Mesh, m).guest_wifi_details)
+                        for idx, network in enumerate(
+                            cast(MeshSnapshot, mesh).guest_wifi_details
+                        )
                     },
                     key="guest_wifi_enabled",
                     name="Guest Wi-Fi",
@@ -155,13 +158,13 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
             "parental_control_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
-                    esa_fn=lambda m: (
+                    esa_fn=lambda mesh: (
                         {
                             "rules": {
                                 cast(DeviceEntity, device)
                                 .name.value: cast(DeviceEntity, device)
                                 .parental_control_schedule.value
-                                for device in cast(Mesh, m).devices
+                                for device in cast(MeshSnapshot, mesh).devices
                                 if cast(DeviceEntity, device).parental_control_schedule
                             }
                         }
@@ -256,14 +259,17 @@ async def async_setup_entry(
     def _init_mesh_entities() -> tuple[LinksysVelopSwitchCoordinatorEntity, ...]:
         """Describe the entities that target the mesh."""
 
-        mesh = config_entry.runtime_data.mesh
         coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return ()
+
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
-            if hasattr(mesh, attr)
+            if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.MESH
         )
@@ -286,12 +292,15 @@ async def async_setup_entry(
     def _remove_stale_entities() -> None:
         """Remove entities that are no longer required."""
 
-        mesh = config_entry.runtime_data.mesh
+        coordinator = config_entry.runtime_data.coordinator
+        mesh_data = coordinator.data.mesh
+        if mesh_data is None:
+            return
 
         stale_mesh_descriptions = {
             slugify(str(entity.name))
             for attr, entities in ENTITIES.items()
-            if not hasattr(mesh, attr)
+            if not hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type == EntityType.MESH
         }
@@ -361,13 +370,23 @@ class LinksysVelopSwitchMultiUseEntity(
     @override
     async def async_turn_on(self, **kwargs: Any) -> None:
 
-        await self.entity_description.on_fn(self._get_target(), True)
+        target: TargetEntityType = self._get_target()
+
+        await self.entity_description.on_fn(
+            target if not isinstance(target, MeshSnapshot) else self.coordinator.api,
+            True,
+        )
         await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
 
     @override
     async def async_turn_off(self, **kwargs: Any) -> None:
 
-        await self.entity_description.off_fn(self._get_target(), False)
+        target: TargetEntityType = self._get_target()
+
+        await self.entity_description.off_fn(
+            target if not isinstance(target, MeshSnapshot) else self.coordinator.api,
+            False,
+        )
         await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
 
     @property

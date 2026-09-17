@@ -10,7 +10,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
 from homeassistant.loader import Integration, async_get_integration
-from pyvelop.mesh import Mesh
+from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_entity import AdapterInfo, NodeEntity
 
 from .const import DOMAIN
@@ -22,7 +22,7 @@ from .logger import Logger
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
-def get_mesh_parent_node(node: NodeEntity, mesh: Mesh) -> NodeEntity | None:
+def get_mesh_parent_node(node: NodeEntity, mesh: MeshSnapshot) -> NodeEntity | None:
     """Retrieve the parent node from the mesh."""
 
     parent_node: NodeEntity | None = None
