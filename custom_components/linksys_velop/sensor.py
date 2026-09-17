@@ -216,6 +216,18 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     ),
                 ),
                 LinksysVelopSensorEntityDescription(
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    key="",
+                    name="MAC",
+                    target_type=EntityType.DEVICE,
+                    translation_key="mac",
+                    value_fn=lambda device, _: (
+                        get_device_adapter_info(device, "mac")
+                        if isinstance(device, DeviceEntity)
+                        else None
+                    ),
+                ),
+                LinksysVelopSensorEntityDescription(
                     device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     key="",
@@ -365,20 +377,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                         node.last_update_check.value
                         if isinstance(node, NodeEntity)
                         and node.last_update_check.value is not None
-                        else None
-                    ),
-                ),
-            ),
-            "mac": (
-                LinksysVelopSensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    key="",
-                    name="MAC",
-                    target_type=EntityType.DEVICE,
-                    translation_key="mac",
-                    value_fn=lambda device, _: (
-                        get_device_adapter_info(device, "mac")
-                        if isinstance(device, DeviceEntity)
                         else None
                     ),
                 ),
