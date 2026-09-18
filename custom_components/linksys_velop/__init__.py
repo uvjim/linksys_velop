@@ -12,10 +12,9 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.typing import ConfigType
 from pyvelop.mesh import Mesh
-from pyvelop.mesh_entity import AdapterInfo, DeviceEntity
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -63,6 +62,106 @@ _PLATFORMS: tuple[Platform, ...] = (
 )
 
 
+def _create_coordinator(
+    hass: HomeAssistant, entry: LinksysVelopConfigEntry, api: Mesh
+) -> LinksysVelopDataUpdateCoordinatorMultiUse:
+    """Factory to create the DataUpdateCoordinator.
+
+    :param hass: The Home Assistant core instance.
+    :param entry: The config entry containing polling intervals.
+    :param api: The Mesh API instance to be used by the coordinator.
+    :returns: A configured LinksysVelopDataUpdateCoordinatorMultiUse instance.
+    """
+    update_interval = entry.options.get(CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL)
+
+    intervals = {"update_interval_secs": update_interval}
+    if entry.options.get(CONF_DEVICE_TRACKERS):
+        intervals["tracker_update_interval_secs"] = entry.options.get(
+            CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
+        )
+
+    return LinksysVelopDataUpdateCoordinatorMultiUse(
+        hass,
+        _LOGGER.get_logger(),
+        config_entry=entry,
+        name=f"{DOMAIN} mesh ({entry.title})",
+        api=api,
+        **intervals,
+    )
+
+
+def _create_mesh_api(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> Mesh:
+    """Factory to create the Mesh API instance.
+
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry containing API credentials and options.
+    :returns: An initialized Mesh API instance.
+    """
+    return Mesh(
+        node=config_entry.options[CONF_NODE],
+        password=config_entry.options[CONF_PASSWORD],
+        request_timeout=config_entry.options.get(
+            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+        ),
+        session=async_get_clientsession(hass=hass),
+        supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
+    )
+
+
+async def async_cleanup_device_registry(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
+) -> dict[str, Any]:
+    """Handles removal of unwanted devices and trackers from the registry.
+
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry containing the list of devices/trackers to remove.
+    :returns: A updated data dictionary with cleanup lists cleared.
+    """
+    new_data = {**config_entry.data}
+
+    # remove UI devices
+    for ui_device in new_data.get(CONF_UI_DEVICES_TO_REMOVE, []):
+        remove_velop_device_from_registry(hass, ui_device, config_entry.entry_id)
+    new_data[CONF_UI_DEVICES_TO_REMOVE] = []
+
+    # remove device trackers
+    connections = set()
+    mesh_device = get_mesh_device_for_config_entry(hass, config_entry)
+    if mesh_device:
+        connections = set(mesh_device.connections)
+
+    for tracker in new_data.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []):
+        remove_velop_entity_from_registry(
+            hass,
+            config_entry.entry_id,
+            f"{config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker}",
+        )
+
+        # update local connection set based on coordinator data
+        mesh_data = config_entry.runtime_data.coordinator.data.mesh
+        if mesh_data:
+            device = next(
+                (d for d in mesh_data.devices if d.unique_id.value == tracker), None
+            )
+            if device:
+                adi = next(iter(device.adapter_info), None)
+                if adi:
+                    connections.discard(
+                        (dr.CONNECTION_NETWORK_MAC, dr.format_mac(adi.mac))
+                    )
+
+    # update mesh device in registry
+    if mesh_device:
+        dr.async_get(hass).async_update_device(
+            mesh_device.id, new_connections=connections
+        )
+
+    new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = []
+    return new_data
+
+
 async def async_remove_config_entry_device(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -70,7 +169,12 @@ async def async_remove_config_entry_device(
 ) -> bool:
     """Allow device removal.
 
-    Do not allow the Mesh device to be removed
+    Do not allow the Mesh device to be removed.
+
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry containing the list of devices/trackers to remove.
+    :param device_entry: device entry from the Home Assistant registry.
+    :returns: `True` when successful. `False` otherwise.
     """
 
     mesh_id: set = {(DOMAIN, config_entry.entry_id)}
@@ -85,7 +189,12 @@ async def async_migrate_entry(
     hass: HomeAssistant,
     config_entry: LinksysVelopConfigEntry,
 ) -> bool:
-    """Migrate entries."""
+    """Migrate entries.
+
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry containing the list of devices/trackers to remove.
+    :returns: `True` if successful, `False` otherwise.
+    """
 
     _LOGGER.debug(
         "migrating configuration from version %s.%s",
@@ -147,7 +256,12 @@ async def async_migrate_entry(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the integration."""
+    """Set up the integration.
+
+    :param hass: The Home Assistant core instance.
+    :param config: Configuration dictionary provided by Home Assistant.
+    :returns: `True` when successful, `False` otherwise.
+    """
 
     if AwesomeVersion(HA_VERSION) < AwesomeVersion(MIN_HA_VERSION):
         msg = (
@@ -169,129 +283,39 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
-    """Create a config entry."""
+    """Create a config entry.
 
-    # region #-- register services if they haven't been registered --#
-    # this could happen if all instances were disabled (removes the services)
-    # but then one is enabled again - async_setup doesn't run again so we'll recreate here.
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry for this specific instance of the integration.
+    :returns: True if setup was successful, False otherwise.
+    """
+
+    # ensure services are registered
     if not hass.services.async_services_for_domain(DOMAIN):
         LinksysVelopServiceHandler(hass).register_services()
-    # endregion
 
     _LOGGER.debug(
-        "using integration version: %s",
-        await async_get_integration_version(hass),
+        "using integration version: %s", await async_get_integration_version(hass)
     )
 
-    # region #--- mesh coordinator --#
-    coordinator_name_suffix: str = f" ({config_entry.title})"
-    update_interval: float = config_entry.options.get(
-        CONF_SCAN_INTERVAL, DEF_SCAN_INTERVAL
-    )
-    _LOGGER.debug(
-        "setting up the mesh coordinator with interval: %s",
-        update_interval,
-    )
-    coordinator_name = f"{DOMAIN} mesh{coordinator_name_suffix}"
-    update_intervals: dict[str, float] = {
-        "update_interval_secs": update_interval,
-    }
-    if len(config_entry.options.get(CONF_DEVICE_TRACKERS, [])) > 0:
-        update_intervals["tracker_update_interval_secs"] = config_entry.options.get(
-            CONF_SCAN_INTERVAL_DEVICE_TRACKER, DEF_SCAN_INTERVAL_DEVICE_TRACKER
-        )
-    mesh_api: Mesh = Mesh(
-        node=config_entry.options[CONF_NODE],
-        password=config_entry.options[CONF_PASSWORD],
-        request_timeout=config_entry.options.get(
-            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-        ),
-        session=async_get_clientsession(hass=hass),
-        supplementary_redactions=config_entry.options.get(CONF_REDACT_OPTIONS),
-    )
-    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
-        LinksysVelopDataUpdateCoordinatorMultiUse(
-            hass,
-            _LOGGER.get_logger(),
-            config_entry=config_entry,
-            name=coordinator_name,
-            api=mesh_api,
-            **update_intervals,
-        )
-    )
-    # endregion
+    # initialize API and Coordinator
+    mesh_api = _create_mesh_api(hass, config_entry)
+    coordinator = _create_coordinator(hass, config_entry, mesh_api)
 
-    # region #-- initialise runtime data --#
+    # initialize runtime data
     config_entry.runtime_data = LinksysVelopRuntimeData(
         api=mesh_api,
         coordinator=coordinator,
     )
     await coordinator.async_config_entry_first_refresh()
-    # endregion
 
-    # region #-- setup the platforms --#
-    _LOGGER.debug(
-        "setting up platforms: %s",
-        list(map(str, _PLATFORMS)),
-    )
+    # setup platforms
+    _LOGGER.debug("setting up platforms: %s", list(map(str, _PLATFORMS)))
     await hass.config_entries.async_forward_entry_setups(config_entry, _PLATFORMS)
-    # endregion
 
-    # region #-- remove unnecessary ui devices --#
-    _LOGGER.debug("cleaning up ui devices")
-    new_data: dict[str, Any] = {**config_entry.data}
-    for ui_device in new_data.get(CONF_UI_DEVICES_TO_REMOVE, []):
-        remove_velop_device_from_registry(hass, ui_device, config_entry.entry_id)
-    if CONF_UI_DEVICES_TO_REMOVE in new_data:
-        new_data[CONF_UI_DEVICES_TO_REMOVE] = []
-    # endregion
-
-    # region #-- remove unnecessary device trackers --#
-    _LOGGER.debug("cleaning up device trackers")
-    connections: set[tuple[str, str]] = set()
-    mesh_device: DeviceEntry | None = get_mesh_device_for_config_entry(
-        hass, config_entry
-    )
-    if mesh_device is not None:
-        connections = mesh_device.connections
-    for tracker in new_data.get(CONF_DEVICE_TRACKERS_TO_REMOVE, []):
-        # region #-- remove entity --#
-        remove_velop_entity_from_registry(
-            hass,
-            config_entry.entry_id,
-            f"{config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker}",
-        )
-        # endregion
-        # region #-- remove connection from the mesh device --#
-        mesh_data = config_entry.runtime_data.coordinator.data.mesh
-        if mesh_data is not None:
-            device: DeviceEntity | None = next(
-                (d for d in mesh_data.devices if d.unique_id.value == tracker),
-                None,
-            )
-            if device is not None:
-                adi: AdapterInfo | None = next(iter(device.adapter_info), None)
-                if adi is not None:
-                    connections.discard(
-                        (
-                            dr.CONNECTION_NETWORK_MAC,
-                            dr.format_mac(adi.mac),
-                        )
-                    )
-        # endregion
-
-    # region #-- update the mesh device --#
-    device_registry: DeviceRegistry = dr.async_get(hass)
-    mesh_device = get_mesh_device_for_config_entry(hass, config_entry)
-    if mesh_device is not None:
-        device_registry.async_update_device(mesh_device.id, new_connections=connections)
-    # endregion
-
-    if CONF_DEVICE_TRACKERS_TO_REMOVE in new_data:
-        new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = []
-
-    hass.config_entries.async_update_entry(config_entry, data=new_data)
-    # endregion
+    # handle registry cleanup and update config entry data
+    updated_data = await async_cleanup_device_registry(hass, config_entry)
+    hass.config_entries.async_update_entry(config_entry, data=updated_data)
 
     return True
 
@@ -299,19 +323,20 @@ async def async_setup_entry(
 async def async_unload_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> bool:
-    """Cleanup when unloading a config entry."""
-    _LOGGER.debug("entered")
+    """Cleanup when unloading a config entry.
 
-    # region #-- remove services but only if there are no other instances --#
+    :param hass: The Home Assistant core instance.
+    :param config_entry: The config entry for this specific instance of the integration.
+    :returns: True if setup was successful, False otherwise.
+    """
+
+    # remove services but only if there are no other instances
     if not hass.config_entries.async_loaded_entries(DOMAIN):
         _LOGGER.debug("unregistering services")
         LinksysVelopServiceHandler(hass).unregister_services()
-    # endregion
 
-    # region #-- clean up the platforms --#
+    # clean up the platforms
     _LOGGER.debug("cleaning up platforms: %s", _PLATFORMS)
     ret = await hass.config_entries.async_unload_platforms(config_entry, _PLATFORMS)
-    # endregion
 
-    _LOGGER.debug("exited")
     return ret
