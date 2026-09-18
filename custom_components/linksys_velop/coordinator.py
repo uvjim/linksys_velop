@@ -249,6 +249,26 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             translation_placeholders={"device_name": str(name)},
         )
 
+    def _create_tracker_issue(self, entity: er.RegistryEntry, tracker_id: str):
+        """Create a Home Assistant issue for a missing device tracker."""
+        name = entity.name or entity.original_name or ""
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            ISSUE_MISSING_DEVICE_TRACKER,
+            data={
+                "config_entry": self.config_entry.entry_id,
+                "device_id": entity.entity_id,
+                "device_name": name,
+                "velop_id": tracker_id,
+            },
+            is_fixable=True,
+            is_persistent=False,
+            severity=IssueSeverity.ERROR,
+            translation_key=ISSUE_MISSING_DEVICE_TRACKER,
+            translation_placeholders={"device_name": name},
+        )
+
     def _dispatch_new_entities(
         self,
         mesh_data: MeshSnapshot,
@@ -328,6 +348,30 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     remove_config_entry_id=self.config_entry.entry_id,
                 )
 
+    def _handle_missing_trackers(self, missing_ids: list[str]) -> None:
+        """Process devices that were not found by the API.
+
+        :param missing_ids: Mesh IDs of the devices that are missing from the mesh.
+        """
+        entity_registry = er.async_get(self.hass)
+        config_entities = er.async_entries_for_config_entry(
+            entity_registry, self.config_entry.entry_id
+        )
+
+        for tracker_id in missing_ids:
+            # construct the unique ID for the tracker entity
+            unique_id = (
+                f"{self.config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker_id}"
+            )
+            entity = next(
+                (e for e in config_entities if e.unique_id == unique_id), None
+            )
+
+            if entity:
+                self._create_tracker_issue(entity, tracker_id)
+            else:
+                remove_tracker_from_options(self.hass, self.config_entry, tracker_id)
+
     def _process_listeners(self) -> None:
         """Process the listeners for any timers that were executing."""
 
@@ -368,7 +412,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
             updates = {}
 
-            # IP -> Configuration URL
+            # IP -> config_url
             if curr_node.type.value == NodeType.SECONDARY:
                 cur_ip = next(
                     (adi.ip for adi in curr_node.adapter_info if adi.primary), None
@@ -379,11 +423,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 if cur_ip and cur_ip != prev_ip:
                     updates["configuration_url"] = f"http://{cur_ip}/ca"
 
-            # Name
+            # name
             if curr_node.name.value != prev_node.name.value:
                 updates["name"] = curr_node.name.value
 
-            # Via Device (Parent)
+            # via device (parent)
             if curr_node.type.value == NodeType.SECONDARY:
                 parent = get_mesh_parent_node(curr_node, mesh_data)
                 if parent and parent.serial.value:
@@ -464,92 +508,36 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         if self._delay_run():
             return self.data.device_tracker
 
-        devices: tuple[DeviceEntity, ...] = ()
+        tracked_ids = self.config_entry.options.get(CONF_DEVICE_TRACKERS, [])
+
         try:
-            tracked_devices: tuple[str] = self.config_entry.options.get(
-                CONF_DEVICE_TRACKERS, []
-            )
-            devices = await self.api.async_get_devices(tracked_devices)
+            return await self.api.async_get_devices(tracked_ids)
         except MeshDeviceNotFoundResponse as err:
-            for tracker_missing in err.devices:
-                entity_registry: er.EntityRegistry = er.async_get(self.hass)
-                config_entities: list[er.RegistryEntry] = (
-                    er.async_entries_for_config_entry(
-                        entity_registry, self.config_entry.entry_id
-                    )
-                )
-                tracker_entity: er.RegistryEntry | None
-                if (
-                    tracker_entity := next(
-                        (
-                            e
-                            for e in config_entities
-                            if e.unique_id
-                            == f"{self.config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker_missing}"
-                        ),
-                        None,
-                    )
-                ) is not None:
-                    # region #-- raise an issue --#
-                    ir.async_create_issue(
-                        self.hass,
-                        DOMAIN,
-                        ISSUE_MISSING_DEVICE_TRACKER,
-                        data={
-                            "config_entry": self.config_entry.entry_id,
-                            "device_id": tracker_entity.entity_id,
-                            "device_name": tracker_entity.name
-                            or tracker_entity.original_name,
-                            "velop_id": tracker_missing,
-                        },
-                        is_fixable=True,
-                        is_persistent=False,
-                        severity=IssueSeverity.ERROR,
-                        translation_key=ISSUE_MISSING_DEVICE_TRACKER,
-                        translation_placeholders={
-                            "device_name": tracker_entity.name
-                            or tracker_entity.original_name
-                            or ""
-                        },
-                    )
-                    # endregion
-                else:
-                    # region #-- cleanup the config entry --#
-                    new_options = copy.deepcopy(dict(self.config_entry.options))
-                    if tracker_missing in new_options.get(CONF_DEVICE_TRACKERS, []):
-                        new_options.get(CONF_DEVICE_TRACKERS, []).remove(
-                            tracker_missing
-                        )
-                        self.hass.config_entries.async_update_entry(
-                            self.config_entry,
-                            options=new_options,
-                        )
-                    # endregion
+            self._handle_missing_trackers(err.devices)
+            return ()  # return empty tuple as devices were not found
         except (MeshConnectionError, MeshTimeoutError) as exc:
-            exc_timeout: DeviceTrackerMeshTimeout = DeviceTrackerMeshTimeout(
-                translation_domain=DOMAIN,
-                translation_key="device_tracker_timeout",
+            _LOGGER.warning(
+                DeviceTrackerMeshTimeout(
+                    translation_domain=DOMAIN, translation_key="device_tracker_timeout"
+                )
             )
-            _LOGGER.warning(exc_timeout)
             raise UpdateFailed(exc) from exc
         except MeshInvalidCredentials:
             raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN,
-                translation_key="failed_login",
+                translation_domain=DOMAIN, translation_key="failed_login"
             )
         except Exception as exc:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(exc).__name__,
-                    "exc_msg": str(exc),
-                },
+            _LOGGER.warning(
+                GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(exc).__name__,
+                        "exc_msg": str(exc),
+                    },
+                )
             )
-            _LOGGER.warning(exc_general)
             raise UpdateFailed(exc) from exc
-
-        return devices
 
     async def _async_refresh_mesh_data(self) -> MeshSnapshot:
         """Handle API communication and translate exceptions into HA UpdateFailed/Auth errors.
@@ -757,6 +745,23 @@ def get_mesh_device_for_config_entry(
     """
 
     return get_registry_device(hass, config_entry.entry_id, config_entry.entry_id)
+
+
+def remove_tracker_from_options(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry, tracker_id: str
+) -> None:
+    """Remove a missing tracker from the config entry options.
+
+    :param hass: Home Assistant root object.
+    :param config_entry: Config entry to remove the UI device from.
+    :param tracker_id: ID of the tracker to remove.
+    """
+    options = copy.deepcopy(config_entry.options)
+    trackers = options.get(CONF_DEVICE_TRACKERS, [])
+
+    if tracker_id in trackers:
+        trackers.remove(tracker_id)
+        hass.config_entries.async_update_entry(config_entry, options=options)
 
 
 def remove_ui_device_from_options(
