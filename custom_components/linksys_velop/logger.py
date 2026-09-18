@@ -3,58 +3,58 @@
 # region #-- imports --#
 import inspect
 import logging
-from types import FrameType
 from typing import Any
 
 # endregion
 
 
 class Logger:
-    """Wrapper for logging.Logger class."""
+    """Wrapper for logging.Logger to inject caller context into messages."""
 
     def __init__(self, logger: logging.Logger) -> None:
-        """Initialise."""
+        """Initialize the logger wrapper.
 
-        self._logger: logging.Logger = logger
+        :param logger: The underlying logging.Logger instance to be wrapped.
+        """
+        self._logger = logger
 
-    def __getattr__(self, name):
-        """Pass through access to logging.Logger attributes."""
+    def __getattr__(self, name: str) -> Any:
+        """Proxy access to the underlying logging.Logger instance.
 
+        :param name: The name of the attribute being accessed.
+        :returns: The attribute from the underlying logger.
+        """
         return getattr(self._logger, name)
 
-    def _format(self, msg: str) -> str:
-        """Format the message using as required."""
+    def _format_with_context(self, msg: str) -> str:
+        """Injects function name and line number into the log message.
 
-        ret: str = msg
-        caller_details: dict[str, Any] | None = None
-        frame: FrameType | None = inspect.currentframe()
+        :param msg: The raw log message string.
+        :returns: The message prefixed with 'function:line:'.
+        """
+        # go back 2 frames: 1 for this method, 1 for the calling log method (e.g. debug)
+        frame = inspect.currentframe()
         try:
-            if frame is not None:
-                caller: FrameType | None = frame.f_back
-                if caller is not None:
-                    caller_class: Any = caller.f_locals.get("self")
-                    if caller_class == self:  # go back again in the stack
-                        caller = caller.f_back
-                    if caller is not None:
-                        caller_info: inspect.Traceback = inspect.getframeinfo(caller)
-                        caller_details = {
-                            "line_no": caller_info.lineno,
-                            "func_name": caller_info.function,
-                        }
+            caller = frame.f_back.f_back if frame and frame.f_back else None
+            if caller:
+                info = inspect.getframeinfo(caller)
+                return f"{info.function}:{info.lineno}:{msg}"
         finally:
             del frame
-
-        if caller_details is not None:
-            ret = f"{caller_details.get("func_name")}:{caller_details.get("line_no")}:{msg}"
-
-        return ret
+        return msg
 
     def debug(self, msg: str, *args: Any) -> None:
-        """Passthrough for the debug logger."""
+        """Log a debug message with caller context.
 
-        self._logger.debug(self._format(msg % args))
+        :param msg: The message template to log.
+        :param args: Arguments to be interpolated into the message template.
+        """
+        formatted_msg = msg % args if args else msg
+        self._logger.debug(self._format_with_context(formatted_msg))
 
     def get_logger(self) -> logging.Logger:
-        """Return the logger that was initially passed in."""
+        """Return the underlying logging.Logger instance.
 
+        :returns: The original logging.Logger object.
+        """
         return self._logger
