@@ -11,12 +11,8 @@ class CoordinatorMeshException(HomeAssistantError):
     """MeshException raised."""
 
 
-class CoordinatorMeshTimeout(HomeAssistantError):
+class CoordinatorTimeout(HomeAssistantError):
     """Gathering mesh data timed out."""
-
-
-class DeviceTrackerMeshTimeout(HomeAssistantError):
-    """Gathering device tracker data timed out."""
 
 
 class GeneralException(HomeAssistantError):
