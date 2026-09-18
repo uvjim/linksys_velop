@@ -14,10 +14,8 @@ from datetime import timedelta
 from enum import StrEnum, auto
 from typing import Any
 
-from awesomeversion import AwesomeVersion
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
@@ -63,7 +61,7 @@ from .exceptions import (
     DeviceTrackerMeshTimeout,
     GeneralException,
 )
-from .helpers import get_mesh_parent_node
+from .helpers import get_mesh_parent_node, get_registry_device
 from .logger import Logger
 
 # endregion
@@ -440,16 +438,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             if serial is None:
                 continue
 
-            # TODO: fix up this branch when bumping min HA version
-            if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0"):
-                dr_node = device_registry.async_get_device_by_identifier(
-                    (DOMAIN, serial), self.config_entry.entry_id
-                )
-            else:
-                dr_node = device_registry.async_get_device(
-                    identifiers={(DOMAIN, serial)}
-                )
-
+            dr_node: DeviceEntry | None = get_registry_device(
+                self.hass, serial, self.config_entry.entry_id
+            )
             if dr_node is None:
                 continue
 
@@ -501,18 +492,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                             parent_node is not None
                             and parent_node.serial.value is not None
                         ):
-                            # TODO: fix up this branch when bumping min HA version
-                            if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0"):
-                                parent_dr_node = (
-                                    device_registry.async_get_device_by_identifier(
-                                        (DOMAIN, parent_node.serial.value),
-                                        self.config_entry.entry_id,
-                                    )
-                                )
-                            else:
-                                parent_dr_node = device_registry.async_get_device(
-                                    identifiers={(DOMAIN, parent_node.serial.value)}
-                                )
+                            parent_dr_node: DeviceEntry | None = get_registry_device(
+                                self.hass,
+                                parent_node.serial.value,
+                                self.config_entry.entry_id,
+                            )
                             if (
                                 parent_dr_node is not None
                                 and dr_node.via_device_id != parent_dr_node.id
@@ -535,16 +519,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         # region #-- update UI device names if we need to --#
         for ui_device in self.config_entry.options.get(CONF_UI_DEVICES, []):
             if ui_device != self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID):
-                # TODO: fix up this branch when bumping min HA version
-                if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0"):
-                    dr_ui_device = device_registry.async_get_device_by_identifier(
-                        (DOMAIN, ui_device),
-                        self.config_entry.entry_id,
-                    )
-                else:
-                    dr_ui_device = device_registry.async_get_device(
-                        identifiers={(DOMAIN, ui_device)}
-                    )
+                dr_ui_device: DeviceEntry | None = get_registry_device(
+                    self.hass,
+                    ui_device,
+                    self.config_entry.entry_id,
+                )
                 cur_ui_device: DeviceEntity | None = next(
                     (
                         device
@@ -574,8 +553,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             )
             if missing_ui_devices:
                 for ui_device in missing_ui_devices:
-                    dr_ui_device: DeviceEntry | None = device_registry.async_get_device(
-                        identifiers={(DOMAIN, ui_device)}
+                    dr_ui_device: DeviceEntry | None = get_registry_device(
+                        self.hass,
+                        ui_device,
+                        self.config_entry.entry_id,
                     )
                     if dr_ui_device is not None:
                         ir.async_create_issue(
@@ -610,8 +591,8 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         # region #-- missing nodes --#
         if stale_nodes := previous_nodes_serials - current_nodes_serials:
             for node_serial in stale_nodes:
-                dr_device: DeviceEntry | None = device_registry.async_get_device(
-                    identifiers={(DOMAIN, node_serial)}
+                dr_device: DeviceEntry | None = get_registry_device(
+                    self.hass, node_serial, self.config_entry.entry_id
                 )
                 if dr_device is not None:
                     device_registry.async_update_device(
@@ -785,17 +766,5 @@ def get_mesh_device_for_config_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> DeviceEntry | None:
     """Retrieve the Mesh device from the registry."""
-    device_registry: DeviceRegistry = dr.async_get(hass)
 
-    # TODO: fix up this branch when bumping min HA version
-    if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0"):
-        found_mesh: DeviceEntry | None = device_registry.async_get_device_by_identifier(
-            (DOMAIN, config_entry.entry_id),
-            config_entry.entry_id,
-        )
-    else:
-        found_mesh: DeviceEntry | None = device_registry.async_get_device(
-            {(DOMAIN, config_entry.entry_id)}
-        )
-
-    return found_mesh
+    return get_registry_device(hass, config_entry.entry_id, config_entry.entry_id)

@@ -151,7 +151,9 @@ class IssueMissingUIDeviceRepairFlow(RepairsFlow):
         if user_input is not None:
             # -- remove from the registry --#
             remove_velop_device_from_registry(
-                self.hass, str(cast(dict, self.data).get("velop_id"))
+                self.hass,
+                str(cast(dict, self.data).get("velop_id")),
+                str(cast(dict, self.data).get("config_entry", "")),
             )
 
             # region # -- cleanup the config entry --#
