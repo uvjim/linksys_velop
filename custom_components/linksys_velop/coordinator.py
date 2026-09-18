@@ -38,7 +38,7 @@ from pyvelop.exceptions import (
     MeshTimeoutError,
 )
 from pyvelop.mesh import Mesh, MeshSnapshot, SpeedtestResult
-from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
     CONF_API_REQUEST_TIMEOUT,
@@ -135,7 +135,7 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval_secs),
         )
 
-    async def _delay_run(self) -> bool:
+    def _delay_run(self) -> bool:
         """Return True if the request to the mesh should be delayed."""
 
         # region #-- intensive task running so back off --#
@@ -226,6 +226,108 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         config_entry.async_on_unload(self.async_add_listener(self._process_listeners))
         # endregion
 
+    def _create_missing_ui_issue(self, device: DeviceEntry, ui_id: str) -> None:
+        """Create a Home Assistant issue for a missing UI device.
+
+        :param device: `DeviceEntry` from the HA registry.
+        :param ui_id: ID of the device from the mesh.
+        """
+        name = device.name_by_user or device.name
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            f"{ISSUE_MISSING_UI_DEVICE}::{ui_id}",
+            data={
+                "config_entry": self.config_entry.entry_id,
+                "device_name": name,
+                "velop_id": ui_id,
+            },
+            is_fixable=True,
+            is_persistent=False,
+            severity=IssueSeverity.WARNING,
+            translation_key=ISSUE_MISSING_UI_DEVICE,
+            translation_placeholders={"device_name": str(name)},
+        )
+
+    def _dispatch_new_entities(
+        self,
+        mesh_data: MeshSnapshot,
+        prev_node_serials: set[str],
+        cur_node_serials: set[str],
+        prev_device_ids: set[str],
+        cur_device_ids: set[str],
+    ) -> None:
+        """Dispatch events for newly discovered nodes and devices.
+
+        :param mesh_data: recently polled and current data.
+        :param prev_node_serials: previously gathered node serial numbers.
+        :param cur_node_serials: current nodes serial numbers
+        :param prev_device_ids: previously gathered device unique IDs.
+        :param cur_device_ids: current device unique IDs.
+        """
+
+        # new nodes
+        if EventSubTypes.NEW_NODE_FOUND.value in self._configured_events:
+            for serial in cur_node_serials - prev_node_serials:
+                if node_info := next(
+                    (node for node in mesh_data.nodes if node.serial.value == serial),
+                    None,
+                ):
+                    async_dispatcher_send(
+                        self.hass,
+                        f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
+                        node_info,
+                    )
+
+        # new devices
+        if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
+            new_ids = (cur_device_ids - prev_device_ids).union(self._waiting_for_ip)
+            for dev_id in new_ids:
+                if device_info := next(
+                    (
+                        device
+                        for device in mesh_data.devices
+                        if device.unique_id.value == dev_id
+                    ),
+                    None,
+                ):
+                    has_ip = any(adi.ip or adi.ipv6 for adi in device_info.adapter_info)
+                    wait_for_ip_enabled = self.config_entry.options.get(
+                        CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP
+                    )
+
+                    if wait_for_ip_enabled and not has_ip:
+                        self._waiting_for_ip.add(dev_id)
+                    else:
+                        self._waiting_for_ip.discard(dev_id)
+                        async_dispatcher_send(
+                            self.hass,
+                            f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
+                            device_info,
+                        )
+
+    def _handle_missing_nodes(
+        self,
+        prev_serials: set[str],
+        cur_serials: set[str],
+        device_registry: DeviceRegistry,
+    ) -> None:
+        """Clean up registry entries for nodes that have disappeared from the mesh.
+
+        :param prev_serials: serial numbers from the previous data.
+        :param cur_serials: serial numbers from the current data.
+        :param device_registry: `DeviceRegistry` object that should be updated.
+        """
+        for serial in prev_serials - cur_serials:
+            dr_device = get_registry_device(
+                self.hass, serial, self.config_entry.entry_id
+            )
+            if dr_device:
+                device_registry.async_update_device(
+                    device_id=dr_device.id,
+                    remove_config_entry_id=self.config_entry.entry_id,
+                )
+
     def _process_listeners(self) -> None:
         """Process the listeners for any timers that were executing."""
 
@@ -240,10 +342,110 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                             "unexpected error executing listener for %s", timer_type
                         )
 
+    def _sync_node_attributes(
+        self,
+        prev_nodes: tuple[NodeEntity, ...],
+        mesh_data: MeshSnapshot,
+        device_registry: DeviceRegistry,
+    ):
+        """Update attributes for existing nodes.
+
+        :param prev_nodes: `NodeEntity` objects from the previous data.
+        :param mesh_data: the current data.
+        :param device_regiastry: `DeviceRegistry` object that should be updated.
+        """
+        for prev_node in prev_nodes:
+            serial = prev_node.serial.value
+            if not serial:
+                continue
+
+            dr_node = get_registry_device(self.hass, serial, self.config_entry.entry_id)
+            curr_node = next(
+                (n for n in mesh_data.nodes if n.serial.value == serial), None
+            )
+            if not dr_node or not curr_node:
+                continue
+
+            updates = {}
+
+            # IP -> Configuration URL
+            if curr_node.type.value == NodeType.SECONDARY:
+                cur_ip = next(
+                    (adi.ip for adi in curr_node.adapter_info if adi.primary), None
+                )
+                prev_ip = next(
+                    (adi.ip for adi in prev_node.adapter_info if adi.primary), None
+                )
+                if cur_ip and cur_ip != prev_ip:
+                    updates["configuration_url"] = f"http://{cur_ip}/ca"
+
+            # Name
+            if curr_node.name.value != prev_node.name.value:
+                updates["name"] = curr_node.name.value
+
+            # Via Device (Parent)
+            if curr_node.type.value == NodeType.SECONDARY:
+                parent = get_mesh_parent_node(curr_node, mesh_data)
+                if parent and parent.serial.value:
+                    parent_dr = get_registry_device(
+                        self.hass, parent.serial.value, self.config_entry.entry_id
+                    )
+                    if parent_dr and dr_node.via_device_id != parent_dr.id:
+                        updates["via_device_id"] = parent_dr.id
+
+            if updates:
+                _LOGGER.debug("Updating attributes for %s: %s", prev_node.name, updates)
+                device_registry.async_update_device(dr_node.id, **updates)
+
+    def _sync_ui_devices(
+        self,
+        mesh_data: MeshSnapshot,
+        device_registry: DeviceRegistry,
+        current_devices: set[str],
+    ) -> None:
+        """Synchronize device names and handle missing UI devices.
+
+        :param mesh_data: current data from the mesh.
+        :param device_registry: `DeviceRegistry` object that should be updated.
+        :param current_devices: Device unique IDs
+        """
+        ui_devices = self.config_entry.options.get(CONF_UI_DEVICES, [])
+        placeholder_id = self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
+
+        for ui_id in ui_devices:
+            if ui_id == placeholder_id:
+                continue
+
+            dr_ui_device = get_registry_device(
+                self.hass, ui_id, self.config_entry.entry_id
+            )
+            cur_ui_entity = next(
+                (d for d in mesh_data.devices if d.unique_id.value == ui_id), None
+            )
+
+            # device exists in mesh and registry -> update name if changed
+            if cur_ui_entity and dr_ui_device:
+                if cur_ui_entity.name.value != dr_ui_device.name:
+                    device_registry.async_update_device(
+                        dr_ui_device.id, name=cur_ui_entity.name.value
+                    )
+
+            # device is missing from current mesh data
+            elif ui_id not in current_devices:
+                if dr_ui_device:
+                    self._create_missing_ui_issue(dr_ui_device, ui_id)
+                else:
+                    remove_ui_device_from_options(self.hass, self.config_entry, ui_id)
+
     def add_listener_for_timer_type(
         self, timer_type: CoordinatorTimers, listener: Callable[[], None]
     ) -> Callable[[], None]:
-        """Add a listener for a particular timer type."""
+        """Add a listener for a particular timer type.
+
+        :param timer_type: Type of timer the listener should be associated with.
+        :param listener: Callable that should be called when the timer has completed processing.
+        :returns: Callable that can be used to unregister the listener.
+        """
 
         self._timers.get(timer_type, {}).get("listeners", []).append(listener)
 
@@ -254,9 +456,12 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         return _unsub
 
     async def _async_get_device_tracker_data(self) -> tuple[DeviceEntity, ...]:
-        """Get the device tracker information from the mesh."""
+        """Get the device tracker information from the mesh.
 
-        if await self._delay_run():
+        :returns: Device details from the mesh for the configured devices.
+        """
+
+        if self._delay_run():
             return self.data.device_tracker
 
         devices: tuple[DeviceEntity, ...] = ()
@@ -346,314 +551,90 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         return devices
 
-    async def _async_get_mesh_data(self) -> MeshSnapshot | None:
-        """Get all data from the mesh."""
+    async def _async_refresh_mesh_data(self) -> MeshSnapshot:
+        """Handle API communication and translate exceptions into HA UpdateFailed/Auth errors.
 
-        current_devices: set[str] = set()
-        current_nodes_serials: set[str] = set()
-        dr_ui_device: DeviceEntry | None = None
-        previous_devices: set[str] = set()
-        previous_nodes: tuple[NodeEntity, ...] = ()
-        previous_nodes_serials: set[str] = set()
-        device_registry: DeviceRegistry
-
-        # region #-- should we run? --#
-        if await self._delay_run():
-            return self.data.mesh
-        # endregion
-
-        # region #-- set the previous details before getting mesh details --#
-        if isinstance(self.data.mesh, MeshSnapshot):
-            previous_nodes = self.data.mesh.nodes
-            previous_nodes_serials = {
-                node.serial.value
-                for node in previous_nodes
-                if node.serial.value is not None
-            }
-            if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
-                previous_devices = {
-                    device.unique_id.value
-                    for device in self.data.mesh.devices
-                    if device.unique_id.value is not None
-                }
-        # endregion
-
-        # region #-- get the details from the mesh --#
+        :returns: Snapshot of the current mesh data
+        """
         try:
-            mesh_data = await self.api.async_refresh()
+            return await self.api.async_refresh()
         except (MeshConnectionError, MeshTimeoutError) as err:
-            exc_mesh_timeout: CoordinatorMeshTimeout = CoordinatorMeshTimeout(
-                translation_domain=DOMAIN,
-                translation_key="coordinator_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": self.config_entry.options.get(
-                        CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                    )
-                },
+            _LOGGER.warning(
+                CoordinatorMeshTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="coordinator_mesh_timeout",
+                    translation_placeholders={
+                        "current_timeout": self.config_entry.options.get(
+                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
+                        )
+                    },
+                )
             )
-            _LOGGER.warning(exc_mesh_timeout)
             raise UpdateFailed(err) from err
         except MeshInvalidCredentials:
             raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN,
-                translation_key="failed_login",
+                translation_domain=DOMAIN, translation_key="failed_login"
             )
         except MeshException as err:
             raise UpdateFailed(type(err).__name__) from err
         except Exception as err:
-            exc_general: GeneralException = GeneralException(
-                translation_domain=DOMAIN,
-                translation_key="general",
-                translation_placeholders={
-                    "exc_type": type(err).__name__,
-                    "exc_msg": str(err),
-                },
+            _LOGGER.warning(
+                GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err).__name__,
+                        "exc_msg": str(err),
+                    },
+                )
             )
-            _LOGGER.warning(exc_general)
             raise UpdateFailed(err) from err
-        # endregion
 
-        # region #-- get the current details for comparison --#
-        current_nodes_serials = {
-            node.serial.value
-            for node in mesh_data.nodes
-            if node.serial.value is not None
-        }
+    async def _async_update_mesh_data(self) -> MeshSnapshot | None:
+        """Get all data from the mesh and sync states with Home Assistant.
+
+        :returns: Snapshot of the current mesh data. `None` if it hasn't been initialised yet.
+        """
+
+        if self._delay_run():
+            return self.data.mesh
+
+        # index previous details for comparison
+        prev_mesh: MeshSnapshot | None = (
+            self.data.mesh if isinstance(self.data.mesh, MeshSnapshot) else None
+        )
+        prev_nodes = prev_mesh.nodes if prev_mesh else ()
+        prev_node_serials = {n.serial.value for n in prev_nodes if n.serial.value}
+        prev_device_ids = (
+            {d.unique_id.value for d in prev_mesh.devices if d.unique_id.value}
+            if prev_mesh
+            and EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events
+            else set()
+        )
+
+        # get the details from the mesh
+        mesh_data: MeshSnapshot = await self._async_refresh_mesh_data()
+
+        # index the current details for comparison
+        cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
+        cur_device_ids = set()
         if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
-            current_devices = {
-                device.unique_id.value
-                for device in mesh_data.devices
-                if device.unique_id.value is not None
+            cur_device_ids = {
+                d.unique_id.value for d in mesh_data.devices if d.unique_id.value
             }
-        # endregion
 
-        # region #-- update node `device` attributes if we need to --#
-        attr_to_check: set[str] = {"ip", "name", "parent_id"}
+        # sync the data
         device_registry = dr.async_get(self.hass)
-        prev_node: NodeEntity
-        cur_node: NodeEntity | None
-        for prev_node in previous_nodes:
-            serial = prev_node.serial.value
-
-            if serial is None:
-                continue
-
-            dr_node: DeviceEntry | None = get_registry_device(
-                self.hass, serial, self.config_entry.entry_id
-            )
-            if dr_node is None:
-                continue
-
-            cur_node = next(
-                (node for node in mesh_data.nodes if node.serial.value == serial),
-                None,
-            )
-            if cur_node is None:
-                continue
-
-            attr_to_update: dict[str, Any] = {}
-            for attr in attr_to_check:
-                if attr == "ip":
-                    # region #-- update the configuration_url --#
-                    cur_ip: str | None = None
-                    prev_ip: str | None = None
-                    if cur_node.type.value == NodeType.SECONDARY:
-                        cur_adi: NodeAdapterInfo | None = next(
-                            (adi for adi in cur_node.adapter_info if adi.primary),
-                            None,
-                        )
-                        if cur_adi is not None:
-                            cur_ip = cur_adi.ip
-
-                        prev_adi: NodeAdapterInfo | None = next(
-                            (adi for adi in prev_node.adapter_info if adi.primary),
-                            None,
-                        )
-                        if prev_adi is not None:
-                            prev_ip = prev_adi.ip
-
-                        if cur_ip is not None and cur_ip != prev_ip:
-                            attr_to_update["configuration_url"] = f"http://{cur_ip}/ca"
-                    # endregion
-                elif attr == "name":
-                    # region #-- update the name --#
-                    # this doesn't change the visible name in Home Assistant if that was set by the user.
-                    if cur_node.name.value != prev_node.name.value:
-                        attr_to_update["name"] = cur_node.name.value
-                    # endregion
-                elif attr == "parent_id":
-                    # region #-- update the via_device --#
-                    # this reflects the parent/child relationship on the mesh and only affects secondary nodes.
-                    if cur_node.type.value == NodeType.SECONDARY:
-                        parent_node: NodeEntity | None = get_mesh_parent_node(
-                            cur_node, mesh_data
-                        )
-                        if (
-                            parent_node is not None
-                            and parent_node.serial.value is not None
-                        ):
-                            parent_dr_node: DeviceEntry | None = get_registry_device(
-                                self.hass,
-                                parent_node.serial.value,
-                                self.config_entry.entry_id,
-                            )
-                            if (
-                                parent_dr_node is not None
-                                and dr_node.via_device_id != parent_dr_node.id
-                            ):
-                                attr_to_update["via_device_id"] = parent_dr_node.id
-                    # endregion
-
-            if attr_to_update:
-                _LOGGER.debug(
-                    "updating the following attributes for %s: %s",
-                    prev_node.name,
-                    attr_to_update,
-                )
-                device_registry.async_update_device(
-                    dr_node.id,
-                    **attr_to_update,
-                )
-        # endregion
-
-        # region #-- update UI device names if we need to --#
-        for ui_device in self.config_entry.options.get(CONF_UI_DEVICES, []):
-            if ui_device != self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID):
-                dr_ui_device: DeviceEntry | None = get_registry_device(
-                    self.hass,
-                    ui_device,
-                    self.config_entry.entry_id,
-                )
-                cur_ui_device: DeviceEntity | None = next(
-                    (
-                        device
-                        for device in mesh_data.devices
-                        if device.unique_id.value == ui_device
-                    ),
-                    None,
-                )
-                if (
-                    cur_ui_device is not None
-                    and dr_ui_device is not None
-                    and cur_ui_device.name.value != dr_ui_device.name
-                ):
-                    device_registry.async_update_device(
-                        dr_ui_device.id,
-                        name=cur_ui_device.name.value,
-                    )
-        # endregion
-
-        # region #-- missing UI devices --#
-        if len(self.config_entry.options.get(CONF_UI_DEVICES, [])) > 0:
-            missing_ui_devices: set[str] = set(
-                self.config_entry.options.get(CONF_UI_DEVICES, [])
-            ).difference(current_devices)
-            missing_ui_devices.discard(
-                self.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-            )
-            if missing_ui_devices:
-                for ui_device in missing_ui_devices:
-                    dr_ui_device: DeviceEntry | None = get_registry_device(
-                        self.hass,
-                        ui_device,
-                        self.config_entry.entry_id,
-                    )
-                    if dr_ui_device is not None:
-                        ir.async_create_issue(
-                            self.hass,
-                            DOMAIN,
-                            f"{ISSUE_MISSING_UI_DEVICE}::{ui_device}",
-                            data={
-                                "config_entry": self.config_entry.entry_id,
-                                "device_name": dr_ui_device.name_by_user
-                                or dr_ui_device.name,
-                                "velop_id": ui_device,
-                            },
-                            is_fixable=True,
-                            is_persistent=False,
-                            severity=IssueSeverity.WARNING,
-                            translation_key=ISSUE_MISSING_UI_DEVICE,
-                            translation_placeholders={
-                                "device_name": str(
-                                    dr_ui_device.name_by_user or dr_ui_device.name
-                                )
-                            },
-                        )
-                    else:  # device not found in the registry so just remove it
-                        new_options = copy.deepcopy(dict(**self.config_entry.options))
-                        if ui_device in new_options.get(CONF_UI_DEVICES, []):
-                            new_options.get(CONF_UI_DEVICES, {}).remove(ui_device)
-                            self.hass.config_entries.async_update_entry(
-                                self.config_entry, options=new_options
-                            )
-        # endregion
-
-        # region #-- missing nodes --#
-        if stale_nodes := previous_nodes_serials - current_nodes_serials:
-            for node_serial in stale_nodes:
-                dr_device: DeviceEntry | None = get_registry_device(
-                    self.hass, node_serial, self.config_entry.entry_id
-                )
-                if dr_device is not None:
-                    device_registry.async_update_device(
-                        device_id=dr_device.id,
-                        remove_config_entry_id=self.config_entry.entry_id,
-                    )
-        # endregion
-
-        # region #-- check for new nodes --#
-        if EventSubTypes.NEW_NODE_FOUND.value in self._configured_events:
-            new_nodes_serials: set[str] = current_nodes_serials.difference(
-                previous_nodes_serials
-            )
-            node_info: NodeEntity | None
-            for node in new_nodes_serials:
-                if (
-                    node_info := next(
-                        (n for n in mesh_data.nodes if n.serial.value == node),
-                        None,
-                    )
-                ) is not None:
-                    async_dispatcher_send(
-                        self.hass,
-                        f"{DOMAIN}_{EventSubTypes.NEW_NODE_FOUND.value}",
-                        node_info,
-                    )
-        # endregion
-
-        # region #-- new device found --#
-        if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
-            new_devices: set[str] = current_devices.difference(previous_devices)
-            all_new_devices: set[str] = new_devices.union(self._waiting_for_ip)
-            device_info: DeviceEntity | None
-            for device in all_new_devices:
-                if device_info := next(
-                    (d for d in mesh_data.devices if d.unique_id.value == device),
-                    None,
-                ):
-                    dev_ip = next(
-                        (
-                            adi
-                            for adi in device_info.adapter_info
-                            if adi.ip is not None or adi.ipv6 is not None
-                        ),
-                        None,
-                    )
-                    if (
-                        self.config_entry.options.get(
-                            CONF_EVENTS_WAIT_IP, DEF_EVENTS_WAIT_IP
-                        )
-                        and dev_ip is None
-                    ):
-                        self._waiting_for_ip.add(device)
-                    else:
-                        self._waiting_for_ip.discard(device)
-                        async_dispatcher_send(
-                            self.hass,
-                            f"{DOMAIN}_{EventSubTypes.NEW_DEVICE_FOUND.value}",
-                            device_info,
-                        )
-        # endregion
+        self._sync_node_attributes(prev_nodes, mesh_data, device_registry)
+        self._sync_ui_devices(mesh_data, device_registry, cur_device_ids)
+        self._handle_missing_nodes(prev_node_serials, cur_node_serials, device_registry)
+        self._dispatch_new_entities(
+            mesh_data,
+            prev_node_serials,
+            cur_node_serials,
+            prev_device_ids,
+            cur_device_ids,
+        )
 
         return mesh_data
 
@@ -691,7 +672,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             ) from exc
 
     async def _async_update_data(self) -> DataUpdateCoordinatorData:
-        """Refresh the mesh data."""
+        """Refresh the mesh data.
+
+        :returns: Updated data from the coordinator update.
+        """
 
         # set when we're running for later comparison
         now: float = time.monotonic()
@@ -713,7 +697,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 if timer_type == CoordinatorTimers.DEVICE_TRACKER:
                     coro_running.append(self._async_get_device_tracker_data())
                 elif timer_type == CoordinatorTimers.MESH:
-                    coro_running.append(self._async_get_mesh_data())
+                    coro_running.append(self._async_update_mesh_data())
                 else:
                     raise UpdateFailed(
                         f"unknown timer type: {timer_type} - cannot update data"
@@ -765,6 +749,27 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 def get_mesh_device_for_config_entry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> DeviceEntry | None:
-    """Retrieve the Mesh device from the registry."""
+    """Retrieve the Mesh device from the registry.
+
+    :param hass: Home Assistant root object.
+    :param config_entry: Config entry to look-up the mesh for.
+    :returns: `DeviceEntry` from the Home Assistant registry if one exists. `None` otherwise.
+    """
 
     return get_registry_device(hass, config_entry.entry_id, config_entry.entry_id)
+
+
+def remove_ui_device_from_options(
+    hass: HomeAssistant, config_entry: LinksysVelopConfigEntry, ui_id: str
+) -> None:
+    """Remove a device from the config options if it no longer exists in the registry.
+
+    :param hass: Home Assistant root object.
+    :param config_entry: Config entry to remove the UI device from.
+    :param ui_id: ID of the device to remove.
+    """
+    options = copy.deepcopy(config_entry.options)
+    ui_list = options.get(CONF_UI_DEVICES, [])
+    if ui_id in ui_list:
+        ui_list.remove(ui_id)
+        hass.config_entries.async_update_entry(config_entry, options=options)
