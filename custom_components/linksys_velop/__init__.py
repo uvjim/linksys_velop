@@ -241,7 +241,7 @@ async def async_setup_entry(
     _LOGGER.debug("cleaning up ui devices")
     new_data: dict[str, Any] = {**config_entry.data}
     for ui_device in new_data.get(CONF_UI_DEVICES_TO_REMOVE, []):
-        remove_velop_device_from_registry(hass, ui_device)
+        remove_velop_device_from_registry(hass, ui_device, config_entry.entry_id)
     if CONF_UI_DEVICES_TO_REMOVE in new_data:
         new_data[CONF_UI_DEVICES_TO_REMOVE] = []
     # endregion
