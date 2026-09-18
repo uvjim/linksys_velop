@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import slugify
 from pyvelop.mesh import MeshSnapshot
-from pyvelop.mesh_entity import DeviceEntity, NodeAdapterInfo, NodeEntity, NodeType
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
     CONF_UI_PLACEHOLDER_DEVICE_ID,
@@ -75,15 +75,15 @@ class LinksysVelopMultiUseEntity(
         description: LinksysVelopEntityDescription,
         entity_context: LinksysVelopEntityContext,
     ) -> None:
-        """Initialise entity."""
+        """Initialise entity.
 
+        :param coordinator: The data coordinator for.
+        :param description: The entity description defining the entity's properties.
+        :param entity_context: The context providing unique identifiers and metadata.
+        """
         super().__init__(coordinator)
 
-        # region #-- custom attributes --#
-        self.entity_context: LinksysVelopEntityContext = entity_context
-        # endregion
-
-        # region #-- standard attributes --#
+        self.entity_context = entity_context
         if description is not None:
             self.entity_description = description
 
@@ -92,67 +92,22 @@ class LinksysVelopMultiUseEntity(
             f"{self._entity_domain.lower()}::"
             f"{slugify(str(self.entity_description.name))}"
         )
-        # endregion
 
-        # region #-- setup device info --#
-        target_type: EntityType = self.entity_description.target_type
-        if target_type in (EntityType.DEVICE, EntityType.NODE):
-            target: TargetEntityType = self._get_target()
-            if isinstance(target, DeviceEntity) or target is None:
-                is_placeholder_device: bool = (
-                    self.entity_context.unique_id
-                    == self.coordinator.config_entry.data.get(
-                        CONF_UI_PLACEHOLDER_DEVICE_ID
-                    )
-                )
-                self._attr_device_info = DeviceInfo(
-                    identifiers={(DOMAIN, str(self.entity_context.unique_id))},
-                    manufacturer=(
-                        str(target.manufacturer)
-                        if target is not None and not is_placeholder_device
-                        else ""
-                    ),
-                    model=(
-                        str(target.model)
-                        if target is not None and not is_placeholder_device
-                        else ""
-                    ),
-                    name=(
-                        str(target.name)
-                        if target is not None
-                        and self.entity_context.unique_id
-                        != self.coordinator.config_entry.data.get(
-                            CONF_UI_PLACEHOLDER_DEVICE_ID
-                        )
-                        else "Placeholder Device"
-                    ),
-                )
-            elif isinstance(target, NodeEntity) and target.serial is not None:
-                self._attr_device_info = DeviceInfo(
-                    hw_version=str(target.hardware_version),
-                    identifiers={(DOMAIN, str(target.serial))},
-                    model=str(target.model),
-                    name=str(target.name),
-                    manufacturer=str(target.manufacturer),
-                    serial_number=str(target.serial),
-                    sw_version=target.firmware.get("version", ""),
-                )
+        self._attr_device_info = self._build_device_info()
 
-                if target.type == NodeType.SECONDARY and target.adapter_info:
-                    adapter_main: NodeAdapterInfo | None = next(
-                        (adi for adi in target.adapter_info if adi.primary),
-                        None,
-                    )
-                    if adapter_main is not None and adapter_main.ip is not None:
-                        self._attr_device_info["configuration_url"] = (
-                            f"http://{adapter_main.ip}/ca"
-                        )
-                elif target.type == NodeType.PRIMARY:
-                    self._attr_device_info["configuration_url"] = (
-                        f"http://{self.coordinator.api.connected_node}"
-                    )
-        elif self.entity_description.target_type == EntityType.MESH:
-            self._attr_device_info = DeviceInfo(
+    def __repr__(self) -> str:
+
+        return f"{self.__class__.__name__}: {self.entity_context.unique_id} : { self.entity_description.name }"
+
+    def _build_device_info(self) -> DeviceInfo | None:
+        """Construct the DeviceInfo object based on target type.
+
+        :returns: A configured DeviceInfo object or None if no info is available.
+        """
+        target_type = self.entity_description.target_type
+
+        if target_type == EntityType.MESH:
+            return DeviceInfo(
                 configuration_url=f"http://{self.coordinator.api.connected_node}",
                 entry_type=DeviceEntryType.SERVICE,
                 identifiers={(DOMAIN, self.entity_context.unique_id)},
@@ -161,25 +116,67 @@ class LinksysVelopMultiUseEntity(
                 name="Mesh",
                 sw_version="",
             )
-        # endregion
 
-    def __repr__(self) -> str:
+        if target_type not in (EntityType.DEVICE, EntityType.NODE):
+            return None
 
-        return f"{self.__class__.__name__}: {self.entity_context.unique_id} : { self.entity_description.name }"
+        target = self._get_target()
+        placeholder_id = self.coordinator.config_entry.data.get(
+            CONF_UI_PLACEHOLDER_DEVICE_ID
+        )
+        is_placeholder = self.entity_context.unique_id == placeholder_id
 
-    def _get_target(self) -> TargetEntityType:
+        if isinstance(target, DeviceEntity) or target is None:
+            return DeviceInfo(
+                identifiers={(DOMAIN, str(self.entity_context.unique_id))},
+                manufacturer=(
+                    str(target.manufacturer) if target and not is_placeholder else ""
+                ),
+                model=str(target.model) if target and not is_placeholder else "",
+                name=(
+                    str(target.name)
+                    if target and not is_placeholder
+                    else "Placeholder Device"
+                ),
+            )
+
+        if isinstance(target, NodeEntity) and target.serial is not None:
+            info = DeviceInfo(
+                hw_version=str(target.hardware_version),
+                identifiers={(DOMAIN, str(target.serial))},
+                model=str(target.model),
+                name=str(target.name),
+                manufacturer=str(target.manufacturer),
+                serial_number=str(target.serial),
+                sw_version=target.firmware.get("version", ""),
+            )
+
+            if target.type == NodeType.PRIMARY:
+                info["configuration_url"] = (
+                    f"http://{self.coordinator.api.connected_node}"
+                )
+            elif target.type == NodeType.SECONDARY and target.adapter_info:
+                adapter_main = next(
+                    (adi for adi in target.adapter_info if adi.primary), None
+                )
+                if adapter_main and adapter_main.ip:
+                    info["configuration_url"] = f"http://{adapter_main.ip}/ca"
+
+            return info
+
+        return None
+
+    def _get_target(self) -> TargetEntityType | None:
         """Retrieve the target mesh entity for the current entity.
 
-        :returns:
+        :returns: The target mesh entity if found, otherwise None.
         """
-
-        mesh: MeshSnapshot | None = self.coordinator.data.mesh
+        mesh = self.coordinator.data.mesh
         if mesh is None:
             return None
 
         target_type = self.entity_description.target_type
-        context_data = self.entity_context.data
-        velop_id = context_data.get("velop", {}).get("id")
+        velop_id = self.entity_context.data.get("velop", {}).get("id")
 
         if target_type in (EntityType.DEVICE, EntityType.NODE):
             placeholder_id = self.coordinator.config_entry.data.get(
@@ -191,35 +188,24 @@ class LinksysVelopMultiUseEntity(
                 else velop_id
             )
 
-            if unique_id is None:
+            if not unique_id:
                 return None
 
-            target = next(
-                (
-                    device
-                    for device in mesh.devices
-                    if device.unique_id.value == unique_id
-                ),
-                None,
-            )
-
-            if target is not None:
-                return target
-
+            # search devices first, then nodes
             return next(
-                (node for node in mesh.nodes if node.unique_id.value == unique_id),
-                None,
+                (d for d in mesh.devices if d.unique_id.value == unique_id),
+                next((n for n in mesh.nodes if n.unique_id.value == unique_id), None),
             )
 
         if target_type == EntityType.MESH:
-            if velop_id is None:
+            if not velop_id:
                 return mesh
 
             return next(
                 (
-                    device
-                    for device in self.coordinator.data.device_tracker
-                    if device.unique_id.value == velop_id
+                    d
+                    for d in self.coordinator.data.device_tracker
+                    if d.unique_id.value == velop_id
                 ),
                 None,
             )
