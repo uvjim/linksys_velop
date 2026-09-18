@@ -8,7 +8,7 @@ import copy
 import logging
 import math
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum, auto
@@ -57,8 +57,7 @@ from .const import (
 )
 from .exceptions import (
     BlockingTaskRunning,
-    CoordinatorMeshTimeout,
-    DeviceTrackerMeshTimeout,
+    CoordinatorTimeout,
     GeneralException,
 )
 from .helpers import get_mesh_parent_node, get_registry_device
@@ -386,6 +385,51 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                             "unexpected error executing listener for %s", timer_type
                         )
 
+    async def _safe_api_call[T](
+        self, api_func: Callable[[], Awaitable[T]], timeout_key: tuple[str, float]
+    ) -> T:
+        """Wraps API calls to provide centralized exception handling and Home Assistant error translation.
+
+        :param api_func: Callable to execute against the mesh.
+        :param timeout_key:
+        :returns: Response from the mesh.
+        :raises:
+        """
+
+        try:
+            return await api_func()
+        except (MeshConnectionError, MeshTimeoutError) as err:
+            _LOGGER.warning(
+                CoordinatorTimeout(
+                    translation_domain=DOMAIN,
+                    translation_key="coordinator_timeout",
+                    translation_placeholders={
+                        "current_timeout": self.config_entry.options.get(
+                            timeout_key[0], timeout_key[1]
+                        )
+                    },
+                )
+            )
+            raise UpdateFailed(err) from err
+        except MeshInvalidCredentials:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN, translation_key="failed_login"
+            )
+        except MeshException as err:
+            raise UpdateFailed(type(err).__name__) from err
+        except Exception as err:
+            _LOGGER.warning(
+                GeneralException(
+                    translation_domain=DOMAIN,
+                    translation_key="general",
+                    translation_placeholders={
+                        "exc_type": type(err).__name__,
+                        "exc_msg": str(err),
+                    },
+                )
+            )
+            raise UpdateFailed(err) from err
+
     def _sync_node_attributes(
         self,
         prev_nodes: tuple[NodeEntity, ...],
@@ -511,74 +555,15 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         tracked_ids = self.config_entry.options.get(CONF_DEVICE_TRACKERS, [])
 
         try:
-            return await self.api.async_get_devices(tracked_ids)
+            return await self._safe_api_call(
+                lambda: self.api.async_get_devices(tracked_ids),
+                (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+            )
         except MeshDeviceNotFoundResponse as err:
             self._handle_missing_trackers(err.devices)
             return ()  # return empty tuple as devices were not found
-        except (MeshConnectionError, MeshTimeoutError) as exc:
-            _LOGGER.warning(
-                DeviceTrackerMeshTimeout(
-                    translation_domain=DOMAIN, translation_key="device_tracker_timeout"
-                )
-            )
-            raise UpdateFailed(exc) from exc
-        except MeshInvalidCredentials:
-            raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN, translation_key="failed_login"
-            )
-        except Exception as exc:
-            _LOGGER.warning(
-                GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(exc).__name__,
-                        "exc_msg": str(exc),
-                    },
-                )
-            )
-            raise UpdateFailed(exc) from exc
 
-    async def _async_refresh_mesh_data(self) -> MeshSnapshot:
-        """Handle API communication and translate exceptions into HA UpdateFailed/Auth errors.
-
-        :returns: Snapshot of the current mesh data
-        """
-        try:
-            return await self.api.async_refresh()
-        except (MeshConnectionError, MeshTimeoutError) as err:
-            _LOGGER.warning(
-                CoordinatorMeshTimeout(
-                    translation_domain=DOMAIN,
-                    translation_key="coordinator_mesh_timeout",
-                    translation_placeholders={
-                        "current_timeout": self.config_entry.options.get(
-                            CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT
-                        )
-                    },
-                )
-            )
-            raise UpdateFailed(err) from err
-        except MeshInvalidCredentials:
-            raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN, translation_key="failed_login"
-            )
-        except MeshException as err:
-            raise UpdateFailed(type(err).__name__) from err
-        except Exception as err:
-            _LOGGER.warning(
-                GeneralException(
-                    translation_domain=DOMAIN,
-                    translation_key="general",
-                    translation_placeholders={
-                        "exc_type": type(err).__name__,
-                        "exc_msg": str(err),
-                    },
-                )
-            )
-            raise UpdateFailed(err) from err
-
-    async def _async_update_mesh_data(self) -> MeshSnapshot | None:
+    async def _async_get_mesh_data(self) -> MeshSnapshot | None:
         """Get all data from the mesh and sync states with Home Assistant.
 
         :returns: Snapshot of the current mesh data. `None` if it hasn't been initialised yet.
@@ -601,7 +586,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         )
 
         # get the details from the mesh
-        mesh_data: MeshSnapshot = await self._async_refresh_mesh_data()
+        mesh_data: MeshSnapshot = await self._safe_api_call(
+            self.api.async_refresh, (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
+        )
 
         # index the current details for comparison
         cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
@@ -685,7 +672,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 if timer_type == CoordinatorTimers.DEVICE_TRACKER:
                     coro_running.append(self._async_get_device_tracker_data())
                 elif timer_type == CoordinatorTimers.MESH:
-                    coro_running.append(self._async_update_mesh_data())
+                    coro_running.append(self._async_get_mesh_data())
                 else:
                     raise UpdateFailed(
                         f"unknown timer type: {timer_type} - cannot update data"

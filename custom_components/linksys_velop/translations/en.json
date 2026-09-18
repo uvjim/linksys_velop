@@ -478,11 +478,8 @@
         }
     },
     "exceptions": {
-        "coordinator_mesh_timeout": {
-            "message": "Timeout gathering data from the mesh (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
-        },
-        "device_tracker_timeout": {
-            "message": "Timeout whilst gathering device tracker details."
+        "coordinator_timeout": {
+            "message": "Timeout gathering data (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
         },
         "failed_login": {
             "message": "Failed to login to the mesh."
