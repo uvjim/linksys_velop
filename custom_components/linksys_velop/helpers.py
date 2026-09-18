@@ -5,6 +5,7 @@ import logging
 
 from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
+from homeassistant.core import __version__ as HA_VERSION
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
@@ -53,17 +54,55 @@ def get_mesh_parent_node(node: NodeEntity, mesh: MeshSnapshot) -> NodeEntity | N
     return parent_node
 
 
-def remove_velop_device_from_registry(hass: HomeAssistant, device_id: str) -> None:
+def get_registry_device(
+    hass: HomeAssistant, device_id: str, config_entry_id: str | None = None
+) -> DeviceEntry | None:
+    """Retrieve the device from the Home Assistant device registry.
+
+    This is currently backwardly compatible with Home Assistant versions.
+
+    :param hass: Home Assistant root object.
+    :param device_id: ID of the device in the registry.
+    :param: config_entry_id: Must be supplied if the Home Assistant version is higher then 2026.8.0.
+    :returns: `DeviceEntry` object from the registry or `None` if not found.
+    :raises ValueError: when supplied arguments are incorrect.
+    """
+
+    device_registry: DeviceRegistry = dr.async_get(hass)
+
+    # TODO: fix up this branch when bumping min HA version
+    if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0"):
+        if config_entry_id is None:
+            raise ValueError("config_entry_id must be supplied")
+
+        found_device: DeviceEntry | None = (
+            device_registry.async_get_device_by_identifier(
+                (DOMAIN, device_id),
+                config_entry_id,
+            )
+        )
+    else:
+        found_device: DeviceEntry | None = device_registry.async_get_device(
+            {(DOMAIN, device_id)}
+        )
+
+    return found_device
+
+
+def remove_velop_device_from_registry(
+    hass: HomeAssistant, device_id: str, config_entry_id: str | None = None
+) -> None:
     """Remove a device from the registry."""
 
     device_registry: DeviceRegistry = dr.async_get(hass)
+    found_device: DeviceEntry | None = get_registry_device(
+        hass,
+        device_id,
+        config_entry_id,
+    )
     found_device: DeviceEntry | None
-    if (
-        found_device := device_registry.async_get_device({(DOMAIN, device_id)})
-    ) is not None:
+    if found_device is not None:
         device_registry.async_remove_device(found_device.id)
-    else:
-        _LOGGER.debug("remove_velop_device_from_registry: device not found")
 
 
 def remove_velop_entity_from_registry(
