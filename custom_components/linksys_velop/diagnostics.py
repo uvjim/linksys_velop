@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import copy
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from pyvelop.action_registry import Actions
+from pyvelop.mesh_attribute import MeshAttribute
+from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import CONF_REDACT_OPTIONS
 from .coordinator import LinksysVelopConfigEntry
@@ -61,28 +64,53 @@ def redact(data: dict[str, Any], to_redact: set[str] | None = None) -> dict[str,
     return ret
 
 
+# TODO: tidy this up once `pyvelop` is serialising `MeshSnapshot` properly
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> dict[str, Any]:
     """Diagnostics for the config entry."""
-    mesh_attributes: dict = config_entry.runtime_data.mesh._mesh_attributes
 
-    # region #-- unwanted attributes --#
-    exclude_props: list[str] = ["processed_devices"]
-    # endregion
+    def get_properties[T](cls: type[T]) -> set[str]:
+        """Retrieve the properties for the given class type."""
 
-    # region #-- create generic details --#
-    ret: dict[str, Any] = {
-        "config_entry": config_entry.as_dict(),  # get the config entry details
-        "mesh_details": {  # get mesh details
-            key: mesh_attributes.get(key)
-            for key in mesh_attributes
-            if key not in exclude_props
-        },
-    }
-    # endregion
+        properties: set[str] = set()
+        seen: set[str] = set()
 
-    # region #-- carry out redaction --#
+        # respect normal attribute resolution when inspecting properties
+        for base in cls.__mro__:
+            for name, value in base.__dict__.items():
+                if name in seen:
+                    continue
+
+                seen.add(name)
+
+                if isinstance(value, property):
+                    properties.add(name)
+
+        return properties
+
+    mesh_snapshot = config_entry.runtime_data.coordinator.data.mesh
+    mesh_dump = {}
+    for prop in get_properties(type(mesh_snapshot)):
+        val = getattr(mesh_snapshot, prop, None)
+        if isinstance(val, MeshAttribute):
+            val = val.to_dict(include_audit=True)
+        elif isinstance(val, Sequence):
+            val = [
+                (
+                    item.to_dict(include_audit=True)
+                    if isinstance(item, (DeviceEntity, NodeEntity))
+                    else item
+                )
+                for item in val
+            ]
+
+        mesh_dump[prop] = val
+
+    # create generic details
+    ret: dict[str, Any] = {"config_entry": config_entry.as_dict(), "mesh": mesh_dump}
+
+    # carry out redaction
     to_redact: set[str] = {
         "config_entry.options.node",
         "config_entry.options.password",
@@ -100,6 +128,5 @@ async def async_get_config_entry_diagnostics(
         ret,
         to_redact,
     )
-    # endregion
 
     return ret
