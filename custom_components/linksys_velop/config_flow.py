@@ -703,7 +703,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._error_details.set_error("login_error", CONF_PASSWORD)
         except MeshNodeNotPrimary:
             self._error_details.set_error("node_not_primary", CONF_NODE)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _LOGGER.exception("Unexepected error when initialising the mesh")
             self._error_details.set_error(
                 "general",
