@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh, SpeedtestResult
+from pyvelop.mesh import SpeedtestResult
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
 from .const import (
@@ -42,6 +42,7 @@ from .entities import (
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
+    TargetEntityType,
 )
 from .helpers import remove_velop_entity_from_registry
 from .logger import Logger
@@ -440,7 +441,7 @@ class LinksysVelopButtonMultiUseEntity(
         if node is not None:
             await node.async_reboot()
 
-    async def _async_start_channel_scan(self, mesh: Mesh) -> None:
+    async def _async_start_channel_scan(self, _: TargetEntityType) -> None:
         """Start the channel scan."""
 
         # flag as an intensive task running
@@ -451,25 +452,23 @@ class LinksysVelopButtonMultiUseEntity(
         await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
 
         # start the channel scan
-        await mesh.async_start_channel_scan()
+        await self.coordinator.api.async_start_channel_scan()
 
         # region #-- wait for the channel scan to finish --#
-        while True:
-            await asyncio.sleep(2)  # sleep first to let the scan start
-            csi: MappingProxyType[str, Any] | None = (
-                await self.coordinator.api.async_get_channel_scan_info()
-            )
-            if (
-                csi is not None
-                and not csi.get("isRunning", False)
-                and BlockingTasks.CHANNEL_SCAN
-                in self.coordinator.config_entry.runtime_data.blocking_tasks
-            ):
-                self.coordinator.config_entry.runtime_data.blocking_tasks.remove(
-                    BlockingTasks.CHANNEL_SCAN
+        try:
+            while True:
+                await asyncio.sleep(2)  # sleep first to let the scan start
+                csi: MappingProxyType[str, Any] = (
+                    await self.coordinator.api.async_get_channel_scan_info()
                 )
-                await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
-                break
+                if not csi.get("isRunning", False):
+                    break
+        finally:
+            self.coordinator.config_entry.runtime_data.blocking_tasks.discard(
+                BlockingTasks.CHANNEL_SCAN
+            )
+            await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
+
         # endregion
 
     @override
