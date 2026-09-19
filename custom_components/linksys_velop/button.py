@@ -59,15 +59,54 @@ class LinksysVelopButtonEntityDescription(
 ):
     """Describes Velop button entity."""
 
-    press_fn: (
-        Callable[[LinksysVelopDataUpdateCoordinatorMultiUse], Awaitable[None]] | str
-    )
+    press_fn: Callable[
+        [LinksysVelopDataUpdateCoordinatorMultiUse, TargetEntityType],
+        Awaitable[None],
+    ]
+
+
+async def async_delete_device(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    device: TargetEntityType,
+) -> None:
+    """Delete the device.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param device: The mesh device entity to be deleted.
+    """
+    if not isinstance(device, DeviceEntity):
+        return
+
+    await device.async_delete()
+    async_dispatcher_send(coordinator.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
+    await coordinator.async_force_refresh(CoordinatorTimers.MESH)
+
+
+async def async_restart_node(
+    _: LinksysVelopDataUpdateCoordinatorMultiUse,
+    node: TargetEntityType,
+) -> None:
+    """Restart the node.
+
+    :param _: Unused data update coordinator used to refresh the mesh state.
+    :param node: The mesh node entity to be restarted.
+    """
+
+    if not isinstance(node, NodeEntity):
+        return
+
+    await node.async_reboot()
 
 
 async def async_restart_primary_node(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    _: TargetEntityType,
 ) -> None:
-    """Restart the primary node."""
+    """Restart the primary node.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused target entity type.
+    """
 
     config_entry: LinksysVelopConfigEntry = coordinator.config_entry
 
@@ -96,18 +135,66 @@ async def async_restart_primary_node(
     # endregion
 
 
+async def async_start_channel_scan(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    _: TargetEntityType,
+) -> None:
+    """Start the channel scan.
+
+    Responsible for flagging the bocking task and waiting for the channel scan to finish.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused target entity type.
+    """
+
+    # flag as an intensive task running
+    coordinator.config_entry.runtime_data.blocking_tasks.add(BlockingTasks.CHANNEL_SCAN)
+    # force refresh so the state is picked up - it'll be rejected but the binary sensor should change status
+    await coordinator.async_force_refresh(CoordinatorTimers.MESH)
+
+    # start the channel scan
+    await coordinator.api.async_start_channel_scan()
+
+    # region #-- wait for the channel scan to finish --#
+    try:
+        while True:
+            await asyncio.sleep(2)  # sleep first to let the scan start
+            csi: MappingProxyType[str, Any] = (
+                await coordinator.api.async_get_channel_scan_info()
+            )
+            if not csi.get("isRunning", False):
+                break
+    finally:
+        coordinator.config_entry.runtime_data.blocking_tasks.discard(
+            BlockingTasks.CHANNEL_SCAN
+        )
+        await coordinator.async_force_refresh(CoordinatorTimers.MESH)
+
+    # endregion
+
+
 async def async_start_check_for_updates(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    _: TargetEntityType,
 ) -> None:
-    """Start checking for updates."""
+    """Start checking for updates.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused target entity type.
+    """
 
     await coordinator.api.async_check_for_updates()
 
 
 async def async_start_speedtest(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    _: TargetEntityType,
 ) -> None:
-    """Start a Speedtest."""
+    """Start a Speedtest.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused target entity type.
+    """
 
     def _handle_updates(progress: SpeedtestResult) -> None:
         """Update the speedtest data in the runtime."""
@@ -159,7 +246,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopButtonEntityDescription, ...]] = (
                     name="Delete",
                     translation_key="delete",
                     target_type=EntityType.DEVICE,
-                    press_fn="_async_delete_device",
+                    press_fn=async_delete_device,
                 ),
             ),
             "START_CHANNEL_SCAN": (
@@ -169,7 +256,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopButtonEntityDescription, ...]] = (
                     name="Start Channel Scan",
                     translation_key="channel_scan",
                     target_type=EntityType.MESH,
-                    press_fn="_async_start_channel_scan",
+                    press_fn=async_start_channel_scan,
                 ),
             ),
             "START_SPEEDTEST": (
@@ -334,7 +421,7 @@ async def async_setup_entry(
                         name="Reboot",
                         translation_key="reboot",
                         target_type=EntityType.NODE,
-                        press_fn="_async_restart_node",
+                        press_fn=async_restart_node,
                     ),
                 )
 
@@ -427,58 +514,10 @@ class LinksysVelopButtonMultiUseEntity(
 ):
     """Linksys Velop button that uses the multi use DataUpdateCoordinator."""
 
-    async def _async_delete_device(self, device: DeviceEntity) -> None:
-        """Delete the device."""
-
-        if device is not None:
-            await device.async_delete()
-            async_dispatcher_send(self.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, None)
-            await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
-
-    async def _async_restart_node(self, node: NodeEntity) -> None:
-        """Restart the node."""
-
-        if node is not None:
-            await node.async_reboot()
-
-    async def _async_start_channel_scan(self, _: TargetEntityType) -> None:
-        """Start the channel scan."""
-
-        # flag as an intensive task running
-        self.coordinator.config_entry.runtime_data.blocking_tasks.add(
-            BlockingTasks.CHANNEL_SCAN
-        )
-        # force refresh so the state is picked up - it'll be rejected but the binary sensor should change status
-        await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
-
-        # start the channel scan
-        await self.coordinator.api.async_start_channel_scan()
-
-        # region #-- wait for the channel scan to finish --#
-        try:
-            while True:
-                await asyncio.sleep(2)  # sleep first to let the scan start
-                csi: MappingProxyType[str, Any] = (
-                    await self.coordinator.api.async_get_channel_scan_info()
-                )
-                if not csi.get("isRunning", False):
-                    break
-        finally:
-            self.coordinator.config_entry.runtime_data.blocking_tasks.discard(
-                BlockingTasks.CHANNEL_SCAN
-            )
-            await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
-
-        # endregion
-
     @override
     async def async_press(self) -> None:
 
-        if isinstance(self.entity_description.press_fn, str):
-            if (func := getattr(self, self.entity_description.press_fn)) is not None:
-                await func(self._get_target())
-        else:
-            await self.entity_description.press_fn(self.coordinator)
+        await self.entity_description.press_fn(self.coordinator, self._get_target())
 
 
 type LinksysVelopButtonCoordinatorEntity = LinksysVelopButtonMultiUseEntity
