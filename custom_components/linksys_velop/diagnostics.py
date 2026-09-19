@@ -5,13 +5,10 @@ from __future__ import annotations
 
 import copy
 import logging
-from collections.abc import Sequence
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from pyvelop.action_registry import Actions
-from pyvelop.mesh_attribute import MeshAttribute
-from pyvelop.mesh_entity import DeviceEntity, NodeEntity
 
 from .const import CONF_REDACT_OPTIONS
 from .coordinator import LinksysVelopConfigEntry
@@ -70,45 +67,12 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Diagnostics for the config entry."""
 
-    def get_properties[T](cls: type[T]) -> set[str]:
-        """Retrieve the properties for the given class type."""
-
-        properties: set[str] = set()
-        seen: set[str] = set()
-
-        # respect normal attribute resolution when inspecting properties
-        for base in cls.__mro__:
-            for name, value in base.__dict__.items():
-                if name in seen:
-                    continue
-
-                seen.add(name)
-
-                if isinstance(value, property):
-                    properties.add(name)
-
-        return properties
-
     mesh_snapshot = config_entry.runtime_data.coordinator.data.mesh
-    mesh_dump = {}
-    for prop in get_properties(type(mesh_snapshot)):
-        val = getattr(mesh_snapshot, prop, None)
-        if isinstance(val, MeshAttribute):
-            val = val.to_dict(include_audit=True)
-        elif isinstance(val, Sequence):
-            val = [
-                (
-                    item.to_dict(include_audit=True)
-                    if isinstance(item, (DeviceEntity, NodeEntity))
-                    else item
-                )
-                for item in val
-            ]
-
-        mesh_dump[prop] = val
 
     # create generic details
-    ret: dict[str, Any] = {"config_entry": config_entry.as_dict(), "mesh": mesh_dump}
+    ret: dict[str, Any] = {"config_entry": config_entry.as_dict()}
+    if mesh_snapshot is not None:
+        ret["mesh"] = mesh_snapshot.to_dict(include_audit=True)
 
     # carry out redaction
     to_redact: set[str] = {
