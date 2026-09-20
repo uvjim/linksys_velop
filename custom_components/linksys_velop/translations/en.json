@@ -441,7 +441,7 @@
             "speedtest_result": {
                 "name": "Speedtest Result",
                 "state": {
-                    "aboredbyuser": "Aborted by user",
+                    "abortedbyuser": "Aborted by user",
                     "speedtestexecutionerror": "Execution error",
                     "success": "Success",
                     "notavailable": "Not available"
