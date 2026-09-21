@@ -171,6 +171,23 @@ def get_speedtest_data(
     return getattr(speedtest_results, name, None)
 
 
+def get_speedtest_enum(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse, name: str
+) -> str | None:
+    """Retrieve the specified Speedtest property as a lower-cased enum option.
+
+    :param coordinator:
+    :param name:
+    :return: the lower-cased value or None if there is no value
+    """
+
+    ret: StateType | dt.date | dt.datetime | Decimal = get_speedtest_data(
+        coordinator, name
+    )
+
+    return str(ret).lower() if ret is not None else None
+
+
 ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
     MappingProxyType(
         {
@@ -527,7 +544,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="speedtest_progress",
                     value_fn=lambda _, coordinator: (
-                        str(get_speedtest_data(coordinator, "friendly_status")).lower()
+                        get_speedtest_enum(coordinator, "friendly_status")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
                         )
@@ -544,7 +561,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="speedtest_result",
                     value_fn=lambda _, coordinator: (
-                        str(get_speedtest_data(coordinator, "exit_code")).lower()
+                        get_speedtest_enum(coordinator, "exit_code")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
                         )
@@ -562,7 +579,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="upload_bandwidth",
                     value_fn=lambda _, coordinator: (
-                        str(get_speedtest_data(coordinator, "upload_bandwidth")).lower()
+                        get_speedtest_data(coordinator, "upload_bandwidth")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
                         )
