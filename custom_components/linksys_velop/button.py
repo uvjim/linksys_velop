@@ -398,7 +398,6 @@ def _init_node_entities(
     :return: A tuple of node-targeted update entities.
     """
 
-    config_entry = coordinator.config_entry
     mesh_data = coordinator.data.mesh
     if mesh_data is None:
         return ()
@@ -414,8 +413,6 @@ def _init_node_entities(
         return ()
 
     known_nodes.update(new_nodes)
-
-    coordinator = config_entry.runtime_data.coordinator
 
     nodes_by_id = {
         node.unique_id.value: node
