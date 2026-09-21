@@ -124,6 +124,25 @@ def get_device_icon(
     return f"{prefix.rstrip('/').strip()}/{target.ui_type}.png"
 
 
+async def async_update_device_icon(
+    _: LinksysVelopDataUpdateCoordinatorMultiUse,
+    target: TargetEntityType,
+    option: str,
+) -> None:
+    """Set the new UI type/icon for the device.
+
+    :param _: Unused data update coordinator used to refresh the mesh state.
+    :param target: Device to update the icon for.
+    :param option: the currently selected reboot option.
+    """
+
+    if not isinstance(target, DeviceEntity):
+        return
+
+    ui_type: UiType = UiType(option)
+    await target.async_set_icon(ui_type)
+
+
 async def async_update_reboot_schedule(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
     _: TargetEntityType,
@@ -188,25 +207,6 @@ async def async_update_placeholder_device(
         )
 
 
-async def async_update_placeholder_device_icon(
-    _: LinksysVelopDataUpdateCoordinatorMultiUse,
-    target: TargetEntityType,
-    option: str,
-) -> None:
-    """Set the new UI type/icon for the device.
-
-    :param _: Unused data update coordinator used to refresh the mesh state.
-    :param target: Device to update the icon for.
-    :param option: the currently selected reboot option.
-    """
-
-    if not isinstance(target, DeviceEntity):
-        return
-
-    ui_type: UiType = UiType(option)
-    await target.async_set_icon(ui_type)
-
-
 ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
     MappingProxyType(
         {
@@ -234,7 +234,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
                     name="Icon",
                     options_fn=lambda _: sorted(map(str.lower, UiType)),
                     pic_fn=get_device_icon,
-                    set_fn=async_update_placeholder_device_icon,
+                    set_fn=async_update_device_icon,
                     target_type=EntityType.DEVICE,
                     translation_key="ui_type",
                 ),
@@ -272,7 +272,7 @@ async def async_setup_entry(
         descriptions = tuple(
             entity
             for attr, entities in ENTITIES.items()
-            if hasattr(mesh_data, attr)
+            if hasattr(DeviceEntity, attr)
             for entity in entities
             if entity.target_type is EntityType.DEVICE
         )
