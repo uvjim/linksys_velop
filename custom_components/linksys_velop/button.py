@@ -214,8 +214,8 @@ async def async_start_speedtest(
         key=lambda result: result.timestamp,
         default=None,
     )
-    coordinator.async_update_listeners()
     coordinator.config_entry.runtime_data.speedtest_data = None
+    coordinator.async_update_listeners()
 
 
 def has_capability(capabilities: tuple[Mapping[str, Any], ...], name: str) -> bool:
@@ -283,225 +283,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopButtonEntityDescription, ...]] = (
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise a button."""
-
-    known_nodes: set[str] = set()
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopButtonCoordinatorEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
-        """Describe the entities that target devices."""
-
-        device_ids = config_entry.options.get(CONF_UI_DEVICES, [])
-
-        descriptions = tuple(
-            entity
-            for entities in ENTITIES.values()
-            for entity in entities
-            if entity.target_type == EntityType.DEVICE
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
-
-        return tuple(
-            LinksysVelopButtonMultiUseEntity(
-                entity_context=LinksysVelopEntityContext(unique_id=device_id),
-                coordinator=coordinator,
-                description=description,
-            )
-            for device_id in device_ids
-            for description in descriptions
-        )
-
-    def _init_mesh_entities() -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
-        """Describe the entities that target the mesh."""
-
-        ret: tuple[LinksysVelopButtonCoordinatorEntity, ...] = ()
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return ret
-
-        context: LinksysVelopEntityContext = LinksysVelopEntityContext(
-            unique_id=config_entry.entry_id
-        )
-        mesh_capabilities: tuple[Mapping[str, Any], ...] = mesh_data.capabilities
-        descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = tuple(
-            entity
-            for cap, entities in ENTITIES.items()
-            if has_capability(mesh_capabilities, cap)
-            for entity in entities
-            if entity.target_type == EntityType.MESH
-        )
-
-        if config_entry.options.get(
-            CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
-        ) and has_capability(mesh_capabilities, CAP_REBOOT):
-            descriptions = descriptions + (
-                LinksysVelopButtonEntityDescription(
-                    device_class=ButtonDeviceClass.RESTART,
-                    key="",
-                    name="Reboot the Whole Mesh",
-                    translation_key="reboot_mesh",
-                    target_type=EntityType.MESH,
-                    press_fn=async_restart_primary_node,
-                ),
-            )
-
-        coordinator = config_entry.runtime_data.coordinator
-
-        return tuple(
-            LinksysVelopButtonMultiUseEntity(
-                entity_context=context,
-                coordinator=coordinator,
-                description=description,
-            )
-            for description in descriptions
-        )
-
-        return ret
-
-    def _init_node_entities() -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
-        """Describe the entities that target nodes."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return ()
-
-        current_nodes = {
-            node.unique_id.value
-            for node in mesh_data.nodes
-            if node.unique_id.value is not None
-        }
-        new_nodes = current_nodes - known_nodes
-
-        if not new_nodes:
-            return ()
-
-        known_nodes.update(new_nodes)
-
-        coordinator = config_entry.runtime_data.coordinator
-
-        nodes_by_id = {
-            node.unique_id.value: node
-            for node in mesh_data.nodes
-            if node.unique_id.value is not None
-        }
-
-        entities: list[LinksysVelopButtonCoordinatorEntity] = []
-
-        for node_id in new_nodes:
-            node = nodes_by_id[node_id]
-            context = LinksysVelopEntityContext(unique_id=node_id)
-
-            descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = ()
-
-            if node.type.value == NodeType.SECONDARY and has_capability(
-                mesh_data.capabilities, CAP_REBOOT
-            ):
-                descriptions = (
-                    LinksysVelopButtonEntityDescription(
-                        device_class=ButtonDeviceClass.RESTART,
-                        key="",
-                        name="Reboot",
-                        translation_key="reboot",
-                        target_type=EntityType.NODE,
-                        press_fn=async_restart_node,
-                    ),
-                )
-
-            entities.extend(
-                LinksysVelopButtonMultiUseEntity(
-                    entity_context=context,
-                    coordinator=coordinator,
-                    description=description,
-                )
-                for description in descriptions
-            )
-
-        return tuple(entities)
-
-    def _remove_stale_entities() -> None:
-        """Remove entities that are no longer required."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return
-
-        capabilities = mesh_data.capabilities
-        can_reboot = has_capability(capabilities, CAP_REBOOT)
-
-        entities_to_remove = {
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{slugify(str(entity.name))}"
-            for cap, entities in ENTITIES.items()
-            if not has_capability(capabilities, cap)
-            for entity in entities
-            if entity.target_type == EntityType.MESH
-        }
-
-        entities_to_remove.update(
-            f"{node.unique_id.value}::{ENTITY_DOMAIN}::reboot"
-            for node in mesh_data.nodes
-            if node.type != NodeType.SECONDARY or not can_reboot
-        )
-
-        allow_mesh_reboot = config_entry.options.get(
-            CONF_ALLOW_MESH_REBOOT,
-            DEF_ALLOW_MESH_REBOOT,
-        )
-
-        if not allow_mesh_reboot or not can_reboot:
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::reboot_the_whole_mesh"
-            )
-
-        for entity_unique_id in entities_to_remove:
-            remove_velop_entity_from_registry(
-                hass,
-                config_entry.entry_id,
-                entity_unique_id,
-            )
-
-    def create_node_entities() -> None:
-        """Create the node entities.
-
-        This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
-        """
-
-        entities_to_add: tuple[LinksysVelopButtonCoordinatorEntity, ...] = (
-            _init_node_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    _remove_stale_entities()
-    _create_entities()
-    create_node_entities()
-
-    config_entry.async_on_unload(
-        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
-            CoordinatorTimers.MESH, create_node_entities
-        )
-    )
-
-
 class LinksysVelopButtonEntity(ButtonEntity):
     """Base class representing a button entity."""
 
@@ -521,3 +302,268 @@ class LinksysVelopButtonMultiUseEntity(
 
 
 type LinksysVelopButtonCoordinatorEntity = LinksysVelopButtonMultiUseEntity
+
+
+def _init_device_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
+    """Create entities that target specific devices.
+
+    :param coordinator: The data update coordinator.
+    :return: A tuple of initialised device entities.
+    """
+
+    config_entry = coordinator.config_entry
+    device_ids = config_entry.options.get(CONF_UI_DEVICES, [])
+
+    descriptions = tuple(
+        entity
+        for entities in ENTITIES.values()
+        for entity in entities
+        if entity.target_type == EntityType.DEVICE
+    )
+
+    return tuple(
+        LinksysVelopButtonMultiUseEntity(
+            entity_context=LinksysVelopEntityContext(unique_id=device_id),
+            coordinator=coordinator,
+            description=description,
+        )
+        for device_id in device_ids
+        for description in descriptions
+    )
+
+
+def _init_mesh_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
+    """Describe the entities that target the mesh.
+
+    :param coordinator: The data update coordinator.
+    :return: A tuple of initialised device entities.
+    """
+
+    ret: tuple[LinksysVelopButtonCoordinatorEntity, ...] = ()
+    config_entry = coordinator.config_entry
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return ret
+
+    context: LinksysVelopEntityContext = LinksysVelopEntityContext(
+        unique_id=config_entry.entry_id
+    )
+    mesh_capabilities: tuple[Mapping[str, Any], ...] = mesh_data.capabilities
+    descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = tuple(
+        entity
+        for cap, entities in ENTITIES.items()
+        if has_capability(mesh_capabilities, cap)
+        for entity in entities
+        if entity.target_type == EntityType.MESH
+    )
+
+    if config_entry.options.get(
+        CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
+    ) and has_capability(mesh_capabilities, CAP_REBOOT):
+        descriptions = descriptions + (
+            LinksysVelopButtonEntityDescription(
+                device_class=ButtonDeviceClass.RESTART,
+                key="",
+                name="Reboot the Whole Mesh",
+                translation_key="reboot_mesh",
+                target_type=EntityType.MESH,
+                press_fn=async_restart_primary_node,
+            ),
+        )
+
+    return tuple(
+        LinksysVelopButtonMultiUseEntity(
+            entity_context=context,
+            coordinator=coordinator,
+            description=description,
+        )
+        for description in descriptions
+    )
+
+    return ret
+
+
+def _init_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+) -> tuple[LinksysVelopButtonCoordinatorEntity, ...]:
+    """Describe the entities that target nodes.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :return: A tuple of node-targeted update entities.
+    """
+
+    config_entry = coordinator.config_entry
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return ()
+
+    current_nodes = {
+        node.unique_id.value
+        for node in mesh_data.nodes
+        if node.unique_id.value is not None
+    }
+    new_nodes = current_nodes - known_nodes
+
+    if not new_nodes:
+        return ()
+
+    known_nodes.update(new_nodes)
+
+    coordinator = config_entry.runtime_data.coordinator
+
+    nodes_by_id = {
+        node.unique_id.value: node
+        for node in mesh_data.nodes
+        if node.unique_id.value is not None
+    }
+
+    entities: list[LinksysVelopButtonCoordinatorEntity] = []
+
+    for node_id in new_nodes:
+        node = nodes_by_id[node_id]
+        context = LinksysVelopEntityContext(unique_id=node_id)
+
+        descriptions: tuple[LinksysVelopButtonEntityDescription, ...] = ()
+
+        if node.type.value == NodeType.SECONDARY and has_capability(
+            mesh_data.capabilities, CAP_REBOOT
+        ):
+            descriptions = (
+                LinksysVelopButtonEntityDescription(
+                    device_class=ButtonDeviceClass.RESTART,
+                    key="",
+                    name="Reboot",
+                    translation_key="reboot",
+                    target_type=EntityType.NODE,
+                    press_fn=async_restart_node,
+                ),
+            )
+
+        entities.extend(
+            LinksysVelopButtonMultiUseEntity(
+                entity_context=context,
+                coordinator=coordinator,
+                description=description,
+            )
+            for description in descriptions
+        )
+
+    return tuple(entities)
+
+
+def _remove_stale_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> None:
+    """Remove entities that are no longer required.
+
+    :param coordinator: The coordinator providing the runtime data.
+    """
+
+    config_entry = coordinator.config_entry
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return
+
+    capabilities = mesh_data.capabilities
+    can_reboot = has_capability(capabilities, CAP_REBOOT)
+
+    entities_to_remove = {
+        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{slugify(str(entity.name))}"
+        for cap, entities in ENTITIES.items()
+        if not has_capability(capabilities, cap)
+        for entity in entities
+        if entity.target_type == EntityType.MESH
+    }
+
+    entities_to_remove.update(
+        f"{node.unique_id.value}::{ENTITY_DOMAIN}::reboot"
+        for node in mesh_data.nodes
+        if node.type != NodeType.SECONDARY or not can_reboot
+    )
+
+    allow_mesh_reboot = config_entry.options.get(
+        CONF_ALLOW_MESH_REBOOT,
+        DEF_ALLOW_MESH_REBOOT,
+    )
+
+    if not allow_mesh_reboot or not can_reboot:
+        entities_to_remove.add(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::reboot_the_whole_mesh"
+        )
+
+    for entity_unique_id in entities_to_remove:
+        remove_velop_entity_from_registry(
+            coordinator.hass,
+            config_entry.entry_id,
+            entity_unique_id,
+        )
+
+
+def create_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the node entities.
+
+    This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
+
+    :param coordinator: The data update coordinator.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    entities_to_add = _init_node_entities(coordinator, known_nodes)
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+def create_static_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the mesh and device entities.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+    entities_to_add = _init_device_entities(coordinator) + _init_mesh_entities(
+        coordinator
+    )
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise button entities.
+
+    :param hass: The Home Assistant instance.
+    :param config_entry: The configuration entry for the device.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
+        config_entry.runtime_data.coordinator
+    )
+    known_nodes: set[str] = set()
+
+    _remove_stale_entities(coordinator)
+    create_static_entities(coordinator, async_add_entities)
+    create_node_entities(coordinator, known_nodes, async_add_entities)
+
+    config_entry.async_on_unload(
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH,
+            lambda: create_node_entities(coordinator, known_nodes, async_add_entities),
+        )
+    )

@@ -97,7 +97,6 @@ class BlockingTasks(StrEnum):
 
     CHANNEL_SCAN = "Channel Scan"
     REBOOT = "Reboot"
-    SPEEDTEST = "Speedtest"
 
 
 class CoordinatorTimers(StrEnum):

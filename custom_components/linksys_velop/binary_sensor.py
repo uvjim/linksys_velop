@@ -398,14 +398,9 @@ async def async_setup_entry(
                     name="Speedtest Status",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_status",
-                    value_fn=lambda _: (
-                        BlockingTasks.SPEEDTEST
-                        in config_entry.runtime_data.blocking_tasks
-                    ),
+                    value_fn=lambda _: (bool(config_entry.runtime_data.speedtest_data)),
                 ),
             )
-
-        coordinator = config_entry.runtime_data.coordinator
 
         context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
