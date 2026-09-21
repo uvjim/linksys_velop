@@ -66,12 +66,17 @@ class LinksysVelopSensorEntityDescription(
     """Describes Velop sensor entity."""
 
     esa_fn: Callable[..., dict[str, Any]] | None = None
-    pic_fn: Callable[..., str | None] | None = None
+    pic_fn: (
+        Callable[
+            [LinksysVelopDataUpdateCoordinatorMultiUse, TargetEntityType], str | None
+        ]
+        | None
+    ) = None
     value_fn: (
         Callable[
             [
-                TargetEntityType,
                 LinksysVelopDataUpdateCoordinatorMultiUse,
+                TargetEntityType,
             ],
             StateType | dt.date | dt.datetime | Decimal,
         ]
@@ -147,6 +152,26 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
     return ret
 
 
+def get_node_picture(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse, target: TargetEntityType
+) -> str | None:
+    """Retrieve the path to the icon to show for target.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param target: The mesh entity to retrieve the icon for.
+    :returns: Path to the icon.
+    """
+
+    if not isinstance(target, NodeEntity):
+        return
+
+    prefix: str = coordinator.config_entry.options.get(CONF_NODE_IMAGES, "")
+    if not prefix:
+        return
+
+    return f"{prefix.rstrip('/').strip()}/{target.model}.png"
+
+
 def get_speedtest_data(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse, name: str
 ) -> StateType | dt.date | dt.datetime | Decimal:
@@ -200,7 +225,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SignalStrength],
                     target_type=EntityType.DEVICE,
                     translation_key="friendly_signal_strength",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         str(get_device_adapter_info(device, "signal_strength")).lower()
                         if isinstance(device, DeviceEntity)
                         and get_device_adapter_info(device, "signal_strength")
@@ -214,7 +239,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="IP",
                     target_type=EntityType.DEVICE,
                     translation_key="ip",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         get_device_adapter_info(device, "ip")
                         if isinstance(device, DeviceEntity)
                         else None
@@ -226,7 +251,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="IPv6",
                     target_type=EntityType.DEVICE,
                     translation_key="ipv6",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         get_device_adapter_info(device, "ipv6")
                         if isinstance(device, DeviceEntity)
                         else None
@@ -238,7 +263,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="MAC",
                     target_type=EntityType.DEVICE,
                     translation_key="mac",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         get_device_adapter_info(device, "mac")
                         if isinstance(device, DeviceEntity)
                         else None
@@ -252,7 +277,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                     target_type=EntityType.DEVICE,
                     translation_key="signal_strength",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         get_device_adapter_info(device, "rssi_dbm")
                         if isinstance(device, DeviceEntity)
                         else None
@@ -272,7 +297,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.NODE,
                     translation_key="connected_devices",
-                    value_fn=lambda node, _: (
+                    value_fn=lambda _, node: (
                         len(node.connected_devices)
                         if isinstance(node, NodeEntity)
                         else None
@@ -301,7 +326,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="offline_devices",
-                    value_fn=lambda mesh, _: (
+                    value_fn=lambda _, mesh: (
                         len(get_devices(mesh, False))
                         if isinstance(mesh, MeshSnapshot)
                         else None
@@ -317,7 +342,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="online_devices",
-                    value_fn=lambda mesh, _: (
+                    value_fn=lambda _, mesh: (
                         len(get_devices(mesh))
                         if isinstance(mesh, MeshSnapshot)
                         else None
@@ -347,7 +372,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="guest_devices",
-                    value_fn=lambda mesh, _: (
+                    value_fn=lambda _, mesh: (
                         len(
                             [
                                 device
@@ -376,8 +401,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="dhcp_reservations",
-                    value_fn=lambda mesh, _: (
-                        len(cast(MeshSnapshot, mesh).dhcp_reservations)
+                    value_fn=lambda _, mesh: (
+                        len(mesh.dhcp_reservations)
+                        if isinstance(mesh, MeshSnapshot)
+                        else None
                     ),
                 ),
             ),
@@ -390,7 +417,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="Last Update Check",
                     target_type=EntityType.NODE,
                     translation_key="last_update_check",
-                    value_fn=lambda node, _: (
+                    value_fn=lambda _, node: (
                         node.last_update_check.value
                         if isinstance(node, NodeEntity)
                         and node.last_update_check.value is not None
@@ -413,6 +440,14 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     key="model",
                     name="Model",
                     target_type=EntityType.DEVICE,
+                    translation_key="model",
+                ),
+                LinksysVelopSensorEntityDescription(
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    key="model",
+                    name="Model",
+                    pic_fn=get_node_picture,
+                    target_type=EntityType.NODE,
                     translation_key="model",
                 ),
             ),
@@ -454,7 +489,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.DEVICE,
                     translation_key="blocked_sites",
-                    value_fn=lambda device, _: (
+                    value_fn=lambda _, device: (
                         len(
                             device.parental_control_schedule.value.get(
                                 "blocked_sites", []
@@ -492,7 +527,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     suggested_display_precision=2,
                     target_type=EntityType.MESH,
                     translation_key="download_bandwidth",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_data(coordinator, "download_bandwidth")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -508,7 +543,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="Speedtest Last Run",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_last_run",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_data(coordinator, "timestamp")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -526,7 +561,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     native_unit_of_measurement="ms",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_latency",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_data(coordinator, "latency")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -543,7 +578,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SpeedtestStatus],
                     target_type=EntityType.MESH,
                     translation_key="speedtest_progress",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_enum(coordinator, "friendly_status")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -560,7 +595,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SpeedtestExitCode],
                     target_type=EntityType.MESH,
                     translation_key="speedtest_result",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_enum(coordinator, "exit_code")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -578,7 +613,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     suggested_display_precision=2,
                     target_type=EntityType.MESH,
                     translation_key="upload_bandwidth",
-                    value_fn=lambda _, coordinator: (
+                    value_fn=lambda coordinator, _: (
                         get_speedtest_data(coordinator, "upload_bandwidth")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -602,7 +637,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="available_storage",
-                    value_fn=lambda mesh, _: (
+                    value_fn=lambda _, mesh: (
                         len(mesh.storage_available.value)
                         if isinstance(mesh, MeshSnapshot)
                         else None
@@ -618,7 +653,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[member.value for member in NodeType],
                     target_type=EntityType.NODE,
                     translation_key="node_type",
-                    value_fn=lambda node, _: (
+                    value_fn=lambda _, node: (
                         node.type.value if isinstance(node, NodeEntity) else None
                     ),
                 ),
@@ -667,16 +702,16 @@ async def async_setup_entry(
 
     def _init_device_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
         """Describe the entities that target devices."""
+        coordinator = config_entry.runtime_data.coordinator
+        device_ids = config_entry.options.get(CONF_UI_DEVICES, [])
 
-        descriptions: tuple[LinksysVelopSensorEntityDescription, ...] = tuple(
+        descriptions = [
             entity
             for attr, entities in ENTITIES.items()
             if hasattr(DeviceEntity, attr)
             for entity in entities
             if entity.target_type is EntityType.DEVICE
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
+        ]
 
         return tuple(
             LinksysVelopSensorMultiUseEntity(
@@ -684,26 +719,23 @@ async def async_setup_entry(
                 coordinator=coordinator,
                 description=description,
             )
-            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+            for device_id in device_ids
             for description in descriptions
         )
 
     def _init_mesh_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
         """Describe the entities that target the mesh."""
-
         coordinator = config_entry.runtime_data.coordinator
         mesh_data = coordinator.data.mesh
+        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
 
-        descriptions = tuple(
+        descriptions = [
             entity
             for attr, entities in ENTITIES.items()
             if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.MESH
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
-        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+        ]
 
         return tuple(
             LinksysVelopSensorMultiUseEntity(
@@ -716,49 +748,38 @@ async def async_setup_entry(
 
     def _init_node_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
         """Describe the entities that target nodes."""
-
         coordinator = config_entry.runtime_data.coordinator
         mesh_data = coordinator.data.mesh
         if mesh_data is None:
             return ()
 
-        current_node_ids = {
-            node.unique_id.value
-            for node in mesh_data.nodes
-            if node.unique_id.value is not None
-        }
-        new_node_ids = current_node_ids - known_nodes
-        known_nodes.update(new_node_ids)
-
+        # filter nodes with valid IDs and identify only new ones
         nodes_by_id = {
             node.unique_id.value: node
             for node in mesh_data.nodes
             if node.unique_id.value is not None
         }
 
-        descriptions = tuple(
+        new_node_ids = set(nodes_by_id.keys()) - known_nodes
+        known_nodes.update(new_node_ids)
+
+        # pre-filter base descriptions to avoid repeated loop logic
+        base_descriptions = [
             entity
             for attr, entities in ENTITIES.items()
             if hasattr(NodeEntity, attr)
             for entity in entities
             if entity.target_type == EntityType.NODE
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
+        ]
 
         entities: list[LinksysVelopSensorCoordinatorEntity] = []
 
         for node_id in new_node_ids:
-            node = nodes_by_id.get(node_id)
-            if node is None:
-                continue
+            node = nodes_by_id[node_id]
+            node_descriptions = list(base_descriptions)
 
-            node_descriptions = list(descriptions)
-
-            is_secondary = node.type == NodeType.SECONDARY
-            has_backhaul = hasattr(node, "backhaul")
-
-            if has_backhaul and is_secondary:
+            # handle backhaul sensors for secondary nodes
+            if node.type == NodeType.SECONDARY and hasattr(node, "backhaul"):
                 node_descriptions.extend(
                     (
                         LinksysVelopSensorEntityDescription(
@@ -769,9 +790,9 @@ async def async_setup_entry(
                             name="Backhaul Last Checked",
                             target_type=EntityType.NODE,
                             translation_key="backhaul_last_checked",
-                            value_fn=lambda node, _: (
-                                get_node_backhaul_info(node, "last_checked")
-                                if isinstance(node, NodeEntity)
+                            value_fn=lambda _, n: (
+                                get_node_backhaul_info(n, "last_checked")
+                                if isinstance(n, NodeEntity)
                                 else None
                             ),
                         ),
@@ -780,15 +801,13 @@ async def async_setup_entry(
                             entity_category=EntityCategory.DIAGNOSTIC,
                             key="",
                             name="Backhaul Speed",
-                            native_unit_of_measurement=(
-                                UnitOfDataRate.MEGABITS_PER_SECOND
-                            ),
+                            native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
                             suggested_display_precision=2,
                             target_type=EntityType.NODE,
                             translation_key="backhaul_speed",
-                            value_fn=lambda node, _: (
-                                get_node_backhaul_info(node, "speed_mbps")
-                                if isinstance(node, NodeEntity)
+                            value_fn=lambda _, n: (
+                                get_node_backhaul_info(n, "speed_mbps")
+                                if isinstance(n, NodeEntity)
                                 else None
                             ),
                         ),
@@ -797,24 +816,25 @@ async def async_setup_entry(
                             entity_category=EntityCategory.DIAGNOSTIC,
                             key="",
                             name="Backhaul Type",
-                            options=[value.lower() for value in ConnectionType],
+                            options=[v.lower() for v in ConnectionType],
                             target_type=EntityType.NODE,
                             translation_key="backhaul_connection_type",
-                            value_fn=lambda node, _: (
+                            value_fn=lambda _, n: (
                                 cast(
                                     ConnectionType,
-                                    get_node_backhaul_info(node, "connection"),
+                                    get_node_backhaul_info(n, "connection"),
                                 ).lower()
-                                if isinstance(node, NodeEntity)
-                                and get_node_backhaul_info(node, "connection")
-                                is not None
+                                if isinstance(n, NodeEntity)
+                                and get_node_backhaul_info(n, "connection")
                                 else None
                             ),
                         ),
                         LinksysVelopSensorEntityDescription(
                             entity_category=EntityCategory.DIAGNOSTIC,
                             esa_fn=lambda n: {
-                                "parent_ip": cast(NodeEntity, n).parent_ip
+                                "parent_ip": (
+                                    n.parent_ip if isinstance(n, NodeEntity) else None
+                                )
                             },
                             key="parent_name",
                             name="Parent",
@@ -824,12 +844,11 @@ async def async_setup_entry(
                     )
                 )
 
-                is_wifi_node = (
+                # additional sensors for wireless backhaul
+                if (
                     node.backhaul.value is not None
                     and node.backhaul.connection == ConnectionType.WIRELESS
-                )
-
-                if is_wifi_node:
+                ):
                     node_descriptions.extend(
                         (
                             LinksysVelopSensorEntityDescription(
@@ -837,17 +856,16 @@ async def async_setup_entry(
                                 entity_category=EntityCategory.DIAGNOSTIC,
                                 key="",
                                 name="Backhaul Friendly Signal Strength",
-                                options=[value.lower() for value in SignalStrength],
+                                options=[v.lower() for v in SignalStrength],
                                 target_type=EntityType.NODE,
-                                translation_key=("backhaul_friendly_signal_strength"),
-                                value_fn=lambda node, _: (
+                                translation_key="backhaul_friendly_signal_strength",
+                                value_fn=lambda _, n: (
                                     cast(
                                         SignalStrength,
-                                        get_node_backhaul_info(node, "signal_strength"),
+                                        get_node_backhaul_info(n, "signal_strength"),
                                     ).lower()
-                                    if isinstance(node, NodeEntity)
-                                    and get_node_backhaul_info(node, "signal_strength")
-                                    is not None
+                                    if isinstance(n, NodeEntity)
+                                    and get_node_backhaul_info(n, "signal_strength")
                                     else None
                                 ),
                             ),
@@ -856,46 +874,26 @@ async def async_setup_entry(
                                 device_class=SensorDeviceClass.SIGNAL_STRENGTH,
                                 key="",
                                 name="Backhaul Signal Strength",
-                                native_unit_of_measurement=(
-                                    SIGNAL_STRENGTH_DECIBELS_MILLIWATT
-                                ),
+                                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                                 target_type=EntityType.NODE,
                                 translation_key="backhaul_signal_strength",
-                                value_fn=lambda node, _: (
-                                    get_node_backhaul_info(node, "rssi_dbm")
-                                    if isinstance(node, NodeEntity)
+                                value_fn=lambda _, n: (
+                                    get_node_backhaul_info(n, "rssi_dbm")
+                                    if isinstance(n, NodeEntity)
                                     else None
                                 ),
                             ),
                         )
                     )
 
-            node_descriptions.append(
-                LinksysVelopSensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    key="model",
-                    name="Model",
-                    pic_fn=lambda node: (
-                        f"{prefix.rstrip('/').strip()}/" f"{node.model}.png"
-                        if isinstance(node, NodeEntity)
-                        and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
-                        not in (None, "")
-                        else None
-                    ),
-                    target_type=EntityType.NODE,
-                    translation_key="model",
-                )
-            )
-
             context = LinksysVelopEntityContext(unique_id=node_id)
-
             entities.extend(
                 LinksysVelopSensorMultiUseEntity(
                     entity_context=context,
                     coordinator=coordinator,
-                    description=description,
+                    description=desc,
                 )
-                for description in node_descriptions
+                for desc in node_descriptions
             )
 
         return tuple(entities)
@@ -1025,7 +1023,7 @@ class LinksysVelopSensorMultiUseEntity(
 
         ret: str | None = None
         if self.entity_description.pic_fn is not None:
-            ret = self.entity_description.pic_fn(self._get_target())
+            ret = self.entity_description.pic_fn(self.coordinator, self._get_target())
 
         return ret
 
@@ -1047,7 +1045,7 @@ class LinksysVelopSensorMultiUseEntity(
         ret: StateType | dt.date | dt.datetime | Decimal = None
         target: TargetEntityType = self._get_target()
         if self.entity_description.value_fn is not None:
-            ret = self.entity_description.value_fn(target, self.coordinator)
+            ret = self.entity_description.value_fn(self.coordinator, target)
         elif self.entity_description.key:
             ret = getattr(target, self.entity_description.key, None)
             if isinstance(ret, MeshAttribute):
