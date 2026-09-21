@@ -18,6 +18,7 @@ from .const import DOMAIN, EventSubTypes
 from .coordinator import (
     CoordinatorTimers,
     LinksysVelopConfigEntry,
+    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
@@ -38,98 +39,6 @@ class LinksysVelopEventEntityDescription(
     LinksysVelopEntityDescription, EventEntityDescription
 ):
     """Describes Velop event entity."""
-
-
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise an event entity."""
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopEventMultiUseEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
-        """Describe the entities that target devices."""
-        ret: tuple[LinksysVelopEventMultiUseEntity, ...] = ()
-
-        return ret
-
-    def _init_mesh_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
-        """Describe the entities that target the mesh."""
-
-        descriptions = (
-            LinksysVelopEventEntityDescription(
-                entity_category=EntityCategory.DIAGNOSTIC,
-                event_types=[event.value for event in EventSubTypes],
-                has_entity_name=True,
-                key="",
-                name="Events",
-                target_type=EntityType.MESH,
-                translation_key="mesh_events",
-            ),
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
-        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
-
-        return tuple(
-            LinksysVelopEventMultiUseEntity(
-                entity_context=context,
-                coordinator=coordinator,
-                description=description,
-            )
-            for description in descriptions
-        )
-
-    def _init_node_entities() -> tuple[LinksysVelopEventMultiUseEntity, ...]:
-        """Describe the entities that target nodes."""
-        ret: tuple[LinksysVelopEventMultiUseEntity, ...] = ()
-
-        return ret
-
-    def _remove_stale_entities() -> None:
-        """Remove entities is they are no longer required."""
-
-        entities_to_remove: set[str] = set()
-
-        for entity_unique_id in entities_to_remove:
-            remove_velop_entity_from_registry(
-                hass,
-                config_entry.entry_id,
-                entity_unique_id,
-            )
-
-    def create_node_entities() -> None:
-        """Create the node entities.
-
-        This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
-        """
-
-        entities_to_add: tuple[LinksysVelopEventMultiUseEntity, ...] = (
-            _init_node_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    _remove_stale_entities()
-    _create_entities()
-    create_node_entities()
-
-    config_entry.async_on_unload(
-        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
-            CoordinatorTimers.MESH, create_node_entities
-        )
-    )
 
 
 def _build_event_properties(
@@ -233,3 +142,146 @@ class LinksysVelopEventMultiUseEntity(
 
 
 type LinksysVelopEventCoordinatorEntity = LinksysVelopEventMultiUseEntity
+
+
+def _init_device_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopEventMultiUseEntity, ...]:
+    """Describe the entities that target devices.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :return: A tuple of device-targeted entities.
+    """
+
+    ret: tuple[LinksysVelopEventMultiUseEntity, ...] = ()
+
+    return ret
+
+
+def _init_mesh_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopEventMultiUseEntity, ...]:
+    """Describe the entities that target the mesh.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :return: A tuple of mesh-targeted entities.
+    """
+
+    descriptions = (
+        LinksysVelopEventEntityDescription(
+            entity_category=EntityCategory.DIAGNOSTIC,
+            event_types=[event.value for event in EventSubTypes],
+            has_entity_name=True,
+            key="",
+            name="Events",
+            target_type=EntityType.MESH,
+            translation_key="mesh_events",
+        ),
+    )
+
+    config_entry = coordinator.config_entry
+    context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+
+    return tuple(
+        LinksysVelopEventMultiUseEntity(
+            entity_context=context,
+            coordinator=coordinator,
+            description=description,
+        )
+        for description in descriptions
+    )
+
+
+def _init_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopEventMultiUseEntity, ...]:
+    """Describe the entities that target nodes.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :return: A tuple of node-targeted entities.
+    """
+    ret: tuple[LinksysVelopEventMultiUseEntity, ...] = ()
+
+    return ret
+
+
+def _remove_stale_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> None:
+    """Remove entities is they are no longer required.
+
+    :param coordinator: The coordinator providing the runtime data.
+    """
+
+    entities_to_remove: set[str] = set()
+
+    for entity_unique_id in entities_to_remove:
+        remove_velop_entity_from_registry(
+            coordinator.hass,
+            coordinator.config_entry.entry_id,
+            entity_unique_id,
+        )
+
+
+def create_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the node entities.
+
+    This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    entities_to_add: tuple[LinksysVelopEventMultiUseEntity, ...] = _init_node_entities(
+        coordinator
+    )
+
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+def create_static_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the mesh and device entities.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    entities_to_add: tuple[LinksysVelopEventMultiUseEntity, ...] = (
+        _init_device_entities(coordinator) + _init_mesh_entities(coordinator)
+    )
+
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise an event entity.
+
+    :param hass: The Home Assistant instance.
+    :param config_entry: The configuration entry for the device.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    coordinator = config_entry.runtime_data.coordinator
+
+    _remove_stale_entities(coordinator)
+    create_static_entities(coordinator, async_add_entities)
+    create_node_entities(coordinator, async_add_entities)
+
+    config_entry.async_on_unload(
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH,
+            lambda: create_node_entities(coordinator, async_add_entities),
+        )
+    )
