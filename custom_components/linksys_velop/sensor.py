@@ -681,330 +681,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise a sensor."""
-
-    known_nodes: set[str] = set()
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopSensorCoordinatorEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
-        """Describe the entities that target devices."""
-        coordinator = config_entry.runtime_data.coordinator
-        device_ids = config_entry.options.get(CONF_UI_DEVICES, [])
-
-        descriptions = [
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(DeviceEntity, attr)
-            for entity in entities
-            if entity.target_type is EntityType.DEVICE
-        ]
-
-        return tuple(
-            LinksysVelopSensorMultiUseEntity(
-                entity_context=LinksysVelopEntityContext(unique_id=device_id),
-                coordinator=coordinator,
-                description=description,
-            )
-            for device_id in device_ids
-            for description in descriptions
-        )
-
-    def _init_mesh_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
-        """Describe the entities that target the mesh."""
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
-
-        descriptions = [
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(mesh_data, attr)
-            for entity in entities
-            if entity.target_type is EntityType.MESH
-        ]
-
-        return tuple(
-            LinksysVelopSensorMultiUseEntity(
-                entity_context=context,
-                coordinator=coordinator,
-                description=description,
-            )
-            for description in descriptions
-        )
-
-    def _init_node_entities() -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
-        """Describe the entities that target nodes."""
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return ()
-
-        # filter nodes with valid IDs and identify only new ones
-        nodes_by_id = {
-            node.unique_id.value: node
-            for node in mesh_data.nodes
-            if node.unique_id.value is not None
-        }
-
-        new_node_ids = set(nodes_by_id.keys()) - known_nodes
-        known_nodes.update(new_node_ids)
-
-        # pre-filter base descriptions to avoid repeated loop logic
-        base_descriptions = [
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(NodeEntity, attr)
-            for entity in entities
-            if entity.target_type == EntityType.NODE
-        ]
-
-        entities: list[LinksysVelopSensorCoordinatorEntity] = []
-
-        for node_id in new_node_ids:
-            node = nodes_by_id[node_id]
-            node_descriptions = list(base_descriptions)
-
-            # handle backhaul sensors for secondary nodes
-            if node.type == NodeType.SECONDARY and hasattr(node, "backhaul"):
-                node_descriptions.extend(
-                    (
-                        LinksysVelopSensorEntityDescription(
-                            device_class=SensorDeviceClass.TIMESTAMP,
-                            entity_category=EntityCategory.DIAGNOSTIC,
-                            entity_registry_enabled_default=False,
-                            key="",
-                            name="Backhaul Last Checked",
-                            target_type=EntityType.NODE,
-                            translation_key="backhaul_last_checked",
-                            value_fn=lambda _, n: (
-                                get_node_backhaul_info(n, "last_checked")
-                                if isinstance(n, NodeEntity)
-                                else None
-                            ),
-                        ),
-                        LinksysVelopSensorEntityDescription(
-                            device_class=SensorDeviceClass.DATA_RATE,
-                            entity_category=EntityCategory.DIAGNOSTIC,
-                            key="",
-                            name="Backhaul Speed",
-                            native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
-                            suggested_display_precision=2,
-                            target_type=EntityType.NODE,
-                            translation_key="backhaul_speed",
-                            value_fn=lambda _, n: (
-                                get_node_backhaul_info(n, "speed_mbps")
-                                if isinstance(n, NodeEntity)
-                                else None
-                            ),
-                        ),
-                        LinksysVelopSensorEntityDescription(
-                            device_class=SensorDeviceClass.ENUM,
-                            entity_category=EntityCategory.DIAGNOSTIC,
-                            key="",
-                            name="Backhaul Type",
-                            options=[v.lower() for v in ConnectionType],
-                            target_type=EntityType.NODE,
-                            translation_key="backhaul_connection_type",
-                            value_fn=lambda _, n: (
-                                cast(
-                                    ConnectionType,
-                                    get_node_backhaul_info(n, "connection"),
-                                ).lower()
-                                if isinstance(n, NodeEntity)
-                                and get_node_backhaul_info(n, "connection")
-                                else None
-                            ),
-                        ),
-                        LinksysVelopSensorEntityDescription(
-                            entity_category=EntityCategory.DIAGNOSTIC,
-                            esa_fn=lambda n: {
-                                "parent_ip": (
-                                    n.parent_ip if isinstance(n, NodeEntity) else None
-                                )
-                            },
-                            key="parent_name",
-                            name="Parent",
-                            target_type=EntityType.NODE,
-                            translation_key="parent_name",
-                        ),
-                    )
-                )
-
-                # additional sensors for wireless backhaul
-                if (
-                    node.backhaul.value is not None
-                    and node.backhaul.connection == ConnectionType.WIRELESS
-                ):
-                    node_descriptions.extend(
-                        (
-                            LinksysVelopSensorEntityDescription(
-                                device_class=SensorDeviceClass.ENUM,
-                                entity_category=EntityCategory.DIAGNOSTIC,
-                                key="",
-                                name="Backhaul Friendly Signal Strength",
-                                options=[v.lower() for v in SignalStrength],
-                                target_type=EntityType.NODE,
-                                translation_key="backhaul_friendly_signal_strength",
-                                value_fn=lambda _, n: (
-                                    cast(
-                                        SignalStrength,
-                                        get_node_backhaul_info(n, "signal_strength"),
-                                    ).lower()
-                                    if isinstance(n, NodeEntity)
-                                    and get_node_backhaul_info(n, "signal_strength")
-                                    else None
-                                ),
-                            ),
-                            LinksysVelopSensorEntityDescription(
-                                entity_category=EntityCategory.DIAGNOSTIC,
-                                device_class=SensorDeviceClass.SIGNAL_STRENGTH,
-                                key="",
-                                name="Backhaul Signal Strength",
-                                native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-                                target_type=EntityType.NODE,
-                                translation_key="backhaul_signal_strength",
-                                value_fn=lambda _, n: (
-                                    get_node_backhaul_info(n, "rssi_dbm")
-                                    if isinstance(n, NodeEntity)
-                                    else None
-                                ),
-                            ),
-                        )
-                    )
-
-            context = LinksysVelopEntityContext(unique_id=node_id)
-            entities.extend(
-                LinksysVelopSensorMultiUseEntity(
-                    entity_context=context,
-                    coordinator=coordinator,
-                    description=desc,
-                )
-                for desc in node_descriptions
-            )
-
-        return tuple(entities)
-
-    def _remove_stale_entities() -> None:
-        """Remove entities that are no longer required."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return
-
-        entities_to_remove: set[str] = set()
-
-        # Remove stale mesh entities.
-        mesh_entities = {
-            slugify(str(entity.name))
-            for attr, entities in ENTITIES.items()
-            if not hasattr(mesh_data, attr)
-            for entity in entities
-            if entity.target_type == EntityType.MESH
-        }
-
-        entities_to_remove.update(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
-            for entity in mesh_entities
-        )
-
-        # Remove stale device entities.
-        device_entities = {
-            slugify(str(entity.name))
-            for attr, entities in ENTITIES.items()
-            if not hasattr(DeviceEntity, attr)
-            for entity in entities
-            if entity.target_type == EntityType.DEVICE
-        }
-
-        entities_to_remove.update(
-            f"{device_id}::{ENTITY_DOMAIN}::{entity}"
-            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
-            for entity in device_entities
-        )
-
-        # Remove stale node entities.
-        node_entities = {
-            slugify(str(entity.name))
-            for attr, entities in ENTITIES.items()
-            if not hasattr(NodeEntity, attr)
-            for entity in entities
-            if entity.target_type == EntityType.NODE
-        }
-
-        entities_to_remove.update(
-            f"{node.unique_id.value}::{ENTITY_DOMAIN}::{entity}"
-            for node in mesh_data.nodes
-            for entity in node_entities
-        )
-
-        # Remove node entities when backhaul is unavailable.
-        for node in mesh_data.nodes:
-            node_id = node.unique_id.value
-
-            if not hasattr(node, "backhaul"):
-                entities_to_remove.update(
-                    {
-                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_friendly_signal_strength",
-                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_signal_strength",
-                    }
-                )
-
-                if node.type != NodeType.SECONDARY:
-                    entities_to_remove.update(
-                        {
-                            f"{node_id}::{ENTITY_DOMAIN}::backhaul_last_checked",
-                            f"{node_id}::{ENTITY_DOMAIN}::backhaul_speed",
-                            f"{node_id}::{ENTITY_DOMAIN}::backhaul_type",
-                            f"{node_id}::{ENTITY_DOMAIN}::parent",
-                        }
-                    )
-
-        for entity_unique_id in entities_to_remove:
-            remove_velop_entity_from_registry(
-                hass,
-                config_entry.entry_id,
-                entity_unique_id,
-            )
-
-    def create_node_entities() -> None:
-        """Create the node entities.
-
-        This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
-        """
-
-        entities_to_add: tuple[LinksysVelopSensorCoordinatorEntity, ...] = (
-            _init_node_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    _remove_stale_entities()
-    _create_entities()
-    create_node_entities()
-
-    config_entry.async_on_unload(
-        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
-            CoordinatorTimers.MESH, create_node_entities
-        )
-    )
-
-
 class LinksysVelopSensorEntity(SensorEntity):
     """Base class representing a sensor entity."""
 
@@ -1055,3 +731,362 @@ class LinksysVelopSensorMultiUseEntity(
 
 
 type LinksysVelopSensorCoordinatorEntity = LinksysVelopSensorMultiUseEntity
+
+
+def _init_device_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
+    """Create entities that target specific devices.
+
+    :param coordinator: The data update coordinator.
+    :return: A tuple of initialised device entities.
+    """
+    config_entry = coordinator.config_entry
+    device_ids = config_entry.options.get(CONF_UI_DEVICES, [])
+
+    descriptions = [
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(DeviceEntity, attr)
+        for entity in entities
+        if entity.target_type is EntityType.DEVICE
+    ]
+
+    return tuple(
+        LinksysVelopSensorMultiUseEntity(
+            entity_context=LinksysVelopEntityContext(unique_id=device_id),
+            coordinator=coordinator,
+            description=description,
+        )
+        for device_id in device_ids
+        for description in descriptions
+    )
+
+
+def _init_mesh_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
+    """Create entities that target the mesh network.
+
+    :param coordinator: The data update coordinator.
+    :return: A tuple of initialised device entities.
+    """
+    config_entry = coordinator.config_entry
+    mesh_data = coordinator.data.mesh
+    context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+
+    descriptions = [
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(mesh_data, attr)
+        for entity in entities
+        if entity.target_type is EntityType.MESH
+    ]
+
+    return tuple(
+        LinksysVelopSensorMultiUseEntity(
+            entity_context=context,
+            coordinator=coordinator,
+            description=description,
+        )
+        for description in descriptions
+    )
+
+
+def _init_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+) -> tuple[LinksysVelopSensorCoordinatorEntity, ...]:
+    """Create entities that target individual nodes.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :return: A tuple of node-targeted update entities.
+    """
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return ()
+
+    nodes_by_id = {
+        node.unique_id.value: node
+        for node in mesh_data.nodes
+        if node.unique_id.value is not None
+    }
+
+    new_node_ids = set(nodes_by_id.keys()) - known_nodes
+    known_nodes.update(new_node_ids)
+
+    base_descriptions = [
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(NodeEntity, attr)
+        for entity in entities
+        if entity.target_type == EntityType.NODE
+    ]
+
+    entities: list[LinksysVelopSensorCoordinatorEntity] = []
+
+    for node_id in new_node_ids:
+        node = nodes_by_id[node_id]
+        node_descriptions = list(base_descriptions)
+
+        if node.type == NodeType.SECONDARY and hasattr(node, "backhaul"):
+            node_descriptions.extend(
+                (
+                    LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.TIMESTAMP,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        entity_registry_enabled_default=False,
+                        key="",
+                        name="Backhaul Last Checked",
+                        target_type=EntityType.NODE,
+                        translation_key="backhaul_last_checked",
+                        value_fn=lambda _, n: (
+                            get_node_backhaul_info(n, "last_checked")
+                            if isinstance(n, NodeEntity)
+                            else None
+                        ),
+                    ),
+                    LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.DATA_RATE,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        key="",
+                        name="Backhaul Speed",
+                        native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
+                        suggested_display_precision=2,
+                        target_type=EntityType.NODE,
+                        translation_key="backhaul_speed",
+                        value_fn=lambda _, n: (
+                            get_node_backhaul_info(n, "speed_mbps")
+                            if isinstance(n, NodeEntity)
+                            else None
+                        ),
+                    ),
+                    LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.ENUM,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        key="",
+                        name="Backhaul Type",
+                        options=[v.lower() for v in ConnectionType],
+                        target_type=EntityType.NODE,
+                        translation_key="backhaul_connection_type",
+                        value_fn=lambda _, n: (
+                            cast(
+                                ConnectionType, get_node_backhaul_info(n, "connection")
+                            ).lower()
+                            if isinstance(n, NodeEntity)
+                            and get_node_backhaul_info(n, "connection")
+                            else None
+                        ),
+                    ),
+                    LinksysVelopSensorEntityDescription(
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        esa_fn=lambda n: {
+                            "parent_ip": (
+                                n.parent_ip if isinstance(n, NodeEntity) else None
+                            )
+                        },
+                        key="parent_name",
+                        name="Parent",
+                        target_type=EntityType.NODE,
+                        translation_key="parent_name",
+                    ),
+                )
+            )
+
+            if (
+                node.backhaul.value is not None
+                and node.backhaul.connection == ConnectionType.WIRELESS
+            ):
+                node_descriptions.extend(
+                    (
+                        LinksysVelopSensorEntityDescription(
+                            device_class=SensorDeviceClass.ENUM,
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            key="",
+                            name="Backhaul Friendly Signal Strength",
+                            options=[v.lower() for v in SignalStrength],
+                            target_type=EntityType.NODE,
+                            translation_key="backhaul_friendly_signal_strength",
+                            value_fn=lambda _, n: (
+                                cast(
+                                    SignalStrength,
+                                    get_node_backhaul_info(n, "signal_strength"),
+                                ).lower()
+                                if isinstance(n, NodeEntity)
+                                and get_node_backhaul_info(n, "signal_strength")
+                                else None
+                            ),
+                        ),
+                        LinksysVelopSensorEntityDescription(
+                            entity_category=EntityCategory.DIAGNOSTIC,
+                            device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+                            key="",
+                            name="Backhaul Signal Strength",
+                            native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                            target_type=EntityType.NODE,
+                            translation_key="backhaul_signal_strength",
+                            value_fn=lambda _, n: (
+                                get_node_backhaul_info(n, "rssi_dbm")
+                                if isinstance(n, NodeEntity)
+                                else None
+                            ),
+                        ),
+                    )
+                )
+
+        context = LinksysVelopEntityContext(unique_id=node_id)
+        entities.extend(
+            LinksysVelopSensorMultiUseEntity(
+                entity_context=context,
+                coordinator=coordinator,
+                description=desc,
+            )
+            for desc in node_descriptions
+        )
+
+    return tuple(entities)
+
+
+def _remove_stale_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> None:
+    """Remove entities that are no longer required by the mesh.
+
+    :param coordinator: The coordinator providing the runtime data.
+    """
+    mesh_data = coordinator.data.mesh
+    config_entry = coordinator.config_entry
+    if mesh_data is None:
+        return
+
+    entities_to_remove: set[str] = set()
+
+    # remove stale mesh entities.
+    mesh_entities = {
+        slugify(str(entity.name))
+        for attr, entities in ENTITIES.items()
+        if not hasattr(mesh_data, attr)
+        for entity in entities
+        if entity.target_type == EntityType.MESH
+    }
+    entities_to_remove.update(
+        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
+        for entity in mesh_entities
+    )
+
+    # remove stale device entities.
+    device_entities = {
+        slugify(str(entity.name))
+        for attr, entities in ENTITIES.items()
+        if not hasattr(DeviceEntity, attr)
+        for entity in entities
+        if entity.target_type == EntityType.DEVICE
+    }
+    entities_to_remove.update(
+        f"{device_id}::{ENTITY_DOMAIN}::{entity}"
+        for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+        for entity in device_entities
+    )
+
+    # remove stale node entities.
+    node_entities = {
+        slugify(str(entity.name))
+        for attr, entities in ENTITIES.items()
+        if not hasattr(NodeEntity, attr)
+        for entity in entities
+        if entity.target_type == EntityType.NODE
+    }
+    entities_to_remove.update(
+        f"{node.unique_id.value}::{ENTITY_DOMAIN}::{entity}"
+        for node in mesh_data.nodes
+        for entity in node_entities
+    )
+
+    # remove node entities when backhaul is unavailable.
+    for node in mesh_data.nodes:
+        node_id = node.unique_id.value
+        if not hasattr(node, "backhaul"):
+            entities_to_remove.update(
+                {
+                    f"{node_id}::{ENTITY_DOMAIN}::backhaul_friendly_signal_strength",
+                    f"{node_id}::{ENTITY_DOMAIN}::backhaul_signal_strength",
+                }
+            )
+            if node.type != NodeType.SECONDARY:
+                entities_to_remove.update(
+                    {
+                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_last_checked",
+                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_speed",
+                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_type",
+                        f"{node_id}::{ENTITY_DOMAIN}::parent",
+                    }
+                )
+
+    for entity_unique_id in entities_to_remove:
+        remove_velop_entity_from_registry(
+            coordinator.hass,
+            config_entry.entry_id,
+            entity_unique_id,
+        )
+
+
+def create_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create new node entities if they have been discovered.
+
+    :param coordinator: The data update coordinator.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+    entities_to_add = _init_node_entities(coordinator, known_nodes)
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+def create_static_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the mesh and device entities.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+    entities_to_add = _init_device_entities(coordinator) + _init_mesh_entities(
+        coordinator
+    )
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise the Linksys Velop sensors.
+
+    :param hass: The Home Assistant instance.
+    :param config_entry: The configuration entry for the device.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
+        config_entry.runtime_data.coordinator
+    )
+    known_nodes: set[str] = set()
+
+    _remove_stale_entities(coordinator)
+    create_static_entities(coordinator, async_add_entities)
+    create_node_entities(coordinator, known_nodes, async_add_entities)
+
+    config_entry.async_on_unload(
+        coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH,
+            lambda: create_node_entities(coordinator, known_nodes, async_add_entities),
+        )
+    )
