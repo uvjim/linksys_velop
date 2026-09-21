@@ -459,22 +459,6 @@ def _remove_stale_entities(
         )
 
 
-def create_static_entities(
-    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Create the mesh and device entities.
-
-    :param coordinator: The data update coordinator.
-    :param async_add_entities: Callback to add entities to Home Assistant.
-    """
-    entities_to_add = _init_device_entities(coordinator) + _init_mesh_entities(
-        coordinator
-    )
-    if entities_to_add:
-        async_add_entities(entities_to_add)
-
-
 def create_node_entities(
     coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
     async_add_entities: AddEntitiesCallback,
@@ -487,6 +471,22 @@ def create_node_entities(
     :param async_add_entities: Callback to add entities to Home Assistant.
     """
     entities_to_add = _init_node_entities()
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+def create_static_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the mesh and device entities.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+    entities_to_add = _init_device_entities(coordinator) + _init_mesh_entities(
+        coordinator
+    )
     if entities_to_add:
         async_add_entities(entities_to_add)
 
