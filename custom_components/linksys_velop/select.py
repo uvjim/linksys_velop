@@ -2,19 +2,19 @@
 
 # region #-- imports --#
 import logging
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, cast, override
+from typing import Any, override
 
 from homeassistant.components.select import DOMAIN as ENTITY_DOMAIN
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
-from homeassistant.core import HomeAssistant, async_get_hass
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
-from pyvelop.mesh import Mesh, MeshSnapshot, ScheduledRebootInterval
+from pyvelop.mesh import MeshSnapshot, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
 from .const import (
@@ -26,12 +26,14 @@ from .const import (
 from .coordinator import (
     CoordinatorTimers,
     LinksysVelopConfigEntry,
+    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
     LinksysVelopEntityContext,
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
+    TargetEntityType,
 )
 from .helpers import remove_velop_entity_from_registry
 from .logger import Logger
@@ -47,9 +49,20 @@ class LinksysVelopSelectEntityDescription(
 ):
     """Describes Velop select entity."""
 
-    options_fn: Callable[[MeshSnapshot], list[str]] | None = None
-    pic_fn: Callable[..., str | None] | None = None
-    set_fn: Callable[[Any, str], Awaitable[None]] | None = None
+    options_fn: Callable[[MeshSnapshot], Iterable[str]] | None = None
+    pic_fn: (
+        Callable[
+            [LinksysVelopDataUpdateCoordinatorMultiUse, TargetEntityType], str | None
+        ]
+        | None
+    ) = None
+    set_fn: (
+        Callable[
+            [LinksysVelopDataUpdateCoordinatorMultiUse, TargetEntityType, str],
+            Awaitable[None],
+        ]
+        | None
+    ) = None
     value_fn: Callable[[MeshSnapshot, str], str | None] | None = None
 
 
@@ -68,77 +81,130 @@ def get_current_reboot_schedule(mesh: MeshSnapshot, *args) -> str | None:
     return ret
 
 
-def get_placeholder_device_options(mesh: MeshSnapshot) -> dict[str, str]:
-    """Retrieve the list of device options available for the placeholder device."""
+def get_placeholder_device_options(mesh: MeshSnapshot) -> Mapping[str, str]:
+    """Retrieve the list of device options available for the placeholder device.
+
+    :param: mesh: Current `MeshSnapshot` for determining available devices.
+    :returns: Mapping containing the unique IDs and display names.
+    """
 
     ret: dict[str, str] = {}
 
-    d: DeviceEntity
-    for d in mesh.devices:
-        adi: AdapterInfo | None = next(iter(d.adapter_info), None)
+    for device in mesh.devices:
+        adi: AdapterInfo | None = next(iter(device.adapter_info), None)
         name: str = (
-            d.name.value
-            if d.name != EMPTY_NAME
-            else f"{d.name} ({adi.ip if adi is not None and d.status else d.unique_id})"
+            device.name.value
+            if device.name != EMPTY_NAME
+            else f"{device.name} ({adi.ip if adi is not None and device.status else device.unique_id})"
         )
-        if d.unique_id.value is not None:
-            ret[d.unique_id.value] = name
+        if device.unique_id.value is not None:
+            ret[device.unique_id.value] = name
 
     return ret
 
 
-async def async_update_reboot_schedule(mesh: Mesh, option: str) -> None:
-    """Set the reboot schedule on the mesh."""
+def get_device_icon(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    target: TargetEntityType,
+) -> str | None:
+    """Retrieve the path to the icon to show for target.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param target: The mesh entity to retrieve the icon for.
+    :returns: Path to the icon.
+    """
+
+    if not isinstance(target, DeviceEntity):
+        return
+
+    prefix: str = coordinator.config_entry.options.get(CONF_NODE_IMAGES, "")
+    if not prefix:
+        return
+
+    return f"{prefix.rstrip('/').strip()}/{target.ui_type}.png"
+
+
+async def async_update_reboot_schedule(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    _: TargetEntityType,
+    option: str,
+) -> None:
+    """Set the reboot schedule on the mesh.
+
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused target.
+    :param option: the currently selected reboot option.
+    """
 
     if option == "off":
-        await mesh.async_set_scheduled_reboot_state(False)
+        await coordinator.api.async_set_scheduled_reboot_state(False)
     else:
-        await mesh.async_set_scheduled_reboot_interval(
+        await coordinator.api.async_set_scheduled_reboot_interval(
             ScheduledRebootInterval(option.title())
         )
 
 
-async def async_update_placeholder_device(mesh: MeshSnapshot, option: str) -> None:
-    """Calculate the new placeholder device ID and send the signal."""
+async def async_update_placeholder_device(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    target: TargetEntityType,
+    option: str,
+) -> None:
+    """Calculate the new placeholder device ID and send the signal.
 
-    velop_id: str | None = None
-    hass: HomeAssistant = async_get_hass()
+    :param coordinator: The data update coordinator used to refresh the mesh state.
+    :param _: Unused `DeviceEntity` currently in use by the placeholder.
+    :param option: Currently selected option.
+    """
 
-    # region #-- match the display name back to an ID --#
-    match_on: str = (
-        option
-        if not option.startswith(f"{EMPTY_NAME} (")
-        else option.split("(")[1].strip(")")
+    if not coordinator.data.mesh:
+        return
+
+    # extract the actual name/ID from the option string
+    match_on = (
+        option.split("(")[1].strip(")")
+        if option.startswith(f"{EMPTY_NAME} (")
+        else option
     )
-    dev: DeviceEntity
-    for dev in mesh.devices:
-        match_against: list[str] = [dev.name.lower(), str(dev.unique_id)]
+    match_on_lower = match_on.lower()
+
+    # find the first device that matches the search criteria
+    velop_id = None
+    for dev in coordinator.data.mesh.devices:
+        match_against = [dev.name.lower(), str(dev.unique_id)]
+
+        # append IP if we are in "Empty Name" mode and device has an IP
         if option.startswith(f"{EMPTY_NAME} (") and dev.status:
-            adi: AdapterInfo | None = next(iter(dev.adapter_info), None)
-            if adi is not None and adi.ip is not None:
+            adi = next(iter(dev.adapter_info), None)
+            if adi and adi.ip:
                 match_against.append(adi.ip)
-        if match_on.lower() in match_against:
+
+        if match_on_lower in match_against:
             velop_id = dev.unique_id.value
             break
-    # endregion
 
-    # region #-- send a signal informing that the placeholder device has updated --#
-    if velop_id is not None:
+    if velop_id:
         async_dispatcher_send(
-            hass,
-            SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
-            velop_id,
+            coordinator.hass, SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE, velop_id
         )
-    # endregion
 
 
 async def async_update_placeholder_device_icon(
-    device: DeviceEntity, option: str
+    _: LinksysVelopDataUpdateCoordinatorMultiUse,
+    target: TargetEntityType,
+    option: str,
 ) -> None:
-    """Set the new UI type/icon for the device."""
+    """Set the new UI type/icon for the device.
+
+    :param _: Unused data update coordinator used to refresh the mesh state.
+    :param target: Device to update the icon for.
+    :param option: the currently selected reboot option.
+    """
+
+    if not isinstance(target, DeviceEntity):
+        return
 
     ui_type: UiType = UiType(option)
-    await device.async_set_icon(ui_type)
+    await target.async_set_icon(ui_type)
 
 
 ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
@@ -159,6 +225,18 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="mesh_scheduled_reboot",
                     value_fn=get_current_reboot_schedule,
+                ),
+            ),
+            "ui_type": (
+                LinksysVelopSelectEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="ui_type",
+                    name="Icon",
+                    options_fn=lambda _: sorted(map(str.lower, UiType)),
+                    pic_fn=get_device_icon,
+                    set_fn=async_update_placeholder_device_icon,
+                    target_type=EntityType.DEVICE,
+                    translation_key="ui_type",
                 ),
             ),
         }
@@ -197,23 +275,6 @@ async def async_setup_entry(
             if hasattr(mesh_data, attr)
             for entity in entities
             if entity.target_type is EntityType.DEVICE
-        ) + (
-            LinksysVelopSelectEntityDescription(
-                entity_category=EntityCategory.CONFIG,
-                key="ui_type",
-                name="Icon",
-                options_fn=lambda _: sorted(map(str.lower, UiType)),
-                pic_fn=lambda device: (
-                    f"{prefix.rstrip('/').strip()}/{cast(DeviceEntity, device).ui_type}.png"
-                    if device is not None
-                    and (prefix := config_entry.options.get(CONF_NODE_IMAGES))
-                    not in (None, "")
-                    else None
-                ),
-                set_fn=async_update_placeholder_device_icon,
-                target_type=EntityType.DEVICE,
-                translation_key="ui_type",
-            ),
         )
 
         entities: list[LinksysVelopSelectEntity] = []
@@ -223,6 +284,7 @@ async def async_setup_entry(
         for device_id in config_entry.options.get(CONF_UI_DEVICES, []):
             device_descriptions = descriptions
 
+            # only make the devices select entity available for the placeholder device
             if device_id == placeholder_device_id:
                 device_descriptions += (
                     LinksysVelopSelectEntityDescription(
@@ -375,8 +437,8 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     def entity_picture(self) -> str | None:
 
         ret: str | None = None
-        if self.entity_description.pic_fn is not None:
-            ret = self.entity_description.pic_fn(self._get_target())
+        if callable(self.entity_description.pic_fn):
+            ret = self.entity_description.pic_fn(self.coordinator, self._get_target())
 
         return ret
 
@@ -390,7 +452,7 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
             return ret
 
         if self.entity_description.options_fn is not None:
-            ret = self.entity_description.options_fn(mesh_data)
+            ret = list(self.entity_description.options_fn(mesh_data))
         elif self.entity_description.options is not None:
             ret = self.entity_description.options
 
@@ -399,28 +461,17 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     @override
     async def async_select_option(self, option: str) -> None:
 
-        # region #-- set the currnet option - redundant in most cases --#
+        # set the currnet option - redundant in most cases
         self._attr_current_option = option
-        # endregion
 
-        # region #-- call the appropriate function or the default if none provided --#
-        if self.entity_description.set_fn is not None:
-            if (
-                self.entity_context.unique_id
-                == self.coordinator.config_entry.data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
-                and self.entity_description.key
-            ):
-                await self.entity_description.set_fn(
-                    self._get_target(),
-                    option,
-                )
-            else:
-                await self.entity_description.set_fn(
-                    self.coordinator.data.mesh,
-                    option,
-                )
+        # call the appropriate function or the default if none provided
+        if callable(self.entity_description.set_fn):
+            await self.entity_description.set_fn(
+                self.coordinator,
+                self._get_target(),
+                option,
+            )
             # refresh the data
             await self.coordinator.async_force_refresh(CoordinatorTimers.MESH)
         else:
             await super().async_select_option(option)
-        # endregion
