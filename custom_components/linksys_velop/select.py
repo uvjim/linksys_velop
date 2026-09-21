@@ -81,16 +81,22 @@ def get_current_reboot_schedule(mesh: MeshSnapshot, *args) -> str | None:
     return ret
 
 
-def get_placeholder_device_options(mesh: MeshSnapshot) -> Mapping[str, str]:
+def get_placeholder_device_options(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> Mapping[str, str]:
     """Retrieve the list of device options available for the placeholder device.
 
     :param: mesh: Current `MeshSnapshot` for determining available devices.
     :returns: Mapping containing the unique IDs and display names.
     """
 
+    mesh_data: MeshSnapshot | None = coordinator.data.mesh
+    if mesh_data is None:
+        return {}
+
     ret: dict[str, str] = {}
 
-    for device in mesh.devices:
+    for device in mesh_data.devices:
         adi: AdapterInfo | None = next(iter(device.adapter_info), None)
         name: str = (
             device.name.value
@@ -292,13 +298,13 @@ async def async_setup_entry(
                         key="",
                         name="Devices",
                         options_fn=lambda mesh: list(
-                            get_placeholder_device_options(mesh_data).values()
+                            get_placeholder_device_options(coordinator).values()
                         ),
                         set_fn=async_update_placeholder_device,
                         target_type=EntityType.DEVICE,
                         translation_key="mesh_devices",
                         value_fn=lambda mesh, uid: get_placeholder_device_options(
-                            mesh_data
+                            coordinator
                         ).get(uid),
                     ),
                 )
@@ -451,7 +457,7 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
         if mesh_data is None:
             return ret
 
-        if self.entity_description.options_fn is not None:
+        if callable(self.entity_description.options_fn):
             ret = list(self.entity_description.options_fn(mesh_data))
         elif self.entity_description.options is not None:
             ret = self.entity_description.options
@@ -461,7 +467,7 @@ class LinksysVelopSelectEntity(LinksysVelopMultiUseEntity, SelectEntity):
     @override
     async def async_select_option(self, option: str) -> None:
 
-        # set the currnet option - redundant in most cases
+        # set the current option - redundant in most cases
         self._attr_current_option = option
 
         # call the appropriate function or the default if none provided

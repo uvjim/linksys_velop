@@ -137,7 +137,6 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
     def _delay_run(self) -> bool:
         """Return True if the request to the mesh should be delayed."""
 
-        # region #-- intensive task running so back off --#
         if self.config_entry.runtime_data.blocking_tasks:
             exc: BlockingTaskRunning = BlockingTaskRunning(
                 translation_domain=DOMAIN,
@@ -149,7 +148,6 @@ class LinksysVelopDataUpdateCoordinator(DataUpdateCoordinator):
             )
             _LOGGER.warning(exc)
             return True
-        # endregion
 
         return False
 
@@ -388,7 +386,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
     async def _safe_api_call[T](
         self, api_func: Callable[[], Awaitable[T]], timeout_key: tuple[str, float]
     ) -> T:
-        """Wraps API calls to provide centralized exception handling and Home Assistant error translation.
+        """Wrap API calls to provide centralized exception handling and Home Assistant error translation.
 
         :param api_func: Callable to execute against the mesh.
         :param timeout_key:
@@ -656,7 +654,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         now: float = time.monotonic()
         _data: DataUpdateCoordinatorData = copy.copy(self.data)
 
-        # region #-- establish the functions that need to run--#
+        # establish the functions that need to run
         timers_running: list[CoordinatorTimers] = []
         coro_running: list = []
         for timer_type, timer_data in self._timers.items():
@@ -682,43 +680,39 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             "retrieving data for the multi use coordinator, %s",
             list(map(str, timers_running)),
         )
-        # endregion
 
         # run the tasks
         res: list = await asyncio.gather(*coro_running)
 
-        # region #-- set the results and appropriate attributes --#
+        # set the results and appropriate attributes
         for idx, timer in enumerate(timers_running):
             setattr(_data, timer.value, res[idx])
             self._timers.get(timer, {}).update({"last_success": now})
-        # endregion
 
         return _data
 
     async def async_force_refresh(
-        self, timer: CoordinatorTimers | list[CoordinatorTimers]
+        self,
+        timer: CoordinatorTimers | list[CoordinatorTimers],
     ) -> None:
-        """Force a refresh of the coordinator data."""
+        """Force a refresh of the coordinator data.
 
-        timers_to_force: list[CoordinatorTimers] = (
-            timer if isinstance(timer, list) else [timer]
-        )
+        :param timer: Timer that should be forced to execute.
+        """
+        timers_to_force = timer if isinstance(timer, list) else [timer]
 
-        # region #-- cahce the timers --#
-        timer_cache: dict[CoordinatorTimers, float | None] = {}
+        # cache last_success and clear it for the targeted timers
+        cache = {}
         for t in timers_to_force:
-            timer_cache.update({t: self._timers.get(t, {}).get("last_success")})
-            self._timers.get(t, {}).update({"last_success": None})
-        # endregion
+            t_data = self._timers.setdefault(t, {})
+            cache[t] = t_data.get("last_success")
+            t_data["last_success"] = None
 
-        # region #-- refresh --#
         await self.async_refresh()
-        # endregion
 
-        # region #-- restore the cache --#
-        for t in timer_cache:
-            self._timers.get(t, {}).update({"last_success": timer_cache.get(t)})
-        # endregion
+        # restore cached values
+        for t, value in cache.items():
+            self._timers[t]["last_success"] = value
 
 
 def get_mesh_device_for_config_entry(
