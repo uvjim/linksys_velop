@@ -26,6 +26,7 @@ from .coordinator import (
     BlockingTasks,
     CoordinatorTimers,
     LinksysVelopConfigEntry,
+    LinksysVelopDataUpdateCoordinatorMultiUse,
 )
 from .entities import (
     EntityType,
@@ -309,229 +310,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: LinksysVelopConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Initialise a binary sensor."""
-
-    known_node_ids: set[str] = set()
-
-    def _create_entities() -> None:
-        """Create the mesh and device entities."""
-
-        entities_to_add: tuple[LinksysVelopBinarySensorCoordinatorEntity, ...] = (
-            _init_device_entities() + _init_mesh_entities()
-        )
-
-        if entities_to_add:
-            async_add_entities(entities_to_add)
-
-    def _init_device_entities() -> (
-        tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]
-    ):
-        """Describe the entities that target devices."""
-
-        descriptions = tuple(
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(DeviceEntity, attr)
-            for entity in entities
-            if entity.target_type is EntityType.DEVICE
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
-
-        return tuple(
-            LinksysVelopBinarySensorMultiUseEntity(
-                entity_context=LinksysVelopEntityContext(unique_id=device_id),
-                coordinator=coordinator,
-                description=description,
-            )
-            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
-            for description in descriptions
-        )
-
-    def _init_mesh_entities() -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
-        """Describe the entities that target the mesh."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh = coordinator.data.mesh
-        if mesh is None:
-            return ()
-
-        descriptions = tuple(
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(mesh, attr)
-            for entity in entities
-            if entity.target_type is EntityType.MESH
-        )
-
-        # Add this entity here to provide easy access to config_entry.
-        if has_capability(mesh.capabilities, CAP_CHANNEL_SCAN):
-            descriptions += (
-                LinksysVelopBinarySensorEntityDescription(
-                    device_class=BinarySensorDeviceClass.RUNNING,
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="",
-                    name="Channel Scanning",
-                    target_type=EntityType.MESH,
-                    translation_key="channel_scanning",
-                    value_fn=lambda _: (
-                        BlockingTasks.CHANNEL_SCAN
-                        in config_entry.runtime_data.blocking_tasks
-                    ),
-                ),
-            )
-
-        # Add this entity here to provide easy access to config_entry.
-        if hasattr(mesh, "speedtest_results"):
-            descriptions += (
-                LinksysVelopBinarySensorEntityDescription(
-                    device_class=BinarySensorDeviceClass.RUNNING,
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    key="",
-                    name="Speedtest Status",
-                    target_type=EntityType.MESH,
-                    translation_key="speedtest_status",
-                    value_fn=lambda _: (bool(config_entry.runtime_data.speedtest_data)),
-                ),
-            )
-
-        context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
-
-        return tuple(
-            LinksysVelopBinarySensorMultiUseEntity(
-                entity_context=context,
-                coordinator=coordinator,
-                description=description,
-            )
-            for description in descriptions
-        )
-
-    def _init_node_entities() -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
-        """Describe the entities that target nodes."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return ()
-
-        current_node_ids = {
-            node.unique_id.value
-            for node in mesh_data.nodes
-            if node.unique_id.value is not None
-        }
-        new_node_ids = current_node_ids - known_node_ids
-        known_node_ids.update(new_node_ids)
-
-        descriptions = tuple(
-            entity
-            for attr, entities in ENTITIES.items()
-            if hasattr(NodeEntity, attr)
-            for entity in entities
-            if entity.target_type is EntityType.NODE
-        )
-
-        coordinator = config_entry.runtime_data.coordinator
-
-        return tuple(
-            LinksysVelopBinarySensorMultiUseEntity(
-                entity_context=LinksysVelopEntityContext(unique_id=node_id),
-                coordinator=coordinator,
-                description=description,
-            )
-            for node_id in new_node_ids
-            for description in descriptions
-        )
-
-    def _remove_stale_entities() -> None:
-        """Remove entities that are no longer required."""
-
-        coordinator = config_entry.runtime_data.coordinator
-        mesh_data = coordinator.data.mesh
-        if mesh_data is None:
-            return
-
-        entities_to_remove = {
-            # Removed in 2024.11.1b4; replaced by a switch.
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp",
-        }
-
-        # Remove mesh entities that are no longer available.
-        mesh_entities = {
-            slugify(str(entity.name))
-            for attr, entities in ENTITIES.items()
-            if not hasattr(mesh_data, attr)
-            for entity in entities
-            if entity.target_type == EntityType.MESH
-        }
-
-        entities_to_remove.update(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
-            for entity in mesh_entities
-        )
-
-        if not has_capability(mesh_data.capabilities, CAP_CHANNEL_SCAN):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::channel_scanning"
-            )
-
-        if not hasattr(mesh_data, "speedtest_results"):
-            entities_to_remove.add(
-                f"{config_entry.entry_id}::{ENTITY_DOMAIN}::speedtest_status"
-            )
-
-        # Remove device entities that are no longer available.
-        device_entities = {
-            attr if len(entities) == 1 else slugify(str(entity.name))
-            for attr, entities in ENTITIES.items()
-            if not hasattr(DeviceEntity, attr)
-            for entity in entities
-            if entity.target_type == EntityType.DEVICE
-        }
-
-        entities_to_remove.update(
-            f"{device_id}::{ENTITY_DOMAIN}::{entity}"
-            for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
-            for entity in device_entities
-        )
-
-        for entity_unique_id in entities_to_remove:
-            remove_velop_entity_from_registry(
-                hass,
-                config_entry.entry_id,
-                entity_unique_id,
-            )
-
-    def create_node_entities() -> None:
-        """Create the node entities.
-
-        This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
-        """
-
-        entities_to_add: tuple[LinksysVelopBinarySensorCoordinatorEntity, ...] = (
-            _init_node_entities()
-        )
-
-        if len(entities_to_add) > 0:
-            async_add_entities(entities_to_add)
-
-    _remove_stale_entities()
-    _create_entities()
-    create_node_entities()
-
-    config_entry.async_on_unload(
-        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
-            CoordinatorTimers.MESH, create_node_entities
-        )
-    )
-
-
 class LinksysVelopBinarySensorEntity(BinarySensorEntity):
     """Base class representing a binary sensor entity."""
 
@@ -576,3 +354,267 @@ class LinksysVelopBinarySensorMultiUseEntity(
 
 
 type LinksysVelopBinarySensorCoordinatorEntity = LinksysVelopBinarySensorMultiUseEntity
+
+
+def _init_device_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
+    """Describe the entities that target devices.
+
+    :param coordinator: The data update coordinator.
+    :return: A tuple of initialised device entities.
+    """
+
+    config_entry = coordinator.config_entry
+    descriptions = tuple(
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(DeviceEntity, attr)
+        for entity in entities
+        if entity.target_type is EntityType.DEVICE
+    )
+
+    return tuple(
+        LinksysVelopBinarySensorMultiUseEntity(
+            entity_context=LinksysVelopEntityContext(unique_id=device_id),
+            coordinator=coordinator,
+            description=description,
+        )
+        for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+        for description in descriptions
+    )
+
+
+def _init_mesh_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
+    """Describe the entities that target the mesh."""
+
+    config_entry = coordinator.config_entry
+    mesh = coordinator.data.mesh
+    if mesh is None:
+        return ()
+
+    descriptions = tuple(
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(mesh, attr)
+        for entity in entities
+        if entity.target_type is EntityType.MESH
+    )
+
+    # Add this entity here to provide easy access to config_entry.
+    if has_capability(mesh.capabilities, CAP_CHANNEL_SCAN):
+        descriptions += (
+            LinksysVelopBinarySensorEntityDescription(
+                device_class=BinarySensorDeviceClass.RUNNING,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                entity_registry_enabled_default=False,
+                key="",
+                name="Channel Scanning",
+                target_type=EntityType.MESH,
+                translation_key="channel_scanning",
+                value_fn=lambda _: (
+                    BlockingTasks.CHANNEL_SCAN
+                    in config_entry.runtime_data.blocking_tasks
+                ),
+            ),
+        )
+
+    # Add this entity here to provide easy access to config_entry.
+    if hasattr(mesh, "speedtest_results"):
+        descriptions += (
+            LinksysVelopBinarySensorEntityDescription(
+                device_class=BinarySensorDeviceClass.RUNNING,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                entity_registry_enabled_default=False,
+                key="",
+                name="Speedtest Status",
+                target_type=EntityType.MESH,
+                translation_key="speedtest_status",
+                value_fn=lambda _: (bool(config_entry.runtime_data.speedtest_data)),
+            ),
+        )
+
+    context = LinksysVelopEntityContext(unique_id=config_entry.entry_id)
+
+    return tuple(
+        LinksysVelopBinarySensorMultiUseEntity(
+            entity_context=context,
+            coordinator=coordinator,
+            description=description,
+        )
+        for description in descriptions
+    )
+
+
+def _init_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+) -> tuple[LinksysVelopBinarySensorCoordinatorEntity, ...]:
+    """Describe the entities that target nodes.
+
+    :param coordinator: The coordinator providing the runtime data.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :return: A tuple of node-targeted update entities.
+    """
+
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return ()
+
+    current_nodes = {
+        node.unique_id.value
+        for node in mesh_data.nodes
+        if node.unique_id.value is not None
+    }
+    new_nodes = current_nodes - known_nodes
+
+    if not new_nodes:
+        return ()
+
+    known_nodes.update(new_nodes)
+
+    descriptions = tuple(
+        entity
+        for attr, entities in ENTITIES.items()
+        if hasattr(NodeEntity, attr)
+        for entity in entities
+        if entity.target_type is EntityType.NODE
+    )
+
+    return tuple(
+        LinksysVelopBinarySensorMultiUseEntity(
+            entity_context=LinksysVelopEntityContext(unique_id=node_id),
+            coordinator=coordinator,
+            description=description,
+        )
+        for node_id in new_nodes
+        for description in descriptions
+    )
+
+
+def _remove_stale_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+) -> None:
+    """Remove entities that are no longer required."""
+
+    config_entry = coordinator.config_entry
+    mesh_data = coordinator.data.mesh
+    if mesh_data is None:
+        return
+
+    entities_to_remove = {
+        # Removed in 2024.11.1b4; replaced by a switch.
+        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp",
+    }
+
+    # Remove mesh entities that are no longer available.
+    mesh_entities = {
+        slugify(str(entity.name))
+        for attr, entities in ENTITIES.items()
+        if not hasattr(mesh_data, attr)
+        for entity in entities
+        if entity.target_type == EntityType.MESH
+    }
+
+    entities_to_remove.update(
+        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
+        for entity in mesh_entities
+    )
+
+    if not has_capability(mesh_data.capabilities, CAP_CHANNEL_SCAN):
+        entities_to_remove.add(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::channel_scanning"
+        )
+
+    if not hasattr(mesh_data, "speedtest_results"):
+        entities_to_remove.add(
+            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::speedtest_status"
+        )
+
+    # Remove device entities that are no longer available.
+    device_entities = {
+        attr if len(entities) == 1 else slugify(str(entity.name))
+        for attr, entities in ENTITIES.items()
+        if not hasattr(DeviceEntity, attr)
+        for entity in entities
+        if entity.target_type == EntityType.DEVICE
+    }
+
+    entities_to_remove.update(
+        f"{device_id}::{ENTITY_DOMAIN}::{entity}"
+        for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
+        for entity in device_entities
+    )
+
+    for entity_unique_id in entities_to_remove:
+        remove_velop_entity_from_registry(
+            coordinator.hass,
+            config_entry.entry_id,
+            entity_unique_id,
+        )
+
+
+def create_node_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    known_nodes: set[str],
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the node entities.
+
+    This is in a separate function because new nodes can be added to the mesh whilst the integration is running.
+
+    :param coordinator: The data update coordinator.
+    :param known_nodes: A set of node IDs that have already been initialised.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    entities_to_add: tuple[LinksysVelopBinarySensorCoordinatorEntity, ...] = (
+        _init_node_entities(coordinator, known_nodes)
+    )
+
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+def create_static_entities(
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the mesh and device entities.
+
+    :param coordinator: The data update coordinator.
+    :param async_add_entities: Callback to add entities to Home Assistant.
+    """
+
+    entities_to_add: tuple[LinksysVelopBinarySensorCoordinatorEntity, ...] = (
+        _init_device_entities(coordinator) + _init_mesh_entities(coordinator)
+    )
+
+    if entities_to_add:
+        async_add_entities(entities_to_add)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: LinksysVelopConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Initialise a binary sensor."""
+
+    coordinator: LinksysVelopDataUpdateCoordinatorMultiUse = (
+        config_entry.runtime_data.coordinator
+    )
+    known_nodes: set[str] = set()
+
+    _remove_stale_entities(coordinator)
+    create_static_entities(coordinator, async_add_entities)
+    create_node_entities(coordinator, known_nodes, async_add_entities)
+
+    config_entry.async_on_unload(
+        config_entry.runtime_data.coordinator.add_listener_for_timer_type(
+            CoordinatorTimers.MESH,
+            lambda: create_node_entities(coordinator, known_nodes, async_add_entities),
+        )
+    )
