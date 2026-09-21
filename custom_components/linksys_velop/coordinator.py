@@ -20,7 +20,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
     ConfigEntryError,
-    ConfigEntryNotReady,
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -395,7 +394,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         try:
             return await api_func()
-        except (MeshConnectionError, MeshTimeoutError) as err:
+        except (MeshConnectionError, MeshTimeoutError) as exc:
             _LOGGER.warning(
                 CoordinatorTimeout(
                     translation_domain=DOMAIN,
@@ -407,25 +406,26 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     },
                 )
             )
-            raise UpdateFailed(err) from err
+            raise UpdateFailed(exc) from exc
         except MeshInvalidCredentials:
             raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN, translation_key="failed_login"
+                translation_domain=DOMAIN,
+                translation_key="failed_login",
             )
-        except MeshException as err:
-            raise UpdateFailed(type(err).__name__) from err
-        except Exception as err:
+        except MeshException as exc:
+            raise UpdateFailed(type(exc).__name__) from exc
+        except Exception as exc:
             _LOGGER.warning(
                 GeneralException(
                     translation_domain=DOMAIN,
                     translation_key="general",
                     translation_placeholders={
-                        "exc_type": type(err).__name__,
-                        "exc_msg": str(err),
+                        "exc_type": type(exc).__name__,
+                        "exc_msg": str(exc),
                     },
                 )
             )
-            raise UpdateFailed(err) from err
+            raise UpdateFailed(exc) from exc
 
     def _sync_node_attributes(
         self,
@@ -626,7 +626,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 translation_key="node_not_primary",
             ) from exc
         except MeshTimeoutError as exc:
-            raise ConfigEntryNotReady(
+            raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="init_mesh_timeout",
                 translation_placeholders={
@@ -634,7 +634,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 },
             ) from exc
         except MeshConnectionError as exc:
-            raise ConfigEntryError(
+            raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="init_connection_error",
                 translation_placeholders={
