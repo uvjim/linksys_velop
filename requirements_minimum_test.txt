@@ -1,0 +1,5 @@
+homeassistant==2026.1.0
+pytest-homeassistant-custom-component==0.13.305
+async-upnp-client==0.46.1
+# pyvelop 2026.9.1b9, matching the integration manifest.
+pyvelop @ git+https://github.com/uvjim/pyvelop.git@678fc38584b79f9cbefdf003bcaf9505fe54a7ff

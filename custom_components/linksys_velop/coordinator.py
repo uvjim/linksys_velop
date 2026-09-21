@@ -635,7 +635,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 },
             ) from exc
         except MeshConnectionError as exc:
-            raise ConfigEntryError(
+            raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="init_connection_error",
                 translation_placeholders={
