@@ -18,6 +18,7 @@ from homeassistant import config_entries
 from homeassistant.components import ssdp
 from homeassistant.components.device_tracker import CONF_CONSIDER_HOME
 from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
@@ -128,7 +129,7 @@ class Steps(StrEnum):
     ENTITY_OPTIONS = auto()
     DEVICE_TRACKERS = auto()
     EVENTS = auto()
-    FINALISE = auto()
+    FINISH = auto()
     GATHER_DETAILS = auto()
     INIT = auto()
     LOGGING = auto()
@@ -598,14 +599,22 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             last_step=False,
         )
 
-    async def async_step_finish(self) -> config_entries.ConfigFlowResult:
-        """Finalise the configuration entry."""
-        _LOGGER.debug("entered")
+    async def async_step_finish(self, *args) -> config_entries.ConfigFlowResult:
+        """Finalise the configuration entry.
+
+        :returns: The next config flow result.
+        """
         _title = (
             self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME)
             or DEF_FLOW_NAME
         )
-        return self.async_create_entry(title=_title, data={}, options=self._options)
+        if self.source == SOURCE_REAUTH:
+            return self.async_update_reload_and_abort(
+                self._get_reauth_entry(),
+                options=self._options,
+            )
+        else:
+            return self.async_create_entry(title=_title, data={}, options=self._options)
 
     async def async_step_mesh_delay(
         self, user_input: Mapping[str, Any] | None = None
@@ -635,7 +644,10 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         self.task_delay = None
-        return self.async_show_progress_done(next_step_id=Steps.USER)
+        if self.source == SOURCE_REAUTH:
+            return self.async_show_progress_done(next_step_id=Steps.REAUTH_CONFIRM)
+        else:
+            return self.async_show_progress_done(next_step_id=Steps.USER)
 
     async def async_step_mesh_initialise(
         self, user_input: Mapping[str, Any] | None = None
@@ -712,10 +724,16 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             self._mesh = mesh
             self.task_init = None
-            return self.async_show_progress_done(next_step_id=Steps.TIMERS)
+            if self.source == SOURCE_REAUTH:
+                return self.async_show_progress_done(next_step_id=Steps.FINISH)
+            else:
+                return self.async_show_progress_done(next_step_id=Steps.TIMERS)
 
         self.task_init = None
-        return self.async_show_progress_done(next_step_id=Steps.USER)
+        if self.source == SOURCE_REAUTH:
+            return self.async_show_progress_done(next_step_id=Steps.REAUTH_CONFIRM)
+        else:
+            return self.async_show_progress_done(next_step_id=Steps.USER)
 
     async def async_step_reauth(
         self, user_input: dict[str, Any] | None = None
@@ -726,9 +744,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         the form has not yet been submitted.
         :returns: The next config flow result.
         """
-        self.reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context.get("entry_id", "")
-        )
+
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
@@ -741,13 +757,19 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :returns: The next config flow result.
         """
 
-        if user_input is not None and self.reauth_entry is not None:
-            _options = dict(self.reauth_entry.options)
-            _options.update(user_input)
-            return self.async_update_reload_and_abort(
-                self.reauth_entry,
-                options=_options,
-            )
+        self._options = {**self._get_reauth_entry().options}
+
+        if user_input is not None and self.source == SOURCE_REAUTH:
+            self._options.update(user_input)
+            return await self.async_step_mesh_initialise()
+
+        errors: dict[str, str] | None = None
+        placeholders: dict[str, str] | None = None
+
+        if self._error_details.has_error():
+            errors = self._error_details.error.copy()
+            placeholders = self._error_details.placeholders.copy()
+            self._error_details.clear()
 
         return self.async_show_form(
             step_id=Steps.REAUTH_CONFIRM,
@@ -759,6 +781,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     else {}
                 ),
             ),
+            description_placeholders=placeholders,
+            errors=errors,
         )
 
     async def async_step_ssdp(
