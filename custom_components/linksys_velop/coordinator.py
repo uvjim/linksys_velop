@@ -578,7 +578,6 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         prev_device_ids = (
             {d.unique_id.value for d in prev_mesh.devices if d.unique_id.value}
             if prev_mesh
-            and EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events
             else set()
         )
 
@@ -590,10 +589,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         # index the current details for comparison
         cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
         cur_device_ids = set()
-        if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
-            cur_device_ids = {
-                d.unique_id.value for d in mesh_data.devices if d.unique_id.value
-            }
+        cur_device_ids = {
+            d.unique_id.value for d in mesh_data.devices if d.unique_id.value
+        }
 
         # sync the data
         device_registry = dr.async_get(self.hass)
@@ -736,7 +734,7 @@ def remove_tracker_from_options(
     :param config_entry: Config entry to remove the UI device from.
     :param tracker_id: ID of the tracker to remove.
     """
-    options = copy.deepcopy(config_entry.options)
+    options = {**config_entry.options}
     trackers = options.get(CONF_DEVICE_TRACKERS, [])
 
     if tracker_id in trackers:
@@ -753,7 +751,7 @@ def remove_ui_device_from_options(
     :param config_entry: Config entry to remove the UI device from.
     :param ui_id: ID of the device to remove.
     """
-    options = copy.deepcopy(config_entry.options)
+    options = {**config_entry.options}
     ui_list = options.get(CONF_UI_DEVICES, [])
     if ui_id in ui_list:
         ui_list.remove(ui_id)
