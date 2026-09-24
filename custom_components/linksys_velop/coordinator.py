@@ -343,7 +343,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     remove_config_entry_id=self.config_entry.entry_id,
                 )
 
-    def _handle_missing_trackers(self, missing_ids: list[str]) -> None:
+    def _handle_missing_trackers(self, missing_ids: tuple[str, ...]) -> None:
         """Process devices that were not found by the API.
 
         :param missing_ids: Mesh IDs of the devices that are missing from the mesh.
@@ -412,8 +412,8 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 translation_domain=DOMAIN,
                 translation_key="failed_login",
             )
-        except MeshException as exc:
-            raise UpdateFailed(type(exc).__name__) from exc
+        except MeshException:
+            raise
         except Exception as exc:
             _LOGGER.warning(
                 GeneralException(
@@ -556,9 +556,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 lambda: self.api.async_get_devices(tracked_ids),
                 (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
             )
-        except MeshDeviceNotFoundResponse as err:
-            self._handle_missing_trackers(err.devices)
-            return ()  # return empty tuple as devices were not found
+        except MeshDeviceNotFoundResponse as exc:
+            self._handle_missing_trackers(exc.missing)
+            return exc.found
+        except Exception as exc:
+            raise UpdateFailed(type(exc).__name__) from exc
 
     async def _async_get_mesh_data(self) -> MeshSnapshot | None:
         """Get all data from the mesh and sync states with Home Assistant.
@@ -582,9 +584,13 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         )
 
         # get the details from the mesh
-        mesh_data: MeshSnapshot = await self._safe_api_call(
-            self.api.async_refresh, (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT)
-        )
+        try:
+            mesh_data: MeshSnapshot = await self._safe_api_call(
+                self.api.async_refresh,
+                (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+            )
+        except Exception as exc:
+            raise UpdateFailed(type(exc).__name__) from exc
 
         # index the current details for comparison
         cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
