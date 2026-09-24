@@ -232,12 +232,6 @@ def _build_schema_step_entity_options(
                 default=_get_input_default(user_input, CONF_NODE_IMAGES, ""),
             ): selector.TextSelector(),
             vol.Required(
-                CONF_SELECT_TEMP_UI_DEVICE,
-                default=_get_input_default(
-                    user_input, CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
-                ),
-            ): selector.BooleanSelector(),
-            vol.Required(
                 CONF_ALLOW_MESH_REBOOT,
                 default=_get_input_default(
                     user_input, CONF_ALLOW_MESH_REBOOT, DEF_ALLOW_MESH_REBOOT
@@ -413,7 +407,13 @@ def _build_schema_step_ui_devices(
                 default=selected_devices,
             ): _build_schema_multi_select(
                 contents=multi_select_contents,
-            )
+            ),
+            vol.Required(
+                CONF_SELECT_TEMP_UI_DEVICE,
+                default=_get_input_default(
+                    user_input, CONF_SELECT_TEMP_UI_DEVICE, DEF_SELECT_TEMP_UI_DEVICE
+                ),
+            ): selector.BooleanSelector(),
         }
     )
 
