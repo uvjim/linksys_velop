@@ -546,7 +546,7 @@
                 },
                 "data_description": {
                     "allow_mesh_reboot": "Creates a button on the Mesh service that allows rebooting of the whole mesh.",
-                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value."
+                    "node_images": "Path to the velop images, e.g. /local/velop_images."
                 },
                 "description": "Options below allow for additional configuration/creation of certain entities.",
                 "title": "Linksys Velop: Additional Entity Options"
