@@ -317,6 +317,10 @@ create automations based on a device signal strength, parent node or state
 * `Available devices`: a multi-select list of the devices found on the mesh.
   This list excludes any device which doesn't have a name - typically
   displayed in the official interfaces as `Network Device`
+* `Use a temporary device for select entity details`: creates a placeholder
+  device that will be populated with the details of the device selected in
+  the [select](#select) entity. The `select` entity will no longer have the
+  details populated to its attributes.
 
 ### Events
 
@@ -343,10 +347,6 @@ not be very useful for you.
   , and more specifically
   [Home Assistant Hosting Files](https://www.home-assistant.io/integrations/http#hosting-files)
   for the path to place the files in.
-* `Use a temporary device for select entity details`: creates a placeholder
-  device that will be populated with the details of the device selected in
-  the [select](#select) entity. The `select` entity will no longer have the
-  details populated to its attributes.
 * `Allow rebooting the Mesh`: creates a button on the Mesh entity that allows
   rebooting the whole mesh.
 
