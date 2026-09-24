@@ -542,13 +542,11 @@
             "entity_options": {
                 "data": {
                     "allow_mesh_reboot": "Allow rebooting the mesh",
-                    "node_images": "Velop image path",
-                    "select_temp_ui_device": "Use a temporary device for select entity details"
+                    "node_images": "Velop image path"
                 },
                 "data_description": {
                     "allow_mesh_reboot": "Creates a button on the Mesh service that allows rebooting of the whole mesh.",
-                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value.",
-                    "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
+                    "node_images": "Path to the velop images, e.g. /local/velop_images.\nUse * to remove the value."
                 },
                 "description": "Options below allow for additional configuration/creation of certain entities.",
                 "title": "Linksys Velop: Additional Entity Options"
@@ -591,7 +589,11 @@
             },
             "ui_device": {
                 "data": {
+                    "select_temp_ui_device": "Use a temporary device for select entity details",
                     "ui_devices": "Available devices"
+                },
+                "data_description": {
+                    "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
                 "description": "Select the devices that you'd like to have created in the UI.",
                 "title": "Linksys Velop: UI Devices"
