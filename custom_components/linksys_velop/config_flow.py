@@ -229,7 +229,12 @@ def _build_schema_step_entity_options(
         {
             vol.Optional(
                 CONF_NODE_IMAGES,
-                default=_get_input_default(user_input, CONF_NODE_IMAGES, ""),
+                default="",
+                description={
+                    "suggested_value": _get_input_default(
+                        user_input, CONF_NODE_IMAGES, ""
+                    )
+                },
             ): selector.TextSelector(),
             vol.Required(
                 CONF_ALLOW_MESH_REBOOT,
@@ -794,21 +799,19 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :returns: The next config flow result.
         """
 
-        # region #-- get the important info --#
+        # get the important info
         _host = discovery_info.ssdp_headers.get("_host", "")
         _manufacturer = discovery_info.upnp.get("manufacturer", "")
         _model = discovery_info.upnp.get("modelNumber", "")
         _model_description = discovery_info.upnp.get("modelDescription", "")
         _serial = discovery_info.upnp.get("serialNumber", "")
-        # endregion
 
-        # region #-- check for a valid Velop device --#
+        # check for a valid Velop device
         if "velop" not in _model_description.lower():
             _LOGGER.debug("not a Velop model")
             return self.async_abort(reason="not_velop")
-        # endregion
 
-        # region #-- try and update the config entry if it exists and doesn't have a unique_id --#
+        # try and update the config entry if it exists and doesn't have a unique_id
         # This region assumes that the host is unique for the Mesh (it should be but isn't guaranteed)
         # It will match on host and then update the config entry with the serial number, then abort
         update_unique_id: bool = False
@@ -830,16 +833,12 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ):
                     return self.async_abort(reason="already_configured")
 
-        # endregion
-
-        # region #-- set a unique_id, update details if device has changed IP --#
+        # set a unique_id, update details if device has changed IP
         await self.async_set_unique_id(_serial)
         self._abort_if_unique_id_configured(updates={CONF_NODE: _host})
-        # endregion
 
-        self.context[CONF_TITLE_PLACEHOLDERS] = {
-            CONF_FLOW_NAME: _host
-        }  # set the name of the flow
+        # set the name of the flow
+        self.context[CONF_TITLE_PLACEHOLDERS] = {CONF_FLOW_NAME: _host}
 
         self._options[CONF_NODE] = _host
         return await self.async_step_user()
@@ -854,21 +853,18 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._options.update(user_input)
             return await self.async_step_device_trackers()
 
-        # region #-- handle the unique_id now --#
         if not self.unique_id:
-            # region #-- get the unique_id --#
+            # get the unique_id
             unique_id: str | None = None
             if self._mesh is not None and self._mesh.latest_snapshot is not None:
                 nodes: tuple[NodeEntity, ...] = self._mesh.latest_snapshot.nodes
                 for node in nodes:
                     if node.type == NodeType.PRIMARY:
                         unique_id = node.serial.value
-            # endregion
 
             if unique_id is not None:
                 await self.async_set_unique_id(unique_id, raise_on_progress=False)
                 self._abort_if_unique_id_configured()
-        # endregion
 
         errors: dict[str, str] | None = None
         placeholders: dict[str, str] | None = None
@@ -891,20 +887,18 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """Rediscover the devices if the config entry is being unignored."""
 
-        # region #-- get the original unique_id --#
+        # get the original unique_id
         if user_input is not None:
             unique_id = user_input.get("unique_id")
             await self.async_set_unique_id(unique_id)
-        # endregion
 
-        # region #-- discover the necessary devices --#
+        # discover the necessary devices
         devices: list[SsdpServiceInfo] = await ssdp.async_get_discovery_info_by_st(
             self.hass,
             ST_IGD,
         )
-        # endregion
 
-        # region #-- try and find this device --#
+        # try and find this device
         device_info = [
             device
             for device in devices
@@ -913,7 +907,6 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if not device_info:
             return self.async_abort(reason="not_found")
-        # endregion
 
         return await self.async_step_ssdp(device_info[0])
 
@@ -984,11 +977,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             self._options.update(user_input)
             return await self.async_step_ui_device()
 
-        # region #-- retrieve devices --#
+        # retrieve devices
         if self._devices is None:
             mesh_api: Mesh = self.config_entry.runtime_data.api
             self._devices = await _async_get_devices(mesh_api)
-        # endregion
 
         errors: dict[str, str] | None = None
         placeholders: dict[str, str] | None = None
@@ -1021,17 +1013,13 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         """
 
         if user_input is not None:
-            # region #-- update options --#
-            # blank out the image path if needed
-            if user_input.get(CONF_NODE_IMAGES) == "*":
-                user_input[CONF_NODE_IMAGES] = ""
+            # update options --#
             self._options.update(user_input)
-            # endregion
 
-            # region #-- create a unique id for the placeholder device --#
+            # create a unique id for the placeholder device
             if self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID) is None:
                 self._data.update({CONF_UI_PLACEHOLDER_DEVICE_ID: str(uuid.uuid4())})
-            # endregion
+
             return await self.async_step_logging()
 
         errors: dict[str, str] | None = None
@@ -1092,7 +1080,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         :returns: The next config flow result.
         """
 
-        # region #-- set device trackers no longer required to be removed --#
+        # set device trackers no longer required to be removed
         prev_trackers: set[str] = set(
             self.config_entry.options.get(CONF_DEVICE_TRACKERS, [])
         )
@@ -1105,9 +1093,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
                 )
             }
         )
-        # endregion
 
-        # region #-- set ui devices to remove if no longer needed --#
+        # set ui devices to remove if no longer needed
         ui_device_id: str | None = self._data.get(CONF_UI_PLACEHOLDER_DEVICE_ID)
         prev_ui_devices: set[str] = set(
             self.config_entry.options.get(CONF_UI_DEVICES, [])
@@ -1126,9 +1113,8 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             CONF_SELECT_TEMP_UI_DEVICE
         ) and ui_device_id in self.config_entry.options.get(CONF_UI_DEVICES, []):
             self._data.get(CONF_UI_DEVICES_TO_REMOVE, []).append(ui_device_id)
-        # endregion
 
-        # region #-- add the placeholder ui device if needed --#
+        # add the placeholder ui device if needed
         if self._options.get(CONF_SELECT_TEMP_UI_DEVICE):
             if ui_device_id not in self._options.get(CONF_UI_DEVICES, []):
                 if self._options.get(CONF_UI_DEVICES) is not None:
@@ -1138,7 +1124,6 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         else:
             with contextlib.suppress(ValueError):
                 self._options.get(CONF_UI_DEVICES, []).remove(ui_device_id)
-        # endregion
 
         self.hass.config_entries.async_update_entry(self.config_entry, data=self._data)
         return self.async_create_entry(title="", data=self._options)
@@ -1153,11 +1138,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         :returns: The next config flow result.
         """
 
-        # region #-- initialise the instance vars that rely on config_entry --#
+        # initialise the instance vars that rely on config_entry
         # we can't do this any earlier because they aren't available.
         self._data = {**self.config_entry.data}
         self._options = {**self.config_entry.options}
-        # endregion
 
         menu_options: tuple[str, ...] = (
             Steps.TIMERS,
@@ -1243,13 +1227,10 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             self._options.update(user_input)
             return await self.async_step_events()
 
-        # region #-- retrieve devices --#
-        # if the mesh hasn't been initialised then initialise it
-        # shouldn't really be in that situation but you never know...
+        # retrieve devices
         if self._devices is None:
             mesh_api: Mesh = self.config_entry.runtime_data.api
             self._devices = await _async_get_devices(mesh_api)
-        # endregion
 
         errors: dict[str, str] | None = None
         placeholders: dict[str, str] | None = None
