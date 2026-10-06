@@ -26,6 +26,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
 from pyvelop.action_registry import Actions
 from pyvelop.exceptions import (
+    MeshAdminAccountLocked,
     MeshConnectionError,
     MeshCredentialCheckDelayed,
     MeshInvalidCredentials,
@@ -690,6 +691,8 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # task is complete, process results or exceptions
         try:
             mesh: Mesh = self.task_init.result()
+        except MeshAdminAccountLocked:
+            self._error_details.set_error("admin_account_locked")
         except MeshConnectionError:
             self._error_details.set_error("connection_error", CONF_NODE)
         except MeshCredentialCheckDelayed as exc:
