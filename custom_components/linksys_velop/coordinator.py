@@ -408,11 +408,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 )
             )
             raise UpdateFailed(exc) from exc
-        except MeshInvalidCredentials:
+        except MeshInvalidCredentials as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="failed_login",
-            )
+            ) from exc
         except MeshException:
             raise
         except Exception as exc:
@@ -560,7 +560,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         except MeshDeviceNotFoundResponse as exc:
             self._handle_missing_trackers(exc.missing)
             return exc.found
-        except Exception as exc:
+        except MeshException as exc:
             raise UpdateFailed(type(exc).__name__) from exc
 
     async def _async_get_mesh_data(self) -> MeshSnapshot | None:
@@ -590,7 +590,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 self.api.async_refresh,
                 (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
             )
-        except Exception as exc:
+        except MeshException as exc:
             raise UpdateFailed(type(exc).__name__) from exc
 
         # index the current details for comparison
