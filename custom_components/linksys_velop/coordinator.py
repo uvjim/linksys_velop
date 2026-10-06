@@ -29,6 +29,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.issue_registry import IssueSeverity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pyvelop.exceptions import (
+    MeshAdminAccountLocked,
     MeshConnectionError,
     MeshDeviceNotFoundResponse,
     MeshException,
@@ -619,6 +620,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         try:
             await self.api.async_authenticate_and_refresh()
+        except MeshAdminAccountLocked as exc:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="admin_account_locked",
+            ) from exc
         except MeshInvalidCredentials as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,

@@ -478,6 +478,9 @@
         }
     },
     "exceptions": {
+        "admin_account_locked": {
+            "message": "The account is currently in a locked state. Please follow the instructions in the router web UI or app."
+        },
         "coordinator_timeout": {
             "message": "Timeout gathering data (current timeout: {current_timeout}s), consider increasing the timeout if this happens a lot."
         },
