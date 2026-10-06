@@ -9,6 +9,7 @@
             "single_instance_allowed": "Integration already configured."
         },
         "error": {
+            "admin_account_locked": "The account is currently in a locked state. Please follow the instructions in the router web UI or app before continuing.",
             "connection_error": "Connection error. Please check the host provided.",
             "general": "An error occurred. {exc_msg}",
             "login_error": "Unable to login. Please check the username and password.",
