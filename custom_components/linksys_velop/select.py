@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.translation import async_translate_state
 from homeassistant.util import slugify
 from pyvelop.mesh import MeshSnapshot, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
@@ -21,6 +22,7 @@ from .const import (
     CONF_NODE_IMAGES,
     CONF_UI_DEVICES,
     CONF_UI_PLACEHOLDER_DEVICE_ID,
+    DOMAIN,
     SIGNAL_UI_PLACEHOLDER_DEVICE_UPDATE,
 )
 from .coordinator import (
@@ -130,6 +132,29 @@ def get_device_icon(
     return f"{prefix.rstrip('/').strip()}/{target.ui_type}.png"
 
 
+def get_device_icon_options(
+    hass: HomeAssistant, translation_key: str
+) -> Mapping[str, str]:
+    """Retrieve a case-insensitive sorted mapping of device icon options.
+
+    :param hass: The Home Assistant core instance.
+    :return: A dictionary mapping device types to their translated labels, sorted alphabetically by label.
+    """
+    options = {
+        member.value: async_translate_state(
+            hass=hass,
+            state=member.value,
+            domain=ENTITY_DOMAIN,
+            platform=DOMAIN,
+            translation_key=translation_key,
+            device_class=None,
+        )
+        for member in UiType
+    }
+
+    return dict(sorted(options.items(), key=lambda item: item[1].lower()))
+
+
 async def async_update_device_icon(
     _: LinksysVelopDataUpdateCoordinatorMultiUse,
     target: TargetEntityType,
@@ -231,18 +256,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSelectEntityDescription, ...]] = (
                     target_type=EntityType.MESH,
                     translation_key="mesh_scheduled_reboot",
                     value_fn=get_current_reboot_schedule,
-                ),
-            ),
-            "ui_type": (
-                LinksysVelopSelectEntityDescription(
-                    entity_category=EntityCategory.CONFIG,
-                    key="ui_type",
-                    name="Icon",
-                    options_fn=lambda _: sorted(map(str.lower, UiType)),
-                    pic_fn=get_device_icon,
-                    set_fn=async_update_device_icon,
-                    target_type=EntityType.DEVICE,
-                    translation_key="ui_type",
                 ),
             ),
         }
@@ -367,6 +380,18 @@ def _init_device_entities(
                     value_fn=lambda mesh, uid: get_placeholder_device_options(
                         coordinator
                     ).get(uid),
+                ),
+                LinksysVelopSelectEntityDescription(
+                    entity_category=EntityCategory.CONFIG,
+                    key="ui_type",
+                    name="Icon",
+                    options_fn=lambda mesh: get_device_icon_options(
+                        coordinator.hass, "ui_type"
+                    ),
+                    pic_fn=get_device_icon,
+                    set_fn=async_update_device_icon,
+                    target_type=EntityType.DEVICE,
+                    translation_key="ui_type",
                 ),
             )
 
