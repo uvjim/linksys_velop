@@ -147,6 +147,14 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
             props["guest_network"] = adi.guest_network
             props["ip"] = adi.ip
             props["ipv6"] = adi.ipv6
+            props["mac"] = adi.mac
+            if adi.type == ConnectionType.WIRELESS:
+                props["band"] = adi.band
+                props["rssi_dbm"] = adi.rssi_dbm
+                props["signal_strength"] = (
+                    str(adi.signal_strength).lower() if adi.signal_strength is not None else None
+                )
+                props["negotiated_mbps"] = adi.negotiated_mbps
         ret.append(props)
 
     return ret
