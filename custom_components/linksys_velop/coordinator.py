@@ -193,6 +193,9 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         self.data = DataUpdateCoordinatorData(mesh=api.latest_snapshot)
 
         # region #-- custom instance variables --#
+        # snapshot returned by the login in `_async_setup`, used once by the first
+        # refresh so that start up does not gather the whole mesh twice
+        self._setup_snapshot: MeshSnapshot | None = None
         self._configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         )
@@ -584,14 +587,19 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             else set()
         )
 
-        # get the details from the mesh
-        try:
-            mesh_data: MeshSnapshot = await self._safe_api_call(
-                self.api.async_refresh,
-                (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
-            )
-        except MeshException as exc:
-            raise UpdateFailed(type(exc).__name__) from exc
+        # get the details from the mesh, reusing the snapshot gathered during setup
+        # if this is the first refresh
+        mesh_data: MeshSnapshot
+        if self._setup_snapshot is not None:
+            mesh_data, self._setup_snapshot = self._setup_snapshot, None
+        else:
+            try:
+                mesh_data = await self._safe_api_call(
+                    self.api.async_refresh,
+                    (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+                )
+            except MeshException as exc:
+                raise UpdateFailed(type(exc).__name__) from exc
 
         # index the current details for comparison
         cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
@@ -619,7 +627,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         """Set up the coordinator."""
 
         try:
-            await self.api.async_authenticate_and_refresh()
+            self._setup_snapshot = await self.api.async_authenticate_and_refresh()
         except MeshAdminAccountLocked as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
