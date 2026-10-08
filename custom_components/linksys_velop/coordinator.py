@@ -190,12 +190,18 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             update_interval_secs=base_update_interval_secs,
         )
 
-        self.data = DataUpdateCoordinatorData(mesh=api.latest_snapshot)
+        # initialise the data
+        self.data = DataUpdateCoordinatorData()
 
-        # region #-- custom instance variables --#
+        # cache the configured events
         self._configured_events: list[str] = self.config_entry.options.get(
             CONF_EVENTS_OPTIONS, DEF_EVENTS_OPTIONS
         )
+
+        # data from setup, acts as a flag - reset after it is used
+        self._setup_data: MeshSnapshot | None = None
+
+        # define the default timer for the coordinator
         self._timers: dict[CoordinatorTimers, Any] = {
             CoordinatorTimers.MESH: {
                 "interval": update_interval_secs,
@@ -204,6 +210,8 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                 "listeners": [],
             },
         }
+
+        # add a timer for device tracker updates
         if kwargs.get("tracker_update_interval_secs") is not None:
             self._timers.update(
                 {
@@ -215,12 +223,12 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     }
                 }
             )
-        self._waiting_for_ip: set[str] = set()
-        # endregion
 
-        # region #-- add a listener --#
+        # devices that we're waiting on an IP for before sending an event
+        self._waiting_for_ip: set[str] = set()
+
+        # add a listener for the listeners
         config_entry.async_on_unload(self.async_add_listener(self._process_listeners))
-        # endregion
 
     def _create_missing_ui_issue(self, device: DeviceEntry, ui_id: str) -> None:
         """Create a Home Assistant issue for a missing UI device.
@@ -584,14 +592,19 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
             else set()
         )
 
-        # get the details from the mesh
-        try:
-            mesh_data: MeshSnapshot = await self._safe_api_call(
-                self.api.async_refresh,
-                (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
-            )
-        except MeshException as exc:
-            raise UpdateFailed(type(exc).__name__) from exc
+        if self._setup_data:
+            # use the cached data
+            mesh_data = self._setup_data
+            self._setup_data = None  # reset the cache, we don't need it anymore
+        else:
+            # gather details as per normal
+            try:
+                mesh_data = await self._safe_api_call(
+                    self.api.async_refresh,
+                    (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+                )
+            except MeshException as exc:
+                raise UpdateFailed(type(exc).__name__) from exc
 
         # index the current details for comparison
         cur_node_serials = {n.serial.value for n in mesh_data.nodes if n.serial.value}
@@ -619,7 +632,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         """Set up the coordinator."""
 
         try:
-            await self._safe_api_call(
+            self._setup_data = await self._safe_api_call(
                 self.api.async_authenticate_and_refresh,
                 (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
             )
