@@ -98,6 +98,7 @@ def get_generic_adapter_info_for_node_or_device(
         "guest_network": get_adapter_info_by_key(adapter_info, "guest_network"),
         "ip": get_adapter_info_by_key(adapter_info, "ip"),
         "ipv6": get_adapter_info_by_key(adapter_info, "ipv6"),
+        "mac": get_adapter_info_by_key(adapter_info, "mac"),
         "type": get_adapter_info_by_key(adapter_info, "type"),
     }
 
