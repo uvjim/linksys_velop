@@ -33,6 +33,7 @@ from pyvelop.mesh_entity import (
     AdapterInfo,
     ConnectionType,
     DeviceEntity,
+    NodeAdapterInfo,
     NodeEntity,
     NodeType,
     SignalStrength,
@@ -84,8 +85,45 @@ class LinksysVelopSensorEntityDescription(
     ) = None
 
 
+def get_generic_adapter_info_for_node_or_device(
+    adapter_info: AdapterInfo | NodeAdapterInfo,
+) -> Mapping[str, Any]:
+    """Build the common adapter attributes used when populating extra state attribues.
+
+    :param adapter_info: `AdapterInfo` for a device or `NodeAdapterInfo` for a node.
+    :return: A mapping containing the common adapter attributes.
+    """
+
+    return {
+        "guest_network": get_adapter_info_by_key(adapter_info, "guest_network"),
+        "ip": get_adapter_info_by_key(adapter_info, "ip"),
+        "ipv6": get_adapter_info_by_key(adapter_info, "ipv6"),
+        "type": get_adapter_info_by_key(adapter_info, "type"),
+    }
+
+
+def get_adapter_info_by_key(
+    adapter_info: AdapterInfo | NodeAdapterInfo,
+    key: str,
+) -> Any:
+    """Retrieve the given attribute from the given `AdapterInfo` or `NodeAdapterInfo` object.
+
+    :param adapter_info: `AdapterInfo` for a device or `NodeAdapterInfo` for a node.
+    :param key: Name of the attribute that should be retrieved.
+    :return: Attribute value if available or `None`. The value is unwrapped if it is of type `MeshAttribute`.
+    """
+
+    attr = getattr(adapter_info, key, None)
+    return attr.value if isinstance(attr, MeshAttribute) else attr
+
+
 def get_devices(mesh: TargetEntityType, state: bool = True) -> list[dict[str, Any]]:
-    """Get the matching devices from the Mesh."""
+    """Get the matching devices from the Mesh.
+
+    :param mesh: `MeshSnapshot` containing the data to be queried.
+    :param state: Desired state for the device, `True` is connected.
+    :return: list of details for the matching devices.
+    """
     ret: list[dict[str, Any]] = []
 
     if not isinstance(mesh, MeshSnapshot):
@@ -101,10 +139,7 @@ def get_devices(mesh: TargetEntityType, state: bool = True) -> list[dict[str, An
                 (adapter for adapter in device.adapter_info), None
             )
             if adi is not None and device.status.value:
-                props["type"] = adi.type.value
-                props["guest_network"] = adi.guest_network
-                props["ip"] = adi.ip
-                props["ipv6"] = adi.ipv6
+                props.update(get_generic_adapter_info_for_node_or_device(adi))
                 props["parent_name"] = device.parent_name.value
             ret.append(props)
 
@@ -112,12 +147,16 @@ def get_devices(mesh: TargetEntityType, state: bool = True) -> list[dict[str, An
 
 
 def get_device_adapter_info(device: DeviceEntity, key: str) -> Any:
-    """Retrieve the give details about a device adapter."""
+    """Retrieve the give details about a device adapter.
+
+    :param device: `DeviceEntity` representing the device to retrieve data for.
+    :return: Attribute value if available or `None`. The value is unwrapped if it is of type `MeshAttribute`.
+    """
 
     ret: Any = None
     adi: AdapterInfo | None = next(iter(device.adapter_info), None)
     if adi is not None:
-        ret = getattr(adi, key, None)
+        ret = get_adapter_info_by_key(adi, key)
 
     return ret
 
@@ -133,7 +172,11 @@ def get_node_backhaul_info(node: NodeEntity, key: str) -> Any:
 
 
 def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
-    """Get the details needed for the connected devices extra attributes."""
+    """Get the details needed for the connected devices extra attributes.
+
+    :param node: `NodeEntity` to query for devices.
+    :return: list of details for the matching devices.
+    """
 
     ret: list[dict[str, Any]] = []
     for device in node.connected_devices:
@@ -143,10 +186,7 @@ def get_node_devices(node: NodeEntity) -> list[dict[str, Any]]:
         }
         adi: AdapterInfo | None = next((adi for adi in device.adapter_info), None)
         if adi is not None:
-            props["type"] = adi.type
-            props["guest_network"] = adi.guest_network
-            props["ip"] = adi.ip
-            props["ipv6"] = adi.ipv6
+            props.update(get_generic_adapter_info_for_node_or_device(adi))
         ret.append(props)
 
     return ret
