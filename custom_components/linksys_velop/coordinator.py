@@ -291,7 +291,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         """
 
         # new nodes
-        if EventSubTypes.NEW_NODE_FOUND.value in self._configured_events:
+        if (
+            EventSubTypes.NEW_NODE_FOUND.value in self._configured_events
+            and prev_node_serials
+        ):
             for serial in cur_node_serials - prev_node_serials:
                 if node_info := next(
                     (node for node in mesh_data.nodes if node.serial.value == serial),
@@ -304,7 +307,10 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
                     )
 
         # new devices
-        if EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events:
+        if (
+            EventSubTypes.NEW_DEVICE_FOUND.value in self._configured_events
+            and prev_device_ids
+        ):
             new_ids = (cur_device_ids - prev_device_ids).union(self._waiting_for_ip)
             for dev_id in new_ids:
                 if device_info := next(
