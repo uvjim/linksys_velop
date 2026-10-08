@@ -30,6 +30,7 @@ Home Assistant integration for the Linksys Velop Wi-Fi system.
   * [Events](#events)
   * [Entity Options](#entity-options)
   * [Logging Options](#logging-options)
+* [Lovelace Card](#lovelace-card)
 * [Troubleshooting](#troubleshooting)
   * [Debug Logging](#debug-logging)
   * [Diagnostics Integration](#diagnostics-integration)
@@ -363,6 +364,51 @@ need to have redacted, then you can add them here.
 
 The paths specified here are in addition to the paths maintained by the `pyvelop`
 module.
+
+## Lovelace Card
+
+`lovelace/velop-network-card.js` is an optional custom card that draws the mesh
+as a left-to-right tree: the Internet connection, then the primary node, then
+each secondary node indented under its backhaul parent. The connector into each
+node shows the backhaul type and speed (dashed and coloured by signal strength
+for wireless backhaul). Under each node, its Wi-Fi clients are listed with their
+RSSI, band and negotiated rate, and weak or slow readings are highlighted. Wired
+clients are listed together in a Wired LAN group.
+
+If the Speedtest sensors are enabled (they are disabled by default), the
+results of the latest Speedtest are shown alongside the Internet connection, or
+that it failed.
+
+The card finds the integration's entities through the entity registry, so no
+entity IDs need to be configured.
+
+### Installing the card
+
+1. Copy `velop-network-card.js` to `config/www/velop-network-card/`.
+2. Add it as a dashboard resource (Settings -> Dashboards -> Resources) with the
+   URL `/local/velop-network-card/velop-network-card.js` and type
+   `JavaScript module`.
+3. Refresh the browser and add the card to a dashboard:
+
+```yaml
+type: custom:velop-network-card
+```
+
+### Card options
+
+| Option | Default | Description |
+|---|---|---|
+| `title` | `Velop network` | Card title. Set to an empty string to hide it. |
+| `weak_rssi` | `-70` | dBm at or below which a client's signal is highlighted. |
+| `slow_mbps` | `10` | Negotiated rate (Mb/s) below which a client is highlighted. |
+| `sort` | `signal` | `signal` lists wired clients, then wireless from strongest to weakest, then wireless without a reading. `name` sorts alphabetically. |
+| `collapsed` | `false` | Start with each node's client list collapsed. |
+| `show_rate` | `true` | Show the negotiated rate for wireless clients. |
+| `rename` | `true` | Click a client to rename it. The new name is written back to the mesh using the `rename_device` action. |
+| `group_wired` | `true` | List wired clients in a single Wired LAN group. Wired clients behind a switch share the LAN with every wired node, so the node the mesh reports for them is not reliable. Set to `false` to list them under that node. |
+
+Client signal, band and rate come from the `devices` attribute of each node's
+Connected Devices sensor.
 
 ## Troubleshooting
 
