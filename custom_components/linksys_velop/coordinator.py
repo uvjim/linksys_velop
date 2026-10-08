@@ -619,39 +619,22 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
         """Set up the coordinator."""
 
         try:
-            await self.api.async_authenticate_and_refresh()
+            await self._safe_api_call(
+                self.api.async_authenticate_and_refresh,
+                (CONF_API_REQUEST_TIMEOUT, DEF_API_REQUEST_TIMEOUT),
+            )
         except MeshAdminAccountLocked as exc:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="admin_account_locked",
-            ) from exc
-        except MeshInvalidCredentials as exc:
-            raise ConfigEntryAuthFailed(
-                translation_domain=DOMAIN,
-                translation_key="failed_login",
             ) from exc
         except MeshNodeNotPrimary as exc:
             raise ConfigEntryError(
                 translation_domain=DOMAIN,
                 translation_key="node_not_primary",
             ) from exc
-        except MeshTimeoutError as exc:
-            raise UpdateFailed(
-                translation_domain=DOMAIN,
-                translation_key="init_mesh_timeout",
-                translation_placeholders={
-                    "current_timeout": str(self.api.timeout),
-                },
-            ) from exc
-        except MeshConnectionError as exc:
-            raise UpdateFailed(
-                translation_domain=DOMAIN,
-                translation_key="init_connection_error",
-                translation_placeholders={
-                    "exc_msg": str(exc),
-                    "primary_ip": self.api.connected_node,
-                },
-            ) from exc
+        except MeshException as exc:
+            raise UpdateFailed(type(exc).__name__) from exc
 
     async def _async_update_data(self) -> DataUpdateCoordinatorData:
         """Refresh the mesh data.
