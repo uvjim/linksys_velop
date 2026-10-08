@@ -94,13 +94,14 @@ def get_generic_adapter_info_for_node_or_device(
     :return: A mapping containing the common adapter attributes.
     """
 
+    connection_type: str | None = get_adapter_info_by_key(adapter_info, "type")
     ret: dict[str, Any] = {
         "guest_network": get_adapter_info_by_key(adapter_info, "guest_network"),
         "ip": get_adapter_info_by_key(adapter_info, "ip"),
         "ipv6": get_adapter_info_by_key(adapter_info, "ipv6"),
         "mac": get_adapter_info_by_key(adapter_info, "mac"),
         "negotiated_mbps": get_adapter_info_by_key(adapter_info, "negotiated_mbps"),
-        "type": get_adapter_info_by_key(adapter_info, "type"),
+        "type": connection_type.lower() if connection_type else None,
     }
     if adapter_info.type == ConnectionType.WIRELESS:
         signal_strength: str | None = get_adapter_info_by_key(
