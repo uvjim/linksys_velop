@@ -597,7 +597,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
-            data_schema=_build_schema_step(
+            data_schema=_build_schema_step(  # type: ignore
                 Steps.DEVICE_TRACKERS, self._options, multi_select_contents=devices
             ),
             description_placeholders=placeholders,
@@ -781,7 +781,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.REAUTH_CONFIRM,
-            data_schema=_build_schema_step(
+            data_schema=_build_schema_step(  # type: ignore
                 Steps.REAUTH_CONFIRM,
                 (
                     dict(self.reauth_entry.options)
@@ -879,7 +879,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.TIMERS,
-            data_schema=_build_schema_step(Steps.TIMERS, self._options),
+            data_schema=_build_schema_step(Steps.TIMERS, self._options),  # type: ignore
             description_placeholders=placeholders,
             errors=errors,
             last_step=False,
@@ -946,7 +946,7 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id=Steps.USER,
-            data_schema=_build_schema_step(Steps.USER, self._options),
+            data_schema=_build_schema_step(Steps.USER, self._options),  # type: ignore
             description_placeholders=placeholders,
             errors=errors,
             last_step=False,
@@ -995,7 +995,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.DEVICE_TRACKERS,
-            data_schema=_build_schema_step(
+            data_schema=_build_schema_step(  # type: ignore
                 Steps.DEVICE_TRACKERS,
                 self._options,
                 multi_select_contents=self._devices,
@@ -1035,7 +1035,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.ENTITY_OPTIONS,
-            data_schema=_build_schema_step(Steps.ENTITY_OPTIONS, self._options),
+            data_schema=_build_schema_step(Steps.ENTITY_OPTIONS, self._options),  # type: ignore
             description_placeholders=placeholders,
             errors=errors,
             last_step=False,
@@ -1065,7 +1065,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.EVENTS,
-            data_schema=_build_schema_step(
+            data_schema=_build_schema_step(  # type: ignore
                 Steps.EVENTS, self._options, multi_select_contents=DEF_EVENTS_OPTIONS
             ),
             description_placeholders=placeholders,
@@ -1179,7 +1179,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.LOGGING,
-            data_schema=_build_schema_step(Steps.LOGGING, self._options),
+            data_schema=_build_schema_step(Steps.LOGGING, self._options),  # type: ignore
             description_placeholders=placeholders,
             errors=errors,
             last_step=True,
@@ -1210,7 +1210,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.TIMERS,
-            data_schema=_build_schema_step(Steps.TIMERS, self._options),
+            data_schema=_build_schema_step(Steps.TIMERS, self._options),  # type: ignore
             description_placeholders=placeholders,
             errors=errors,
             last_step=False,
@@ -1245,7 +1245,7 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
         return self.async_show_form(
             step_id=Steps.UI_DEVICE,
-            data_schema=_build_schema_step(
+            data_schema=_build_schema_step(  # type: ignore
                 Steps.UI_DEVICE, self._options, multi_select_contents=self._devices
             ),
             description_placeholders=placeholders,
