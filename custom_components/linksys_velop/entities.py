@@ -27,6 +27,7 @@ from .const import (
 from .coordinator import (
     LinksysVelopDataUpdateCoordinatorMultiUse,
 )
+from .helpers import generate_unique_id
 from .logger import Logger
 
 # endregion
@@ -87,10 +88,11 @@ class LinksysVelopMultiUseEntity(
         if description is not None:
             self.entity_description = description
 
-        self._attr_unique_id = (
-            f"{self.entity_context.unique_id}::"
-            f"{self._entity_domain.lower()}::"
-            f"{slugify(str(self.entity_description.name))}"
+        self._attr_unique_id = generate_unique_id(
+            self.entity_context.unique_id,
+            slugify(str(self.entity_description.name)),
+            platform=self._entity_domain.lower(),
+            version=1,
         )
 
         self._attr_device_info = self._build_device_info()

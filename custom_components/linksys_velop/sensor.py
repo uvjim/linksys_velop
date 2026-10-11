@@ -52,7 +52,7 @@ from .entities import (
     LinksysVelopMultiUseEntity,
     TargetEntityType,
 )
-from .helpers import remove_velop_entity_from_registry
+from .helpers import generate_unique_id, remove_velop_entity_from_registry
 from .logger import Logger
 
 # endregion
@@ -1027,7 +1027,9 @@ def _remove_stale_entities(
         if entity.target_type == EntityType.MESH
     }
     entities_to_remove.update(
-        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
+        generate_unique_id(
+            config_entry.entry_id, entity, platform=ENTITY_DOMAIN, version=1
+        )
         for entity in mesh_entities
     )
 
@@ -1040,7 +1042,7 @@ def _remove_stale_entities(
         if entity.target_type == EntityType.DEVICE
     }
     entities_to_remove.update(
-        f"{device_id}::{ENTITY_DOMAIN}::{entity}"
+        generate_unique_id(device_id, entity, platform=ENTITY_DOMAIN, version=1)
         for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
         for entity in device_entities
     )
@@ -1054,29 +1056,37 @@ def _remove_stale_entities(
         if entity.target_type == EntityType.NODE
     }
     entities_to_remove.update(
-        f"{node.unique_id.value}::{ENTITY_DOMAIN}::{entity}"
+        generate_unique_id(
+            str(node.unique_id.value), entity, platform=ENTITY_DOMAIN, version=1
+        )
         for node in mesh_data.nodes
         for entity in node_entities
     )
 
     # remove node entities when backhaul is unavailable.
     for node in mesh_data.nodes:
-        node_id = node.unique_id.value
+        node_id = str(node.unique_id.value)
         if not hasattr(node, "backhaul"):
+            remove_backhaul_entity_suffix: dict[str, tuple[str, ...]] = {
+                "common": (
+                    "backhaul_friendly_signal_strength",
+                    "backhaul_signal_strength",
+                ),
+                "secondary": (
+                    "backhaul_last_checked",
+                    "backhaul_speed",
+                    "backhaul_type",
+                    "parent",
+                ),
+            }
             entities_to_remove.update(
-                {
-                    f"{node_id}::{ENTITY_DOMAIN}::backhaul_friendly_signal_strength",
-                    f"{node_id}::{ENTITY_DOMAIN}::backhaul_signal_strength",
-                }
+                generate_unique_id(node_id, suffix, platform=ENTITY_DOMAIN, version=1)
+                for suffix in remove_backhaul_entity_suffix.get("common", ())
             )
-            if node.type != NodeType.SECONDARY:
+            if node.type == NodeType.SECONDARY:
                 entities_to_remove.update(
-                    {
-                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_last_checked",
-                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_speed",
-                        f"{node_id}::{ENTITY_DOMAIN}::backhaul_type",
-                        f"{node_id}::{ENTITY_DOMAIN}::parent",
-                    }
+                    generate_unique_id(node_id, suffix, platform=ENTITY_DOMAIN, version=1)
+                    for suffix in remove_backhaul_entity_suffix.get("secondary", ())
                 )
 
     for entity_unique_id in entities_to_remove:

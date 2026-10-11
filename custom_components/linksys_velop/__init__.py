@@ -40,6 +40,7 @@ from .coordinator import (
 )
 from .helpers import (
     async_get_integration_version,
+    generate_unique_id,
     remove_velop_device_from_registry,
     remove_velop_entity_from_registry,
 )
@@ -136,7 +137,12 @@ async def async_cleanup_device_registry(
         remove_velop_entity_from_registry(
             hass,
             config_entry.entry_id,
-            f"{config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker}",
+            generate_unique_id(
+                config_entry.entry_id,
+                tracker,
+                platform=Platform.DEVICE_TRACKER.value,
+                version=1,
+            ),
         )
 
         # update local connection set based on coordinator data

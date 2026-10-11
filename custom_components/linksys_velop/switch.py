@@ -30,7 +30,7 @@ from .entities import (
     LinksysVelopMultiUseEntity,
     TargetEntityType,
 )
-from .helpers import remove_velop_entity_from_registry
+from .helpers import generate_unique_id, remove_velop_entity_from_registry
 from .logger import Logger
 
 # endregion
@@ -377,6 +377,12 @@ def _remove_stale_entities(
         for entity in entities
         if entity.target_type == EntityType.MESH
     }
+    entities_to_remove = {
+        generate_unique_id(
+            config_entry.entry_id, description, platform=ENTITY_DOMAIN, version=1
+        )
+        for description in stale_mesh_descriptions
+    }
 
     stale_device_descriptions = {
         slugify(str(entity.name))
@@ -385,14 +391,8 @@ def _remove_stale_entities(
         for entity in entities
         if entity.target_type == EntityType.DEVICE
     }
-
-    entities_to_remove = {
-        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{description}"
-        for description in stale_mesh_descriptions
-    }
-
     entities_to_remove.update(
-        f"{ui_device}::{ENTITY_DOMAIN}::{description}"
+        generate_unique_id(ui_device, description, platform=ENTITY_DOMAIN, version=1)
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, [])
         for description in stale_device_descriptions
     )

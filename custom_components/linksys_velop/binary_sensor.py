@@ -34,7 +34,7 @@ from .entities import (
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
 )
-from .helpers import remove_velop_entity_from_registry
+from .helpers import generate_unique_id, remove_velop_entity_from_registry
 from .logger import Logger
 
 # endregion
@@ -506,7 +506,9 @@ def _remove_stale_entities(
 
     entities_to_remove = {
         # Removed in 2024.11.1b4; replaced by a switch.
-        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::upnp",
+        generate_unique_id(
+            config_entry.entry_id, "upnp", platform=ENTITY_DOMAIN, version=1
+        )
     }
 
     # Remove mesh entities that are no longer available.
@@ -517,20 +519,31 @@ def _remove_stale_entities(
         for entity in entities
         if entity.target_type == EntityType.MESH
     }
-
     entities_to_remove.update(
-        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{entity}"
+        generate_unique_id(
+            config_entry.entry_id, entity, platform=ENTITY_DOMAIN, version=1
+        )
         for entity in mesh_entities
     )
 
     if not has_capability(mesh_data.capabilities, CAP_CHANNEL_SCAN):
         entities_to_remove.add(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::channel_scanning"
+            generate_unique_id(
+                config_entry.entry_id,
+                "channel_scanning",
+                platform=ENTITY_DOMAIN,
+                version=1,
+            )
         )
 
     if not hasattr(mesh_data, "speedtest_results"):
         entities_to_remove.add(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::speedtest_status"
+            generate_unique_id(
+                config_entry.entry_id,
+                "speedtest_status",
+                platform=ENTITY_DOMAIN,
+                version=1,
+            )
         )
 
     # Remove device entities that are no longer available.
@@ -541,9 +554,8 @@ def _remove_stale_entities(
         for entity in entities
         if entity.target_type == EntityType.DEVICE
     }
-
     entities_to_remove.update(
-        f"{device_id}::{ENTITY_DOMAIN}::{entity}"
+        generate_unique_id(device_id, entity, platform=ENTITY_DOMAIN, version=1)
         for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
         for entity in device_entities
     )
