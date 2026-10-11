@@ -19,6 +19,30 @@ _LOGGER = logging.getLogger(__name__)
 
 DEF_REDACTED: str = "**REDACTED**"
 
+# Field names in `MeshSnapshot.to_dict()` (and the entities it contains) that identify the
+# network or its devices. The action redactions name fields in the raw JNAP responses, which
+# the snapshot renames, so they are matched by their last segment as well (see below).
+MESH_REDACTIONS: set[str] = {
+    "client_id",
+    "dhcp_reservations",
+    "guest_wifi_details",
+    "hostname",
+    "ip",
+    "ipv6",
+    "mac",
+    "mac_filtering_addresses",
+    "name",
+    "parent",
+    "parent_ip",
+    "parent_ipv6",
+    "parent_name",
+    "reservation_description",
+    "serial",
+    "wan_dns",
+    "wan_ip",
+    "wan_mac",
+}
+
 
 def redact(data: dict[str, Any], to_redact: set[str] | None = None) -> dict[str, Any]:
     """Redact sensitive data in a dict. Dotted paths may traverse dicts and lists."""
@@ -61,6 +85,19 @@ def redact(data: dict[str, Any], to_redact: set[str] | None = None) -> dict[str,
     return ret
 
 
+def redact_keys(obj: Any, keys: set[str]) -> Any:
+    """Redact every dict value whose key is in `keys`, at any depth, in dicts and lists."""
+
+    if isinstance(obj, dict):
+        return {
+            k: DEF_REDACTED if k in keys else redact_keys(v, keys)
+            for k, v in obj.items()
+        }
+    if isinstance(obj, list):
+        return [redact_keys(item, keys) for item in obj]
+    return obj
+
+
 # TODO: tidy this up once `pyvelop` is serialising `MeshSnapshot` properly
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
@@ -80,17 +117,18 @@ async def async_get_config_entry_diagnostics(
         "config_entry.options.password",
         "config_entry.unique_id",
     }
+    ret = redact(ret, to_redact)
+
+    # The snapshot is not keyed by action, so the default and supplementary action
+    # redactions are applied by field name wherever they occur in it.
+    mesh_keys: set[str] = set(MESH_REDACTIONS)
     for action in Actions.values():
-        default_redactions: set[str] = action.redactions
         supplementary_redactions: set[str] = config_entry.options.get(
             CONF_REDACT_OPTIONS, {}
         ).get(action.key, set())
-        redactions: set[str] = default_redactions.union(supplementary_redactions)
-        to_redact.update([f"mesh_details.{action.key}.{r}" for r in redactions])
-
-    ret = redact(
-        ret,
-        to_redact,
-    )
+        for r in action.redactions.union(supplementary_redactions):
+            mesh_keys.add(r.split(".")[-1])
+    if "mesh" in ret:
+        ret["mesh"] = redact_keys(ret["mesh"], mesh_keys)
 
     return ret
