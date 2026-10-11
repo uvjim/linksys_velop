@@ -44,7 +44,7 @@ from .entities import (
     LinksysVelopMultiUseEntity,
     TargetEntityType,
 )
-from .helpers import remove_velop_entity_from_registry
+from .helpers import generate_unique_id, remove_velop_entity_from_registry
 from .logger import Logger
 
 # endregion
@@ -471,7 +471,12 @@ def _remove_stale_entities(
     can_reboot = has_capability(capabilities, CAP_REBOOT)
 
     entities_to_remove = {
-        f"{config_entry.entry_id}::{ENTITY_DOMAIN}::{slugify(str(entity.name))}"
+        generate_unique_id(
+            config_entry.entry_id,
+            slugify(str(entity.name)),
+            platform=ENTITY_DOMAIN,
+            version=1,
+        )
         for cap, entities in ENTITIES.items()
         if not has_capability(capabilities, cap)
         for entity in entities
@@ -479,7 +484,9 @@ def _remove_stale_entities(
     }
 
     entities_to_remove.update(
-        f"{node.unique_id.value}::{ENTITY_DOMAIN}::reboot"
+        generate_unique_id(
+            str(node.unique_id.value), "reboot", platform=ENTITY_DOMAIN, version=1
+        )
         for node in mesh_data.nodes
         if node.type != NodeType.SECONDARY or not can_reboot
     )
@@ -491,7 +498,12 @@ def _remove_stale_entities(
 
     if not allow_mesh_reboot or not can_reboot:
         entities_to_remove.add(
-            f"{config_entry.entry_id}::{ENTITY_DOMAIN}::reboot_the_whole_mesh"
+            generate_unique_id(
+                config_entry.entry_id,
+                "reboot_the_whole_mesh",
+                platform=ENTITY_DOMAIN,
+                version=1,
+            )
         )
 
     for entity_unique_id in entities_to_remove:

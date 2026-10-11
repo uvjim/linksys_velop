@@ -27,7 +27,7 @@ from .entities import (
     LinksysVelopEntityDescription,
     LinksysVelopMultiUseEntity,
 )
-from .helpers import remove_velop_entity_from_registry
+from .helpers import generate_unique_id, remove_velop_entity_from_registry
 from .logger import Logger
 
 # endregion
@@ -214,7 +214,9 @@ def _remove_stale_entities(
         remove_velop_entity_from_registry(
             coordinator.hass,
             config_entry.entry_id,
-            f"{node.unique_id}::{ENTITY_DOMAIN}::update",
+            generate_unique_id(
+                str(node.unique_id.value), "update", platform=ENTITY_DOMAIN, version=1
+            ),
         )
 
 

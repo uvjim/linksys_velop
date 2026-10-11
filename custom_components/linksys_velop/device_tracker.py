@@ -33,6 +33,7 @@ from .entities import (
     LinksysVelopMultiUseEntity,
     TargetEntityType,
 )
+from .helpers import generate_unique_id
 from .logger import Logger
 
 # endregion
@@ -220,10 +221,11 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
     @override
     def unique_id(self) -> str | None:
 
-        return (
-            f"{self.entity_context.unique_id}::"
-            f"{self._entity_domain.lower()}::"
-            f"{self.entity_context.data.get("velop", {}).get("id")}"
+        return generate_unique_id(
+            self.entity_context.unique_id,
+            self.entity_context.data.get("velop", {}).get("id"),
+            platform=self._entity_domain.lower(),
+            version=1,
         )
 
 

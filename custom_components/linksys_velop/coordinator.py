@@ -60,7 +60,7 @@ from .exceptions import (
     CoordinatorTimeout,
     GeneralException,
 )
-from .helpers import get_mesh_parent_node, get_registry_device
+from .helpers import generate_unique_id, get_mesh_parent_node, get_registry_device
 from .logger import Logger
 
 # endregion
@@ -370,8 +370,11 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         for tracker_id in missing_ids:
             # construct the unique ID for the tracker entity
-            unique_id = (
-                f"{self.config_entry.entry_id}::{Platform.DEVICE_TRACKER}::{tracker_id}"
+            unique_id = generate_unique_id(
+                self.config_entry.entry_id,
+                tracker_id,
+                platform=Platform.DEVICE_TRACKER.value,
+                version=1,
             )
             entity = next(
                 (e for e in config_entities if e.unique_id == unique_id), None

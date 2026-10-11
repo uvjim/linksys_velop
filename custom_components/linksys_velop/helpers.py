@@ -2,6 +2,7 @@
 
 # region #-- imports --#
 import logging
+from typing import Literal, overload
 
 from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
@@ -21,6 +22,55 @@ from .logger import Logger
 
 
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
+
+
+@overload
+def generate_unique_id(
+    prefix: str,
+    suffix: str,
+    version: Literal[1],
+    *,
+    platform: str,
+) -> str: ...
+
+
+@overload
+def generate_unique_id(
+    prefix: str,
+    suffix: str,
+    version: int,
+    *,
+    platform: str | None = None,
+) -> str: ...
+
+
+def generate_unique_id(
+    prefix: str,
+    suffix: str,
+    version: int,
+    *,
+    platform: str | None = None,
+) -> str:
+    """Generate the unique ID for an entity using the given information.
+
+    :param prefix: The prefix to use for the unique ID.
+    :param suffix: The suffix to use for the unique ID.
+    :param platform: Platform of the entity to create the unique ID for. Ignored for anything other than v1.
+    :param version: Version of the unique ID to create.
+    :returns: A string containing the unique ID.
+    :raises ValueError: when an error is encountered.
+    """
+
+    if version == 1 and platform is None:
+        raise ValueError("platform is mandatory when version is 1")
+
+    if version == 1:
+        return f"{prefix}::{platform}::{suffix}"
+
+    if version == 2:
+        return f"{prefix}-{suffix}"
+
+    raise ValueError(f"Unsupported version: {version}. Supported versions are 1 or 2")
 
 
 def get_mesh_parent_node(node: NodeEntity, mesh: MeshSnapshot) -> NodeEntity | None:
