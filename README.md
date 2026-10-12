@@ -164,8 +164,8 @@ Available events are: -
 | Mesh | DHCP Reservations | ✖️ | Count of DHCP reservations | List of DHCP reservations | |
 | Mesh | Filtered MAC Addresses | ✖️ | Count of addresses on the filter list | List of the MAC addresses being filtered | |
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
-| Mesh | Online Devices | ✔️ | Count of online devices | List of online device names, unique ID, IP, IPv6, connection type, parent name and if they're on the guest network | |
-| Mesh | Guest Devices | ✔️ | Count of guest devices | List of guest devices | List of online device names, unique ID, IP, connection type |
+| Mesh | Online Devices | ✔️ | Count of online devices | List of online devices with the following details name, internal ID on the mesh, guest network, IPv4 address, IPv6 address, MAC, negotiated speed, connection type, Wi-Fi band, RSSI, timestamp for RSSI reading, signal strength, parent name | |
+| Mesh | Guest Devices | ✔️ | Count of guest devices | List of guest devices | List of online devices with the following details name, internal ID on the mesh, guest network, IPv4 address, IPv6 address, MAC, negotiated speed, connection type, Wi-Fi band, RSSI, timestamp for RSSI reading, signal strength, parent name |
 | Mesh | MAC Filtering Mode | ✖️ | Current mode of the MAC filtering functionality | | |
 | Mesh | Speedtest Download Bandwidth | ✖️ | | | |
 | Mesh | Speedtest Last Run | ✖️ | Timestamp when a Speedtest was last executed | | |
@@ -179,7 +179,7 @@ Available events are: -
 | Node | Backhaul Signal Strength | ✔️ | RSSI value | | only available if using a wirless backhaul and is a secondary node |
 | Node | Backhaul Speed | ✔️ | | | only available if a secondary node |
 | Node | Backhaul Type | ✔️ | Wired/Wireless | | only available if a secondary node |
-| Node | Connected Devices | ✔️ | Count of connected devices | List of connected device names, unique ID, IP, connection type and if they're on the guest network | |
+| Node | Connected Devices | ✔️ | Count of connected devices | List of online devices with the following details name, internal ID on the mesh, guest network, IPv4 address, IPv6 address, MAC, negotiated speed, connection type, Wi-Fi band, RSSI, timestamp for RSSI reading, signal strength, parent name | |
 | Node | Last Update Check | ✖️ | Timestamp when the last check for a firmmware update was made | | |
 | Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Entity Options](#entity-options) |
 | Node | Parent Name | ✔️ | | IP address of the parent | only available if a secondary node |
