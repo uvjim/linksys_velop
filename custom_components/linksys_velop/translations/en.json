@@ -383,6 +383,9 @@
             "mac": {
                 "name": "MAC"
             },
+            "mac_filtering_addresses": {
+                "name": "Filtered MAC addresses"
+            },
             "mac_filtering_mode": {
                 "name": "MAC Filtering Mode",
                 "state": {

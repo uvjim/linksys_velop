@@ -481,6 +481,28 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     ),
                 ),
             ),
+            "mac_filtering_addresses": (
+                LinksysVelopSensorEntityDescription(
+                    entity_registry_enabled_default=False,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    esa_fn=lambda m: (
+                        {"addresses": m.mac_filtering_addresses.value}
+                        if isinstance(m, MeshSnapshot)
+                        and m.mac_filtering_addresses.value
+                        else {}
+                    ),
+                    key="mac_filtering_addresses",
+                    name="Filtered MAC Addresses",
+                    target_type=EntityType.MESH,
+                    translation_key="mac_filtering_addresses",
+                    value_fn=lambda _, m: (
+                        len(m.mac_filtering_addresses.value)
+                        if isinstance(m, MeshSnapshot)
+                        and m.mac_filtering_addresses.value
+                        else None
+                    ),
+                ),
+            ),
             "mac_filtering_mode": (
                 LinksysVelopSensorEntityDescription(
                     device_class=SensorDeviceClass.ENUM,

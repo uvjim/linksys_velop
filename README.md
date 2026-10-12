@@ -161,6 +161,7 @@ Available events are: -
 | Device | Signal strength | ✔️ | RSSI value | | |
 | Mesh | Available Storage | ✖️ | Count of partitions available | List of the available partitions including: IP, label, available Kb, used Kb, used %age and last checked time | |
 | Mesh | DHCP Reservations | ✖️ | Count of DHCP reservations | List of DHCP reservations | |
+| Mesh | Filtered MAC Addresses | ✖️ | Count of addresses on the filter list | List of the MAC addresses being filtered | |
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
 | Mesh | Online Devices | ✔️ | Count of online devices | List of online device names, unique ID, IP, IPv6, connection type, parent name and if they're on the guest network | |
 | Mesh | Guest Devices | ✔️ | Count of guest devices | List of guest devices | List of online device names, unique ID, IP, connection type |
