@@ -220,6 +220,7 @@ def _remove_stale_entities(
             coordinator.hass,
             coordinator.config_entry.entry_id,
             entity_unique_id,
+            ENTITY_DOMAIN,
         )
 
 

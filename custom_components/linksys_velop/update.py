@@ -215,6 +215,7 @@ def _remove_stale_entities(
             coordinator.hass,
             config_entry.entry_id,
             generate_unique_id(node.unique_id.value, "update"),
+            ENTITY_DOMAIN,
         )
 
 

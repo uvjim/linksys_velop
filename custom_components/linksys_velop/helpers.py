@@ -4,6 +4,7 @@
 import logging
 
 from awesomeversion import AwesomeVersion
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.core import __version__ as HA_VERSION
 from homeassistant.helpers import device_registry as dr
@@ -130,7 +131,7 @@ def remove_velop_device_from_registry(
 
 
 def remove_velop_entity_from_registry(
-    hass: HomeAssistant, config_entry_id: str, unique_id: str
+    hass: HomeAssistant, config_entry_id: str, unique_id: str, platform: str | Platform
 ) -> None:
     """Remove an entity from the registry."""
 
@@ -138,12 +139,16 @@ def remove_velop_entity_from_registry(
     config_entities: list[RegistryEntry] = er.async_entries_for_config_entry(
         entity_registry, config_entry_id
     )
-    found_entity: RegistryEntry | None = None
-    if (
-        found_entity := next(
-            (e for e in config_entities if e.unique_id == unique_id), None
-        )
-    ) is not None:
+    found_entity = next((e for e in config_entities if e.unique_id == unique_id), None)
+    if found_entity:
+        if found_entity.domain != str(platform):
+            _LOGGER.debug(
+                "entity found but platforms do not match, requested: %s, found: %s, skipping",
+                platform,
+                found_entity.domain,
+            )
+            return
+
         _LOGGER.debug("removing %s", found_entity.entity_id)
         entity_registry.async_remove(found_entity.entity_id)
 

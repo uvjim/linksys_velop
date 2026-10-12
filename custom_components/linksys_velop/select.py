@@ -479,9 +479,7 @@ def _remove_stale_entities(
 
     for entity_unique_id in entities_to_remove:
         remove_velop_entity_from_registry(
-            hass,
-            config_entry.entry_id,
-            entity_unique_id,
+            hass, config_entry.entry_id, entity_unique_id, ENTITY_DOMAIN
         )
 
 
