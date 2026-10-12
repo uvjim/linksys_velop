@@ -165,6 +165,7 @@ Available events are: -
 | Mesh | Offline Devices | ✔️ | Count of offline devices | List of offline device names and unique ID | |
 | Mesh | Online Devices | ✔️ | Count of online devices | List of online device names, unique ID, IP, IPv6, connection type, parent name and if they're on the guest network | |
 | Mesh | Guest Devices | ✔️ | Count of guest devices | List of guest devices | List of online device names, unique ID, IP, connection type |
+| Mesh | MAC Filtering Mode | ✖️ | Current mode of the MAC filtering functionality | | |
 | Mesh | Speedtest Download Bandwidth | ✖️ | | | |
 | Mesh | Speedtest Last Run | ✖️ | Timestamp when a Speedtest was last executed | | |
 | Mesh | Speedtest Latency | ✖️ | | | |

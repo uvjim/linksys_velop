@@ -386,6 +386,14 @@
             "mac": {
                 "name": "MAC"
             },
+            "mac_filtering_mode": {
+                "name": "MAC Filtering Mode",
+                "state": {
+                    "allow": "Allow addresses",
+                    "deny": "Deny addresses",
+                    "disabled": "Disabled"
+                }
+            },
             "manufacturer": {
                 "name": "Manufacturer"
             },
