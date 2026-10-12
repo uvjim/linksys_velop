@@ -166,26 +166,6 @@ ENTITIES: Mapping[str, tuple[LinksysVelopBinarySensorEntityDescription, ...]] = 
                     translation_key="homekit_paired",
                 ),
             ),
-            "mac_filtering_enabled": (
-                LinksysVelopBinarySensorEntityDescription(
-                    entity_category=EntityCategory.DIAGNOSTIC,
-                    entity_registry_enabled_default=False,
-                    esa_fn=lambda mesh: (
-                        {
-                            "mode": str(cast(MeshSnapshot, mesh).mac_filtering_mode),
-                            "addresses": cast(
-                                MeshSnapshot, mesh
-                            ).mac_filtering_addresses.value,
-                        }
-                        if mesh is not None
-                        else None
-                    ),
-                    key="mac_filtering_enabled",
-                    name="MAC Filtering",
-                    translation_key="mac_filtering",
-                    target_type=EntityType.MESH,
-                ),
-            ),
             "mlo_state": (
                 LinksysVelopBinarySensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
@@ -505,7 +485,9 @@ def _remove_stale_entities(
 
     entities_to_remove = {
         # Removed in 2024.11.1b4; replaced by a switch.
-        generate_unique_id(config_entry.entry_id, "upnp")
+        generate_unique_id(config_entry.entry_id, "upnp"),
+        # Removed in 2026.10.1b5 ; replaced by a sensor denoting the mode.
+        generate_unique_id(config_entry.entry_id, "mac_filtering"),
     }
 
     # Remove mesh entities that are no longer available.
