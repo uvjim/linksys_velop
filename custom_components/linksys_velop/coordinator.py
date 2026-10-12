@@ -15,7 +15,6 @@ from enum import StrEnum, auto
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
@@ -370,12 +369,7 @@ class LinksysVelopDataUpdateCoordinatorMultiUse(LinksysVelopDataUpdateCoordinato
 
         for tracker_id in missing_ids:
             # construct the unique ID for the tracker entity
-            unique_id = generate_unique_id(
-                self.config_entry.entry_id,
-                tracker_id,
-                platform=Platform.DEVICE_TRACKER.value,
-                version=1,
-            )
+            unique_id = generate_unique_id(self.config_entry.entry_id, tracker_id)
             entity = next(
                 (e for e in config_entities if e.unique_id == unique_id), None
             )

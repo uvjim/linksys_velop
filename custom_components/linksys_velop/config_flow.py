@@ -536,7 +536,7 @@ async def _async_get_devices(mesh: Mesh) -> dict[str, str]:
 class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the initial installation ConfigFlow."""
 
-    VERSION = 2
+    VERSION = 3
 
     reauth_entry: LinksysVelopConfigEntry | None = None
 

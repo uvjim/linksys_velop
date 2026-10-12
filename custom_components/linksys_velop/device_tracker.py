@@ -224,8 +224,6 @@ class LinksysVelopDeviceTrackerMultiUseEntity(
         return generate_unique_id(
             self.entity_context.unique_id,
             self.entity_context.data.get("velop", {}).get("id"),
-            platform=self._entity_domain.lower(),
-            version=1,
         )
 
 

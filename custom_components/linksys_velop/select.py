@@ -14,7 +14,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.translation import async_translate_state
-from homeassistant.util import slugify
+from homeassistant.helpers.typing import UndefinedType
 from pyvelop.mesh import MeshSnapshot, ScheduledRebootInterval
 from pyvelop.mesh_entity import EMPTY_NAME, AdapterInfo, DeviceEntity, UiType
 
@@ -465,16 +465,15 @@ def _remove_stale_entities(
     entities_to_remove: set[str] = set()
 
     # region #-- add mesh entities if they no longer exist --#
-    mesh_entities: tuple[str, ...] = tuple(
-        attr if len(entities) == 1 else slugify(str(entity.name))
+    mesh_entities: tuple[str | UndefinedType | None, ...] = tuple(
+        attr if len(entities) == 1 else entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(mesh_data, attr)
         for entity in entities
         if entity.target_type == EntityType.MESH
     )
     entities_to_remove.update(
-        generate_unique_id(config_entry.entry_id, me, platform=ENTITY_DOMAIN, version=1)
-        for me in mesh_entities
+        generate_unique_id(config_entry.entry_id, me) for me in mesh_entities
     )
     # endregion
 

@@ -12,7 +12,6 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
-from homeassistant.util import slugify
 from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
@@ -89,10 +88,7 @@ class LinksysVelopMultiUseEntity(
             self.entity_description = description
 
         self._attr_unique_id = generate_unique_id(
-            self.entity_context.unique_id,
-            slugify(str(self.entity_description.name)),
-            platform=self._entity_domain.lower(),
-            version=1,
+            self.entity_context.unique_id, self.entity_description.name
         )
 
         self._attr_device_info = self._build_device_info()

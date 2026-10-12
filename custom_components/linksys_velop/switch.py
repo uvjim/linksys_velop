@@ -12,7 +12,6 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 from pyvelop.mesh import Mesh, MeshSnapshot
 from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import DeviceEntity, ParentalControl, Weekdays
@@ -371,28 +370,26 @@ def _remove_stale_entities(
         return
 
     stale_mesh_descriptions = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(mesh_data, attr)
         for entity in entities
         if entity.target_type == EntityType.MESH
     }
     entities_to_remove = {
-        generate_unique_id(
-            config_entry.entry_id, description, platform=ENTITY_DOMAIN, version=1
-        )
+        generate_unique_id(config_entry.entry_id, description)
         for description in stale_mesh_descriptions
     }
 
     stale_device_descriptions = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(DeviceEntity, attr)
         for entity in entities
         if entity.target_type == EntityType.DEVICE
     }
     entities_to_remove.update(
-        generate_unique_id(ui_device, description, platform=ENTITY_DOMAIN, version=1)
+        generate_unique_id(ui_device, description)
         for ui_device in config_entry.options.get(CONF_UI_DEVICES, [])
         for description in stale_device_descriptions
     )
