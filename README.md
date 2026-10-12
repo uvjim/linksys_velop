@@ -83,6 +83,7 @@ then the entities detailing storage partitions etc. will not be available.
 | Mesh | DHCP Server | ✖️ | | |
 | Mesh | Express Forwarding | ✖️ | | |
 | Mesh | HomeKit Integration Paired | ✖️ | | |
+| Mesh | Multi-Link Operation (MLO) | ✖️ | | |
 | Mesh | Node Steering | ✖️ | | |
 | Mesh | SIP | ✖️ | | |
 | Mesh | Speedtest Status | ✖️ | | |
