@@ -22,6 +22,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from pyvelop.mesh import (
+    MacFilteringMode,
     MeshSnapshot,
     SpeedtestExitCode,
     SpeedtestResult,
@@ -476,6 +477,23 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                         node.last_update_check.value
                         if isinstance(node, NodeEntity)
                         and node.last_update_check.value is not None
+                        else None
+                    ),
+                ),
+            ),
+            "mac_filtering_mode": (
+                LinksysVelopSensorEntityDescription(
+                    device_class=SensorDeviceClass.ENUM,
+                    entity_registry_enabled_default=False,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    key="mac_filtering_mode",
+                    name="MAC Filtering Mode",
+                    options=[mac_mode.value.lower() for mac_mode in MacFilteringMode],
+                    target_type=EntityType.MESH,
+                    translation_key="mac_filtering_mode",
+                    value_fn=lambda _, m: (
+                        m.mac_filtering_mode.value.lower()
+                        if isinstance(m, MeshSnapshot) and m.mac_filtering_mode.value
                         else None
                     ),
                 ),
