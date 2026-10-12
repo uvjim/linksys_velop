@@ -214,9 +214,7 @@ def _remove_stale_entities(
         remove_velop_entity_from_registry(
             coordinator.hass,
             config_entry.entry_id,
-            generate_unique_id(
-                str(node.unique_id.value), "update", platform=ENTITY_DOMAIN, version=1
-            ),
+            generate_unique_id(node.unique_id.value, "update"),
         )
 
 

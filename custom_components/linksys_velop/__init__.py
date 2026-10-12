@@ -11,6 +11,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, Platform
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.typing import ConfigType
@@ -63,10 +64,23 @@ _PLATFORMS: tuple[Platform, ...] = (
 )
 
 
+def _convert_entity_unique_id(entity: er.RegistryEntry) -> dict[str, Any]:
+    """Determine the new unique ID for the given entity."""
+
+    old_sep: str = "::"
+    if old_sep in entity.unique_id:
+        old_id_parts: list[str] = entity.unique_id.split(old_sep)
+        if len(old_id_parts) > 1:
+            new_unique_id: str = generate_unique_id(old_id_parts[0], old_id_parts[-1])
+            return {"new_unique_id": new_unique_id}
+
+    return {}
+
+
 def _create_coordinator(
     hass: HomeAssistant, entry: LinksysVelopConfigEntry, api: Mesh
 ) -> LinksysVelopDataUpdateCoordinatorMultiUse:
-    """Factory to create the DataUpdateCoordinator.
+    """Create the DataUpdateCoordinator.
 
     :param hass: The Home Assistant core instance.
     :param entry: The config entry containing polling intervals.
@@ -94,7 +108,7 @@ def _create_coordinator(
 def _create_mesh_api(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> Mesh:
-    """Factory to create the Mesh API instance.
+    """Create the Mesh API instance.
 
     :param hass: The Home Assistant core instance.
     :param config_entry: The config entry containing API credentials and options.
@@ -114,7 +128,7 @@ def _create_mesh_api(
 async def async_cleanup_device_registry(
     hass: HomeAssistant, config_entry: LinksysVelopConfigEntry
 ) -> dict[str, Any]:
-    """Handles removal of unwanted devices and trackers from the registry.
+    """Handle removal of unwanted devices and trackers from the registry.
 
     :param hass: The Home Assistant core instance.
     :param config_entry: The config entry containing the list of devices/trackers to remove.
@@ -137,12 +151,7 @@ async def async_cleanup_device_registry(
         remove_velop_entity_from_registry(
             hass,
             config_entry.entry_id,
-            generate_unique_id(
-                config_entry.entry_id,
-                tracker,
-                platform=Platform.DEVICE_TRACKER.value,
-                version=1,
-            ),
+            generate_unique_id(config_entry.entry_id, tracker),
         )
 
         # update local connection set based on coordinator data
@@ -213,7 +222,7 @@ async def async_migrate_entry(
     ret: bool = False
 
     if config_entry.version == 1:
-        # region #-- migrate the ui device id --#
+        # migrate the ui device id
         ## v1 only set this in the ui_devices, however, this causes issues with multiple instances.
         ## if the placeholder device is already in use, ensure it exists in the data so the ConfigEntry
         ## can pick it up.
@@ -226,31 +235,41 @@ async def async_migrate_entry(
         ):
             new_data[CONF_UI_PLACEHOLDER_DEVICE_ID] = str(uuid.UUID(int=0))
 
-        # endregion
-
-        # region #-- migrate the ui devices/trackers that should be removed --#
+        # migrate the ui devices/trackers that should be removed
         new_data[CONF_DEVICE_TRACKERS_TO_REMOVE] = new_options.pop(
             CONF_DEVICE_TRACKERS_TO_REMOVE, []
         )
         new_data[CONF_UI_DEVICES_TO_REMOVE] = new_options.pop(
             CONF_UI_DEVICES_TO_REMOVE, []
         )
-        # endregion
 
-        # region #-- remove old options --#
+        # remove old options
         new_options.pop("logging_jnap_response", None)
         new_options.pop("logging_serial", None)
         new_options.pop("logging_mode", None)
         new_options.pop("logging_options", None)
         new_options.pop("ui_devices_missing", None)
         new_options.pop("tracked_missing", None)
-        # endregion
 
+        # update config_entry version
         ret = hass.config_entries.async_update_entry(
             config_entry,
             data=new_data,
             options=new_options,
             version=2,
+        )
+
+    if config_entry.version == 2:
+        # migrate the unique_id property for all entities
+        await er.async_migrate_entries(
+            hass, config_entry.entry_id, _convert_entity_unique_id
+        )
+
+        ret = hass.config_entries.async_update_entry(
+            config_entry,
+            data=new_data,
+            options=new_options,
+            version=3,
         )
 
     _LOGGER.debug(

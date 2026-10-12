@@ -16,7 +16,6 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_attribute import MeshAttribute
 from pyvelop.mesh_entity import AdapterInfo, DeviceEntity, NodeAdapterInfo, NodeEntity
@@ -506,56 +505,41 @@ def _remove_stale_entities(
 
     entities_to_remove = {
         # Removed in 2024.11.1b4; replaced by a switch.
-        generate_unique_id(
-            config_entry.entry_id, "upnp", platform=ENTITY_DOMAIN, version=1
-        )
+        generate_unique_id(config_entry.entry_id, "upnp")
     }
 
     # Remove mesh entities that are no longer available.
     mesh_entities = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(mesh_data, attr)
         for entity in entities
         if entity.target_type == EntityType.MESH
     }
     entities_to_remove.update(
-        generate_unique_id(
-            config_entry.entry_id, entity, platform=ENTITY_DOMAIN, version=1
-        )
-        for entity in mesh_entities
+        generate_unique_id(config_entry.entry_id, entity) for entity in mesh_entities
     )
 
     if not has_capability(mesh_data.capabilities, CAP_CHANNEL_SCAN):
         entities_to_remove.add(
-            generate_unique_id(
-                config_entry.entry_id,
-                "channel_scanning",
-                platform=ENTITY_DOMAIN,
-                version=1,
-            )
+            generate_unique_id(config_entry.entry_id, "channel_scanning")
         )
 
     if not hasattr(mesh_data, "speedtest_results"):
         entities_to_remove.add(
-            generate_unique_id(
-                config_entry.entry_id,
-                "speedtest_status",
-                platform=ENTITY_DOMAIN,
-                version=1,
-            )
+            generate_unique_id(config_entry.entry_id, "speedtest_status")
         )
 
     # Remove device entities that are no longer available.
     device_entities = {
-        attr if len(entities) == 1 else slugify(str(entity.name))
+        attr if len(entities) == 1 else entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(DeviceEntity, attr)
         for entity in entities
         if entity.target_type == EntityType.DEVICE
     }
     entities_to_remove.update(
-        generate_unique_id(device_id, entity, platform=ENTITY_DOMAIN, version=1)
+        generate_unique_id(device_id, entity)
         for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
         for entity in device_entities
     )

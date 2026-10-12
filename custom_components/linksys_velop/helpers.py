@@ -2,7 +2,6 @@
 
 # region #-- imports --#
 import logging
-from typing import Literal, overload
 
 from awesomeversion import AwesomeVersion
 from homeassistant.core import HomeAssistant
@@ -11,7 +10,9 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
 from homeassistant.helpers.entity_registry import EntityRegistry, RegistryEntry
+from homeassistant.helpers.typing import UNDEFINED, UndefinedType
 from homeassistant.loader import Integration, async_get_integration
+from homeassistant.util import slugify
 from pyvelop.mesh import MeshSnapshot
 from pyvelop.mesh_entity import AdapterInfo, NodeEntity
 
@@ -24,53 +25,26 @@ from .logger import Logger
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
 
 
-@overload
 def generate_unique_id(
-    prefix: str,
-    suffix: str,
-    version: Literal[1],
-    *,
-    platform: str,
-) -> str: ...
-
-
-@overload
-def generate_unique_id(
-    prefix: str,
-    suffix: str,
-    version: int,
-    *,
-    platform: str | None = None,
-) -> str: ...
-
-
-def generate_unique_id(
-    prefix: str,
-    suffix: str,
-    version: int,
-    *,
-    platform: str | None = None,
+    prefix: str | None,
+    suffix: str | UndefinedType | None,
+    separator: str = "-",
 ) -> str:
     """Generate the unique ID for an entity using the given information.
 
     :param prefix: The prefix to use for the unique ID.
     :param suffix: The suffix to use for the unique ID.
-    :param platform: Platform of the entity to create the unique ID for. Ignored for anything other than v1.
-    :param version: Version of the unique ID to create.
+    :param separator: The separator that should be used between unique_id parts.
     :returns: A string containing the unique ID.
-    :raises ValueError: when an error is encountered.
     """
 
-    if version == 1 and platform is None:
-        raise ValueError("platform is mandatory when version is 1")
+    if not prefix or not suffix and UNDEFINED not in (prefix, suffix):
+        raise ValueError("Both prefix and suffix should be provided.")
 
-    if version == 1:
-        return f"{prefix}::{platform}::{suffix}"
+    prefix_slug = slugify(prefix, separator=separator)
+    suffix_slug = slugify(str(suffix), separator=separator)
 
-    if version == 2:
-        return f"{prefix}-{suffix}"
-
-    raise ValueError(f"Unsupported version: {version}. Supported versions are 1 or 2")
+    return f"{prefix_slug}{separator}{suffix_slug}"
 
 
 def get_mesh_parent_node(node: NodeEntity, mesh: MeshSnapshot) -> NodeEntity | None:

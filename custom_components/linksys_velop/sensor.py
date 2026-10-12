@@ -21,7 +21,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.util import slugify
 from pyvelop.mesh import (
     MeshSnapshot,
     SpeedtestExitCode,
@@ -1020,45 +1019,40 @@ def _remove_stale_entities(
 
     # remove stale mesh entities.
     mesh_entities = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(mesh_data, attr)
         for entity in entities
         if entity.target_type == EntityType.MESH
     }
     entities_to_remove.update(
-        generate_unique_id(
-            config_entry.entry_id, entity, platform=ENTITY_DOMAIN, version=1
-        )
-        for entity in mesh_entities
+        generate_unique_id(config_entry.entry_id, entity) for entity in mesh_entities
     )
 
     # remove stale device entities.
     device_entities = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(DeviceEntity, attr)
         for entity in entities
         if entity.target_type == EntityType.DEVICE
     }
     entities_to_remove.update(
-        generate_unique_id(device_id, entity, platform=ENTITY_DOMAIN, version=1)
+        generate_unique_id(device_id, entity)
         for device_id in config_entry.options.get(CONF_UI_DEVICES, [])
         for entity in device_entities
     )
 
     # remove stale node entities.
     node_entities = {
-        slugify(str(entity.name))
+        entity.name
         for attr, entities in ENTITIES.items()
         if not hasattr(NodeEntity, attr)
         for entity in entities
         if entity.target_type == EntityType.NODE
     }
     entities_to_remove.update(
-        generate_unique_id(
-            str(node.unique_id.value), entity, platform=ENTITY_DOMAIN, version=1
-        )
+        generate_unique_id(str(node.unique_id.value), entity)
         for node in mesh_data.nodes
         for entity in node_entities
     )
@@ -1080,12 +1074,12 @@ def _remove_stale_entities(
                 ),
             }
             entities_to_remove.update(
-                generate_unique_id(node_id, suffix, platform=ENTITY_DOMAIN, version=1)
+                generate_unique_id(node_id, suffix)
                 for suffix in remove_backhaul_entity_suffix.get("common", ())
             )
             if node.type == NodeType.SECONDARY:
                 entities_to_remove.update(
-                    generate_unique_id(node_id, suffix, platform=ENTITY_DOMAIN, version=1)
+                    generate_unique_id(node_id, suffix)
                     for suffix in remove_backhaul_entity_suffix.get("secondary", ())
                 )
 

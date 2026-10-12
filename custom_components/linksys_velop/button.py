@@ -17,7 +17,6 @@ from homeassistant.components.button import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 from pyvelop.mesh import SpeedtestResult
 from pyvelop.mesh_entity import DeviceEntity, NodeEntity, NodeType
 
@@ -471,12 +470,7 @@ def _remove_stale_entities(
     can_reboot = has_capability(capabilities, CAP_REBOOT)
 
     entities_to_remove = {
-        generate_unique_id(
-            config_entry.entry_id,
-            slugify(str(entity.name)),
-            platform=ENTITY_DOMAIN,
-            version=1,
-        )
+        generate_unique_id(config_entry.entry_id, entity.name)
         for cap, entities in ENTITIES.items()
         if not has_capability(capabilities, cap)
         for entity in entities
@@ -484,9 +478,7 @@ def _remove_stale_entities(
     }
 
     entities_to_remove.update(
-        generate_unique_id(
-            str(node.unique_id.value), "reboot", platform=ENTITY_DOMAIN, version=1
-        )
+        generate_unique_id(node.unique_id.value, "reboot")
         for node in mesh_data.nodes
         if node.type != NodeType.SECONDARY or not can_reboot
     )
@@ -498,12 +490,7 @@ def _remove_stale_entities(
 
     if not allow_mesh_reboot or not can_reboot:
         entities_to_remove.add(
-            generate_unique_id(
-                config_entry.entry_id,
-                "reboot_the_whole_mesh",
-                platform=ENTITY_DOMAIN,
-                version=1,
-            )
+            generate_unique_id(config_entry.entry_id, "reboot_the_whole_mesh")
         )
 
     for entity_unique_id in entities_to_remove:
