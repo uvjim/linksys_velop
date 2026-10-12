@@ -152,6 +152,7 @@ async def async_cleanup_device_registry(
             hass,
             config_entry.entry_id,
             generate_unique_id(config_entry.entry_id, tracker),
+            Platform.DEVICE_TRACKER,
         )
 
         # update local connection set based on coordinator data
