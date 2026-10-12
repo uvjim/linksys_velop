@@ -99,8 +99,8 @@ then the entities detailing storage partitions etc. will not be available.
 | Device | Delete | ✔️ | |
 | Mesh | Check for Updates | ✔️ | |
 | Mesh | Reboot the Whole Mesh | ✖️ | See [Entity Options](#entity-options) |
-| Mesh | Start Channel Scan | ✖️ | Adjusts the interval for channel scanning data collection to 40s |
-| Mesh | Start Speedtest | ✖️ | Adjusts the interval for speedtest data collection to 1s |
+| Mesh | Start Channel Scan | ✖️ | |
+| Mesh | Start Speedtest | ✖️ | |
 | Node | Reboot | ✔️ | |
 
 >
