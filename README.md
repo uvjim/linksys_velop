@@ -83,7 +83,6 @@ then the entities detailing storage partitions etc. will not be available.
 | Mesh | DHCP Server | ✖️ | | |
 | Mesh | Express Forwarding | ✖️ | | |
 | Mesh | HomeKit Integration Paired | ✖️ | | |
-| Mesh | MAC Filtering | ✖️ | The mode and list of MAC addresses being filtered | |
 | Mesh | Node Steering | ✖️ | | |
 | Mesh | SIP | ✖️ | | |
 | Mesh | Speedtest Status | ✖️ | | |
