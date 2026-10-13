@@ -1,6 +1,7 @@
 """Sensor entities for Linksys Velop."""
 
 # region #-- imports --#
+import copy
 import datetime as dt
 import logging
 from collections.abc import Callable, Mapping
@@ -33,6 +34,8 @@ from pyvelop.mesh_entity import (
     AdapterInfo,
     ConnectionType,
     DeviceEntity,
+    EthernetPortConnection,
+    EthernetPortType,
     NodeAdapterInfo,
     NodeEntity,
     NodeType,
@@ -66,7 +69,7 @@ class LinksysVelopSensorEntityDescription(
 ):
     """Describes Velop sensor entity."""
 
-    esa_fn: Callable[..., dict[str, Any]] | None = None
+    esa_fn: Callable[[TargetEntityType], dict[str, Any]] | None = None
     pic_fn: (
         Callable[
             [LinksysVelopDataUpdateCoordinatorMultiUse, TargetEntityType], str | None
@@ -180,6 +183,30 @@ def get_device_adapter_info(device: DeviceEntity, key: str) -> Any:
     return ret
 
 
+def _get_ethernet_port_connection(
+    target: TargetEntityType, port_index: int, port_type: EthernetPortType
+) -> EthernetPortConnection | None:
+    """Get the details about the ethernet port with the specified details.
+
+    :param target: `NodeEntity` that should be queried for the port details.
+    :param port_index: Index number of the port.
+    :param port_type: Port type.
+    :returns: `EthernetPortConnection` object if the port was found, `None` otherwise.
+    """
+
+    if isinstance(target, NodeEntity) and target.ethernet_port_info.value:
+        return next(
+            (
+                e
+                for e in target.ethernet_port_info.value
+                if e.kind == port_type and e.index == port_index
+            ),
+            None,
+        )
+
+    return None
+
+
 def get_node_backhaul_info(node: NodeEntity, key: str) -> Any:
     """Get the given backhaul property."""
 
@@ -284,10 +311,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SignalStrength],
                     target_type=EntityType.DEVICE,
                     translation_key="friendly_signal_strength",
-                    value_fn=lambda _, device: (
-                        str(get_device_adapter_info(device, "signal_strength")).lower()
-                        if isinstance(device, DeviceEntity)
-                        and get_device_adapter_info(device, "signal_strength")
+                    value_fn=lambda coordinator, target: (
+                        str(get_device_adapter_info(target, "signal_strength")).lower()
+                        if isinstance(target, DeviceEntity)
+                        and get_device_adapter_info(target, "signal_strength")
                         is not None
                         else None
                     ),
@@ -298,9 +325,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="IP",
                     target_type=EntityType.DEVICE,
                     translation_key="ip",
-                    value_fn=lambda _, device: (
-                        get_device_adapter_info(device, "ip")
-                        if isinstance(device, DeviceEntity)
+                    value_fn=lambda coordinator, target: (
+                        get_device_adapter_info(target, "ip")
+                        if isinstance(target, DeviceEntity)
                         else None
                     ),
                 ),
@@ -310,9 +337,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="IPv6",
                     target_type=EntityType.DEVICE,
                     translation_key="ipv6",
-                    value_fn=lambda _, device: (
-                        get_device_adapter_info(device, "ipv6")
-                        if isinstance(device, DeviceEntity)
+                    value_fn=lambda coordinator, target: (
+                        get_device_adapter_info(target, "ipv6")
+                        if isinstance(target, DeviceEntity)
                         else None
                     ),
                 ),
@@ -322,9 +349,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="MAC",
                     target_type=EntityType.DEVICE,
                     translation_key="mac",
-                    value_fn=lambda _, device: (
-                        get_device_adapter_info(device, "mac")
-                        if isinstance(device, DeviceEntity)
+                    value_fn=lambda coordinator, target: (
+                        get_device_adapter_info(target, "mac")
+                        if isinstance(target, DeviceEntity)
                         else None
                     ),
                 ),
@@ -336,9 +363,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                     target_type=EntityType.DEVICE,
                     translation_key="signal_strength",
-                    value_fn=lambda _, device: (
-                        get_device_adapter_info(device, "rssi_dbm")
-                        if isinstance(device, DeviceEntity)
+                    value_fn=lambda coordinator, target: (
+                        get_device_adapter_info(target, "rssi_dbm")
+                        if isinstance(target, DeviceEntity)
                         else None
                     ),
                 ),
@@ -346,9 +373,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
             "connected_devices": (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda node: (
-                        {"devices": get_node_devices(node)}
-                        if isinstance(node, NodeEntity) and len(node.connected_devices)
+                    esa_fn=lambda target: (
+                        {"devices": get_node_devices(target)}
+                        if isinstance(target, NodeEntity)
+                        and len(target.connected_devices)
                         else {}
                     ),
                     key="",
@@ -356,9 +384,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.NODE,
                     translation_key="connected_devices",
-                    value_fn=lambda _, node: (
-                        len(node.connected_devices)
-                        if isinstance(node, NodeEntity)
+                    value_fn=lambda coordinator, target: (
+                        len(target.connected_devices)
+                        if isinstance(target, NodeEntity)
                         else None
                     ),
                 ),
@@ -375,9 +403,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
             "devices": (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda mesh: (
-                        {"devices": get_devices(mesh, False)}
-                        if get_devices(mesh, False)
+                    esa_fn=lambda target: (
+                        {"devices": get_devices(target, False)}
+                        if get_devices(target, False)
                         else {}
                     ),
                     key="",
@@ -385,43 +413,43 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="offline_devices",
-                    value_fn=lambda _, mesh: (
-                        len(get_devices(mesh, False))
-                        if isinstance(mesh, MeshSnapshot)
+                    value_fn=lambda coordinator, target: (
+                        len(get_devices(target, False))
+                        if isinstance(target, MeshSnapshot)
                         else None
                     ),
                 ),
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda mesh: (
-                        {"devices": get_devices(mesh)} if get_devices(mesh) else {}
+                    esa_fn=lambda target: (
+                        {"devices": get_devices(target)} if get_devices(target) else {}
                     ),
                     key="",
                     name="Online Devices",
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="online_devices",
-                    value_fn=lambda _, mesh: (
-                        len(get_devices(mesh))
-                        if isinstance(mesh, MeshSnapshot)
+                    value_fn=lambda coordinator, target: (
+                        len(get_devices(target))
+                        if isinstance(target, MeshSnapshot)
                         else None
                     ),
                 ),
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda mesh: (
+                    esa_fn=lambda target: (
                         {
                             "devices": (
                                 [
                                     device
-                                    for device in get_devices(mesh)
+                                    for device in get_devices(target)
                                     if device.get("guest_network")
                                 ]
                             )
                         }
                         if [
                             device
-                            for device in get_devices(mesh)
+                            for device in get_devices(target)
                             if device.get("guest_network")
                         ]
                         else {}
@@ -431,15 +459,15 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="guest_devices",
-                    value_fn=lambda _, mesh: (
+                    value_fn=lambda coordinator, target: (
                         len(
                             [
                                 device
-                                for device in get_devices(mesh)
+                                for device in get_devices(target)
                                 if device.get("guest_network")
                             ]
                         )
-                        if isinstance(mesh, MeshSnapshot)
+                        if isinstance(target, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -448,11 +476,11 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
-                    esa_fn=lambda mesh: (
+                    esa_fn=lambda target: (
                         {
-                            "reservations": mesh.dhcp_reservations.value,
+                            "reservations": target.dhcp_reservations.value,
                         }
-                        if mesh.dhcp_reservations
+                        if isinstance(target, MeshSnapshot) and target.dhcp_reservations
                         else {}
                     ),
                     key="",
@@ -460,9 +488,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="dhcp_reservations",
-                    value_fn=lambda _, mesh: (
-                        len(mesh.dhcp_reservations)
-                        if isinstance(mesh, MeshSnapshot)
+                    value_fn=lambda coordinator, target: (
+                        len(target.dhcp_reservations)
+                        if isinstance(target, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -476,10 +504,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="Last Update Check",
                     target_type=EntityType.NODE,
                     translation_key="last_update_check",
-                    value_fn=lambda _, node: (
-                        node.last_update_check.value
-                        if isinstance(node, NodeEntity)
-                        and node.last_update_check.value is not None
+                    value_fn=lambda coordinator, target: (
+                        target.last_update_check.value
+                        if isinstance(target, NodeEntity)
+                        and target.last_update_check.value is not None
                         else None
                     ),
                 ),
@@ -488,20 +516,20 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                 LinksysVelopSensorEntityDescription(
                     entity_registry_enabled_default=False,
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda m: (
-                        {"addresses": m.mac_filtering_addresses.value}
-                        if isinstance(m, MeshSnapshot)
-                        and m.mac_filtering_addresses.value
+                    esa_fn=lambda target: (
+                        {"addresses": target.mac_filtering_addresses.value}
+                        if isinstance(target, MeshSnapshot)
+                        and target.mac_filtering_addresses.value
                         else {}
                     ),
                     key="mac_filtering_addresses",
                     name="Filtered MAC Addresses",
                     target_type=EntityType.MESH,
                     translation_key="mac_filtering_addresses",
-                    value_fn=lambda _, m: (
-                        len(m.mac_filtering_addresses.value)
-                        if isinstance(m, MeshSnapshot)
-                        and m.mac_filtering_addresses.value
+                    value_fn=lambda coordinator, target: (
+                        len(target.mac_filtering_addresses.value)
+                        if isinstance(target, MeshSnapshot)
+                        and target.mac_filtering_addresses.value
                         else None
                     ),
                 ),
@@ -516,9 +544,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[mac_mode.value.lower() for mac_mode in MacFilteringMode],
                     target_type=EntityType.MESH,
                     translation_key="mac_filtering_mode",
-                    value_fn=lambda _, m: (
-                        m.mac_filtering_mode.value.lower()
-                        if isinstance(m, MeshSnapshot) and m.mac_filtering_mode.value
+                    value_fn=lambda coordinator, target: (
+                        target.mac_filtering_mode.value.lower()
+                        if isinstance(target, MeshSnapshot)
+                        and target.mac_filtering_mode.value
                         else None
                     ),
                 ),
@@ -570,14 +599,14 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
             "parental_control_schedule": (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
-                    esa_fn=lambda device: (
+                    esa_fn=lambda target: (
                         {
-                            "sites": device.parental_control_schedule.value.get(
+                            "sites": target.parental_control_schedule.value.get(
                                 "blocked_sites", []
                             )
                         }
-                        if isinstance(device, DeviceEntity)
-                        and device.parental_control_schedule.value.get(
+                        if isinstance(target, DeviceEntity)
+                        and target.parental_control_schedule.value.get(
                             "blocked_sites", []
                         )
                         else {}
@@ -587,13 +616,13 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.DEVICE,
                     translation_key="blocked_sites",
-                    value_fn=lambda _, device: (
+                    value_fn=lambda coordinator, target: (
                         len(
-                            device.parental_control_schedule.value.get(
+                            target.parental_control_schedule.value.get(
                                 "blocked_sites", []
                             )
                         )
-                        if isinstance(device, DeviceEntity)
+                        if isinstance(target, DeviceEntity)
                         else None
                     ),
                 ),
@@ -625,7 +654,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     suggested_display_precision=2,
                     target_type=EntityType.MESH,
                     translation_key="download_bandwidth",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_data(coordinator, "download_bandwidth")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -641,7 +670,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     name="Speedtest Last Run",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_last_run",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_data(coordinator, "timestamp")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -659,7 +688,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     native_unit_of_measurement="ms",
                     target_type=EntityType.MESH,
                     translation_key="speedtest_latency",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_data(coordinator, "latency")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -676,7 +705,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SpeedtestStatus],
                     target_type=EntityType.MESH,
                     translation_key="speedtest_progress",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_enum(coordinator, "friendly_status")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -693,7 +722,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[val.lower() for val in SpeedtestExitCode],
                     target_type=EntityType.MESH,
                     translation_key="speedtest_result",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_enum(coordinator, "exit_code")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -711,7 +740,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     suggested_display_precision=2,
                     target_type=EntityType.MESH,
                     translation_key="upload_bandwidth",
-                    value_fn=lambda coordinator, _: (
+                    value_fn=lambda coordinator, target: (
                         get_speedtest_data(coordinator, "upload_bandwidth")
                         if isinstance(
                             coordinator, LinksysVelopDataUpdateCoordinatorMultiUse
@@ -724,10 +753,10 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
                     entity_registry_enabled_default=False,
-                    esa_fn=lambda mesh: (
-                        {"partitions": (mesh.storage_available.value)}
-                        if isinstance(mesh, MeshSnapshot)
-                        and mesh.storage_available.value
+                    esa_fn=lambda target: (
+                        {"partitions": (target.storage_available.value)}
+                        if isinstance(target, MeshSnapshot)
+                        and target.storage_available.value
                         else {}
                     ),
                     key="",
@@ -735,9 +764,9 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     state_class=SensorStateClass.MEASUREMENT,
                     target_type=EntityType.MESH,
                     translation_key="available_storage",
-                    value_fn=lambda _, mesh: (
-                        len(mesh.storage_available.value)
-                        if isinstance(mesh, MeshSnapshot)
+                    value_fn=lambda coordinator, target: (
+                        len(target.storage_available.value)
+                        if isinstance(target, MeshSnapshot)
                         else None
                     ),
                 ),
@@ -751,8 +780,8 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     options=[member.value for member in NodeType],
                     target_type=EntityType.NODE,
                     translation_key="node_type",
-                    value_fn=lambda _, node: (
-                        node.type.value if isinstance(node, NodeEntity) else None
+                    value_fn=lambda coordinator, target: (
+                        target.type.value if isinstance(target, NodeEntity) else None
                     ),
                 ),
             ),
@@ -924,9 +953,105 @@ def _init_node_entities(
 
     entities: list[LinksysVelopSensorCoordinatorEntity] = []
 
+    def _make_ethernet_port_info_esa_fn(port_index: int, port_type: EthernetPortType):
+        """Create a value retrieval function for ethernet port extra state attributes.
+
+        This factory function captures the port index and type to generate a
+        callable that returns a dictionary of attributes for the extra state attributes.
+
+        :param port_index: The numerical index of the ethernet port.
+        :param port_type: The type of ethernet port to query.
+        :return: A function that accepts a target to retrieve port attributes.
+        """
+
+        def esa_fn(target: TargetEntityType) -> dict[str, Any]:
+            """Retrieve the extra state attributes for the captured ethernet port.
+
+            Queries the connection information for the target device and returns
+            the port data as a dictionary, excluding the negotiated speed because that is the main
+            sensor value.
+
+            :param target: The entity target from which to retrieve port information.
+            :return: A dictionary containing the port data if connected; otherwise, an empty dictionary.
+            """
+
+            if epi := _get_ethernet_port_connection(target, port_index, port_type):
+                ret = copy.deepcopy(epi.to_dict())
+                ret.pop("negotiated_speed_mbps")
+                return {"data": ret}
+
+            return {}
+
+        return esa_fn
+
+    def _make_ethernet_port_info_value_fn(
+        port_index: int, port_type: EthernetPortType, key: str
+    ):
+        """Create a value retrieval function for a specific ethernet port attribute.
+
+        This factory function captures the port index and attribute key to generate
+        a compatible callable that can be used by the sensor entity description.
+
+        :param port_index: The numerical index of the ethernet port.
+        :param port_type: The type of ethernet port to query.
+        :param key: The attribute name to retrieve from the port connection data.
+        :return: A function that accepts a coordinator and target to retrieve the port value.
+        """
+
+        def value_fn(
+            coordinator: LinksysVelopDataUpdateCoordinatorMultiUse,
+            target: TargetEntityType,
+        ) -> StateType | dt.date | dt.datetime | Decimal:
+            """Retrieve the specified attribute for the captured ethernet port.
+
+            Queries the connection information for the target device and returns
+            the value associated with the predefined key if the connection exists.
+
+            :param coordinator: The data update coordinator for the Velop system.
+            :param target: The entity target from which to retrieve port information.
+            :return: The attribute value if found and the port is connected; otherwise, None.
+            """
+
+            if epi := _get_ethernet_port_connection(target, port_index, port_type):
+                return getattr(epi, key, None)
+
+            return None
+
+        return value_fn
+
     for node_id in new_node_ids:
         node = nodes_by_id[node_id]
         node_descriptions = list(base_descriptions)
+
+        if hasattr(node, "ethernet_port_info"):
+            node_descriptions.extend(
+                [
+                    LinksysVelopSensorEntityDescription(
+                        device_class=SensorDeviceClass.DATA_RATE,
+                        entity_category=EntityCategory.DIAGNOSTIC,
+                        entity_registry_enabled_default=False,
+                        esa_fn=_make_ethernet_port_info_esa_fn(port.index, port.kind),
+                        icon=(
+                            "mdi:ethernet-off"
+                            if port.speed.lower() == "none"
+                            else "mdi:ethernet"
+                        ),
+                        key="",
+                        name=f"{port.kind} Port {port.index}",
+                        native_unit_of_measurement=UnitOfDataRate.MEGABITS_PER_SECOND,
+                        target_type=EntityType.NODE,
+                        translation_key="ethernet_port_info",
+                        translation_placeholders={
+                            "port_index": str(port.index),
+                            "port_type": port.kind.upper(),
+                        },
+                        value_fn=_make_ethernet_port_info_value_fn(
+                            port.index, port.kind, "negotiated_speed_mbps"
+                        ),
+                    )
+                    for port in node.ethernet_port_info.value
+                ]
+            )
 
         if node.type == NodeType.SECONDARY and hasattr(node, "backhaul"):
             node_descriptions.extend(
@@ -939,9 +1064,9 @@ def _init_node_entities(
                         name="Backhaul Last Checked",
                         target_type=EntityType.NODE,
                         translation_key="backhaul_last_checked",
-                        value_fn=lambda _, n: (
-                            get_node_backhaul_info(n, "last_checked")
-                            if isinstance(n, NodeEntity)
+                        value_fn=lambda coordinator, target: (
+                            get_node_backhaul_info(target, "last_checked")
+                            if isinstance(target, NodeEntity)
                             else None
                         ),
                     ),
@@ -954,9 +1079,9 @@ def _init_node_entities(
                         suggested_display_precision=2,
                         target_type=EntityType.NODE,
                         translation_key="backhaul_speed",
-                        value_fn=lambda _, n: (
-                            get_node_backhaul_info(n, "speed_mbps")
-                            if isinstance(n, NodeEntity)
+                        value_fn=lambda coordinator, target: (
+                            get_node_backhaul_info(target, "speed_mbps")
+                            if isinstance(target, NodeEntity)
                             else None
                         ),
                     ),
@@ -968,20 +1093,23 @@ def _init_node_entities(
                         options=[v.lower() for v in ConnectionType],
                         target_type=EntityType.NODE,
                         translation_key="backhaul_connection_type",
-                        value_fn=lambda _, n: (
+                        value_fn=lambda coordinator, target: (
                             cast(
-                                ConnectionType, get_node_backhaul_info(n, "connection")
+                                ConnectionType,
+                                get_node_backhaul_info(target, "connection"),
                             ).lower()
-                            if isinstance(n, NodeEntity)
-                            and get_node_backhaul_info(n, "connection")
+                            if isinstance(target, NodeEntity)
+                            and get_node_backhaul_info(target, "connection")
                             else None
                         ),
                     ),
                     LinksysVelopSensorEntityDescription(
                         entity_category=EntityCategory.DIAGNOSTIC,
-                        esa_fn=lambda n: {
+                        esa_fn=lambda target: {
                             "parent_ip": (
-                                n.parent_ip if isinstance(n, NodeEntity) else None
+                                target.parent_ip
+                                if isinstance(target, NodeEntity)
+                                else None
                             )
                         },
                         key="parent_name",
@@ -1006,13 +1134,13 @@ def _init_node_entities(
                             options=[v.lower() for v in SignalStrength],
                             target_type=EntityType.NODE,
                             translation_key="backhaul_friendly_signal_strength",
-                            value_fn=lambda _, n: (
+                            value_fn=lambda coordinator, target: (
                                 cast(
                                     SignalStrength,
-                                    get_node_backhaul_info(n, "signal_strength"),
+                                    get_node_backhaul_info(target, "signal_strength"),
                                 ).lower()
-                                if isinstance(n, NodeEntity)
-                                and get_node_backhaul_info(n, "signal_strength")
+                                if isinstance(target, NodeEntity)
+                                and get_node_backhaul_info(target, "signal_strength")
                                 else None
                             ),
                         ),
@@ -1024,9 +1152,9 @@ def _init_node_entities(
                             native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
                             target_type=EntityType.NODE,
                             translation_key="backhaul_signal_strength",
-                            value_fn=lambda _, n: (
-                                get_node_backhaul_info(n, "rssi_dbm")
-                                if isinstance(n, NodeEntity)
+                            value_fn=lambda coordinator, target: (
+                                get_node_backhaul_info(target, "rssi_dbm")
+                                if isinstance(target, NodeEntity)
                                 else None
                             ),
                         ),

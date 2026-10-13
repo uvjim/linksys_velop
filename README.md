@@ -185,6 +185,7 @@ Available events are: -
 | Node | Parent Name | ✔️ | | IP address of the parent | only available if a secondary node |
 | Node | Serial | ✔️ | | | |
 | Node | Type | ✔️ | Primary/Secondary | | |
+| Node | X Port Y | ✖️ | Negoiated speed in Mbps | The port type, port index and speed as returned by the API are set as attributes | X = port type, Y = port index |
 
 ### Switches
 
