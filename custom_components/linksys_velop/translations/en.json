@@ -352,6 +352,9 @@
             "download_bandwidth": {
                 "name": "Speedtest Download Bandwidth"
             },
+            "ethernet_port_info": {
+                "name": "{port_type} Port {port_index}"
+            },
             "friendly_signal_strength": {
                 "name": "Friendly Signal Strength",
                 "state": {
