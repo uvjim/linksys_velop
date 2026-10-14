@@ -794,6 +794,17 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     translation_key="id",
                 ),
             ),
+            "last_reboot": (
+                LinksysVelopSensorEntityDescription(
+                    device_class=SensorDeviceClass.TIMESTAMP,
+                    entity_registry_enabled_default=False,
+                    entity_category=EntityCategory.DIAGNOSTIC,
+                    key="last_reboot",
+                    name="Last Reboot",
+                    target_type=EntityType.NODE,
+                    translation_key="node_last_reboot",
+                ),
+            ),
             "wan_ip": (
                 LinksysVelopSensorEntityDescription(
                     entity_category=EntityCategory.DIAGNOSTIC,
