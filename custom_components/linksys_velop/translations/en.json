@@ -406,6 +406,9 @@
             "name": {
                 "name": "Name"
             },
+            "node_last_reboot": {
+                "name": "Last Reboot"
+            },
             "node_type": {
                 "name": "Type",
                 "state": {

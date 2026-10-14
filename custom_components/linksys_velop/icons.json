@@ -44,6 +44,9 @@
             "download_bandwidth": {
                 "default": "mdi:cloud-download-outline"
             },
+            "node_last_reboot": {
+                "default": "mdi:clock-start"
+            },
             "parent_name": {
                 "default": "mdi:family-tree"
             },

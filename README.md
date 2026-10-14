@@ -180,6 +180,7 @@ Available events are: -
 | Node | Backhaul Speed | ✔️ | | | only available if a secondary node |
 | Node | Backhaul Type | ✔️ | Wired/Wireless | | only available if a secondary node |
 | Node | Connected Devices | ✔️ | Count of connected devices | List of online devices with the following details name, internal ID on the mesh, guest network, IPv4 address, IPv6 address, MAC, negotiated speed, connection type, Wi-Fi band, RSSI, timestamp for RSSI reading, signal strength, parent name | |
+| Node | Last Reboot | ✖️ | Timestamp when the node last rebooted | | It's unclear if the timer starts at boot time or based on a particular service |
 | Node | Last Update Check | ✖️ | Timestamp when the last check for a firmmware update was made | | |
 | Node | Model | ✔️ | | | The `entity_picture` attribute will be set if `node_images` are configured, see [Entity Options](#entity-options) |
 | Node | Parent Name | ✔️ | | IP address of the parent | only available if a secondary node |
