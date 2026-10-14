@@ -796,7 +796,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
             ),
             "last_reboot": (
                 LinksysVelopSensorEntityDescription(
-                    device_class=SensorDeviceClass.TIMESTAMP,
+                    device_class=SensorDeviceClass.UPTIME,
                     entity_registry_enabled_default=False,
                     entity_category=EntityCategory.DIAGNOSTIC,
                     key="last_reboot",
