@@ -478,7 +478,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSensorEntityDescription, ...]] = (
                     entity_registry_enabled_default=False,
                     esa_fn=lambda target: (
                         {
-                            "reservations": target.dhcp_reservations.value,
+                            "reservations": target.dhcp_reservations.to_dict(),
                         }
                         if isinstance(target, MeshSnapshot) and target.dhcp_reservations
                         else {}
