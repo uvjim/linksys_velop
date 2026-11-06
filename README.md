@@ -194,10 +194,10 @@ Available events are: -
 | --- | --- | :---: | --- | --- |
 | Device | Internet Access | ✔️ | | |
 | Mesh | Guest Wi-Fi | ✔️ | List of guest networks including: SSID and band | |
-| Mesh | HomeKit Integration | ✔️ | | |
+| Mesh | HomeKit Integration | ✖️ | | |
 | Mesh | Parental Control | ✔️ | List of objects defining the devices, blocked times and blocked sites | |
-| Mesh | UPnP | ✔️ | | Only controls the state of the UPnP not the sub-components of UPnP, these are only binary sensors |
-| Mesh | WPS | ✔️ | | |
+| Mesh | UPnP | ✖️ | | Only controls the state of the UPnP not the sub-components of UPnP, these are only binary sensors |
+| Mesh | WPS | ✖️ | | |
 
 ### Text
 
