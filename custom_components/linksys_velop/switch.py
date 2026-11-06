@@ -149,6 +149,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
             "homekit_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
+                    entity_registry_enabled_default=False,
                     key="homekit_enabled",
                     name="HomeKit Integration",
                     off_fn=async_set_mesh_homekit_wifi_state,
@@ -194,6 +195,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
             "upnp_enabled": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
+                    entity_registry_enabled_default=False,
                     key="upnp_enabled",
                     name="UPnP",
                     off_fn=async_set_mesh_upnp_state,
@@ -205,6 +207,7 @@ ENTITIES: Mapping[str, tuple[LinksysVelopSwitchEntityDescription, ...]] = (
             "wps_state": (
                 LinksysVelopSwitchEntityDescription(
                     entity_category=EntityCategory.CONFIG,
+                    entity_registry_enabled_default=False,
                     key="wps_state",
                     name="WPS",
                     off_fn=async_set_mesh_wps_state,
