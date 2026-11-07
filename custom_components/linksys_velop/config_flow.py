@@ -51,7 +51,6 @@ from .const import (
     CONF_REDACT_OPTIONS,
     CONF_SCAN_INTERVAL_DEVICE_TRACKER,
     CONF_SELECT_TEMP_UI_DEVICE,
-    CONF_TITLE_PLACEHOLDERS,
     CONF_UI_DEVICES,
     CONF_UI_DEVICES_TO_REMOVE,
     CONF_UI_PLACEHOLDER_DEVICE_ID,
@@ -61,7 +60,6 @@ from .const import (
     DEF_CONSIDER_HOME,
     DEF_EVENTS_OPTIONS,
     DEF_EVENTS_WAIT_IP,
-    DEF_FLOW_NAME,
     DEF_SCAN_INTERVAL,
     DEF_SCAN_INTERVAL_DEVICE_TRACKER,
     DEF_SELECT_TEMP_UI_DEVICE,
@@ -72,7 +70,11 @@ from .helpers import async_get_integration_version
 from .logger import Logger
 
 # endregion
+
 _LOGGER: Logger = Logger(logging.getLogger(__name__))
+
+CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
+DEF_FLOW_NAME: str = "Linksys Velop Mesh"
 
 
 @dataclass
@@ -436,6 +438,10 @@ def _build_schema_step_user(
     return vol.Schema(
         {
             vol.Required(
+                CONF_FLOW_NAME,
+                default=_get_input_default(user_input, CONF_FLOW_NAME, ""),
+            ): selector.TextSelector(),
+            vol.Required(
                 CONF_NODE,
                 default=_get_input_default(user_input, CONF_NODE, ""),
             ): selector.TextSelector(),
@@ -588,7 +594,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             devices = await _async_get_devices(self._mesh)
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {
+            "flow_name": self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(
+                CONF_FLOW_NAME, DEF_FLOW_NAME
+            )
+        }
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
@@ -610,17 +620,19 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         :returns: The next config flow result.
         """
-        _title = (
-            self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(CONF_FLOW_NAME)
-            or DEF_FLOW_NAME
-        )
+
         if self.source == SOURCE_REAUTH:
             return self.async_update_reload_and_abort(
                 self._get_reauth_entry(),
                 options=self._options,
             )
         else:
-            return self.async_create_entry(title=_title, data={}, options=self._options)
+            flow_name = self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(
+                CONF_FLOW_NAME, DEF_FLOW_NAME
+            )
+            return self.async_create_entry(
+                title=flow_name, data={}, options=self._options
+            )
 
     async def async_step_mesh_delay(
         self, user_input: Mapping[str, Any] | None = None
@@ -772,11 +784,11 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_mesh_initialise()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -870,11 +882,15 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {
+            "flow_name": self.context.get(CONF_TITLE_PLACEHOLDERS, {}).get(
+                CONF_FLOW_NAME, DEF_FLOW_NAME
+            )
+        }
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -923,25 +939,32 @@ class LinksysVelopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         :returns: The next config flow result.
         """
 
-        # only show version information if it's the first time we're here
+        # it's the first time we're here
         if not user_input and not self._error_details.has_error():
+            if CONF_TITLE_PLACEHOLDERS not in self.context:
+                self.context[CONF_TITLE_PLACEHOLDERS] = {CONF_FLOW_NAME: DEF_FLOW_NAME}
+            self._options[CONF_FLOW_NAME] = self.context[CONF_TITLE_PLACEHOLDERS][
+                CONF_FLOW_NAME
+            ]
             _LOGGER.debug(
                 "using integration version: %s",
                 await async_get_integration_version(self.hass),
             )
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {}
 
         # form has been submitted
         if user_input is not None:
+            flow_name = dict(user_input).pop(CONF_FLOW_NAME, DEF_FLOW_NAME)
+            self.context[CONF_TITLE_PLACEHOLDERS] = {CONF_FLOW_NAME: flow_name}
             self._options.update(user_input)
             return await self.async_step_mesh_initialise()
 
         # form display
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -986,11 +1009,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             self._devices = await _async_get_devices(mesh_api)
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -1026,11 +1049,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             return await self.async_step_logging()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -1056,11 +1079,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             return await self.async_step_entity_options()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -1170,11 +1193,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             return await self.async_step_finalise()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -1201,11 +1224,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             return await self.async_step_device_trackers()
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(
@@ -1236,11 +1259,11 @@ class LinksysOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             self._devices = await _async_get_devices(mesh_api)
 
         errors: dict[str, str] | None = None
-        placeholders: dict[str, str] | None = None
+        placeholders: dict[str, str] = {"flow_name": self.config_entry.title}
 
         if self._error_details.has_error():
             errors = self._error_details.error.copy()
-            placeholders = self._error_details.placeholders.copy()
+            placeholders.update(self._error_details.placeholders.copy())
             self._error_details.clear()
 
         return self.async_show_form(

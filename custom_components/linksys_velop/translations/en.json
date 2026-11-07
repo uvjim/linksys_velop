@@ -19,7 +19,6 @@
             "node_not_primary": "The primary node in the Velop mesh should be specified.",
             "node_timeout": "Timeout whilst contacting the node."
         },
-        "flow_title": "{name}",
         "progress": {
             "task_delay": "Unable to login. Mesh authentication is currently in a cooldown period. Waiting for {wait_for} seconds before allowing another attempt.",
             "task_init": "Initialising connection with the mesh"
@@ -30,14 +29,13 @@
                     "tracked": "Available devices"
                 },
                 "description": "Select the devices you would like to use for presence tracking",
-                "title": "Linksys Velop: Device Trackers"
+                "title": "{flow_name}: Device Trackers"
             },
             "reauth_confirm": {
                 "data": {
                     "password": "Password"
                 },
-                "description": "Please update the password to reauthenticate to the Mesh",
-                "title": "Linksys Velop: Reauth"
+                "description": "Please update the password to reauthenticate to the Mesh"
             },
             "timers": {
                 "data": {
@@ -47,15 +45,15 @@
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "description": "Set the various timers for the integration",
-                "title": "Linksys Velop: Timers"
+                "title": "{flow_name}: Timers"
             },
             "user": {
                 "data": {
-                    "node": "Primary node address",
-                    "password": "Password"
+                    "name": "Friendly name for the instance of the integration",
+                    "node": "Primary node address (typically the node connected to the modem)",
+                    "password": "Password (the router password used when logging in locally)"
                 },
-                "description": "Enter the details to connect to the Linksys Velop mesh",
-                "title": "Linksys Velop"
+                "description": "Enter the details to connect to the Linksys Velop mesh"
             }
         }
     },
@@ -555,7 +553,7 @@
                     "tracked": "Available devices"
                 },
                 "description": "Select the devices you would like to use for presence tracking.",
-                "title": "Linksys Velop: Device Trackers"
+                "title": "{flow_name}: Device Trackers"
             },
             "entity_options": {
                 "data": {
@@ -567,7 +565,7 @@
                     "node_images": "Path to the velop images, e.g. /local/velop_images."
                 },
                 "description": "Options below allow for additional configuration/creation of certain entities.",
-                "title": "Linksys Velop: Additional Entity Options"
+                "title": "{flow_name}: Entity Options"
             },
             "events": {
                 "data": {
@@ -575,7 +573,7 @@
                     "events_wait_ip": "Wait for an IP address before raising the new device event"
                 },
                 "description": "Select the events that you would like to be notified of.",
-                "title": "Linksys Velop: Events"
+                "title": "{flow_name}: Events"
             },
             "init": {
                 "menu_options": {
@@ -585,15 +583,14 @@
                     "logging": "Logging",
                     "timers": "Timers",
                     "ui_device": "UI Devices"
-                },
-                "title": "Linksys Velop"
+                }
             },
             "logging": {
                 "data": {
                     "redact_options": "Enter the redaction paths for each Mesh capability. These act as additional redactions to the defaults and will apply to the log and diagnostics download."
                 },
                 "description": "Configure logging details.",
-                "title": "Linksys Velop: Logging"
+                "title": "{flow_name}: Logging"
             },
             "timers": {
                 "data": {
@@ -603,7 +600,7 @@
                     "scan_interval_device_tracker": "Scan interval for device trackers (in seconds)"
                 },
                 "description": "Set the various timers for the integration.",
-                "title": "Linksys Velop: Timers"
+                "title": "{flow_name}: Timers"
             },
             "ui_device": {
                 "data": {
@@ -614,7 +611,7 @@
                     "select_temp_ui_device": "This option will stop writing the selected device details to the attributes and use a temporary device instead."
                 },
                 "description": "Select the devices that you'd like to have created in the UI.",
-                "title": "Linksys Velop: UI Devices"
+                "title": "{flow_name}: UI Devices"
             }
         }
     },

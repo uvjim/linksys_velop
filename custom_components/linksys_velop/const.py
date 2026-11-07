@@ -39,7 +39,6 @@ CONF_NODE_IMAGES: str = "node_images"
 CONF_SCAN_INTERVAL_DEVICE_TRACKER: str = "scan_interval_device_tracker"
 CONF_SELECT_TEMP_UI_DEVICE: str = "select_temp_ui_device"
 CONF_UI_PLACEHOLDER_DEVICE_ID: str = "ui_placeholder_device_id"
-CONF_TITLE_PLACEHOLDERS: str = "title_placeholders"
 CONF_UI_DEVICES_TO_REMOVE: str = "ui_devices_to_remove"
 CONF_UI_DEVICES: str = "ui_devices"
 
@@ -49,7 +48,6 @@ DEF_API_REQUEST_TIMEOUT: int = 15
 DEF_CONSIDER_HOME: int = 180
 DEF_EVENTS_OPTIONS: list[str] = [event.value for event in EventSubTypes]
 DEF_EVENTS_WAIT_IP: bool = False
-DEF_FLOW_NAME: str = "Linksys Velop Mesh"
 DEF_SCAN_INTERVAL: int = 60
 DEF_SCAN_INTERVAL_DEVICE_TRACKER: int = 10
 DEF_SELECT_TEMP_UI_DEVICE: bool = False
