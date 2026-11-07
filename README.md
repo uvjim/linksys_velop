@@ -263,6 +263,7 @@ When setting up the integration you will be asked for the following information.
 
 ![Initial Setup Screen](images/setup_user.png)
 
+* `Friendly name`: a recognisable name given to this instance of the integration.
 * `Primary node address`: must be the node classed as the primary node
 * `Password`: the password you would use to log in to the router. This may
   not be the same as the password for the application or web UI if you use
