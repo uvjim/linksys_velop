@@ -824,6 +824,7 @@ class LinksysVelopSensorEntity(SensorEntity):
 
     entity_description: LinksysVelopSensorEntityDescription
     _entity_domain: str = ENTITY_DOMAIN
+    _unrecorded_attributes = frozenset({"devices"})
 
 
 class LinksysVelopSensorMultiUseEntity(
